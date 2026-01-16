@@ -1,17 +1,19 @@
 import { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { format, addDays, subDays, startOfDay, isSameDay, isAfter, isBefore } from 'date-fns';
-import { ChevronLeft, ChevronRight, Plus, Dumbbell, Check, Clock, X, AlertCircle } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Plus, Dumbbell, Check, Clock, X, AlertCircle, Utensils } from 'lucide-react';
 import { useProfile } from '@/hooks/useProfile';
 import { supabase } from '@/integrations/supabase/client';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
-
+import { WorkoutLogModal } from '@/components/modals/WorkoutLogModal';
+import { FoodLogModal } from '@/components/modals/FoodLogModal';
+import { toast } from 'sonner';
 interface Workout {
   id: string;
   date: string;
-  status: 'pending' | 'completed' | 'skipped' | 'partial';
+  status: 'pending' | 'completed' | 'skipped';
   client_id: string;
 }
 
@@ -22,9 +24,12 @@ interface Client {
 
 const Calendar = () => {
   const { profile, isTrainer } = useProfile();
+  const queryClient = useQueryClient();
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [showClientSheet, setShowClientSheet] = useState(false);
-
+  const [showClientActionSheet, setShowClientActionSheet] = useState(false);
+  const [showWorkoutModal, setShowWorkoutModal] = useState(false);
+  const [showFoodModal, setShowFoodModal] = useState(false);
   // Calculate cycle dates - cycle starts from when client joined trainer or account creation
   const cycleStartDate = useMemo(() => {
     // For simplicity, we'll use the start of the current month as cycle start
@@ -127,15 +132,14 @@ const Calendar = () => {
           ring: 'ring-destructive/50',
           cellBg: 'bg-destructive/20 border-destructive/40',
         };
-      case 'partial':
-        return {
-          icon: <AlertCircle className="w-3.5 h-3.5" />,
-          bg: 'bg-warning',
-          text: 'text-warning-foreground',
-          ring: 'ring-warning/50',
-          cellBg: 'bg-warning/20 border-warning/40',
-        };
       case 'pending':
+        return {
+          icon: <Dumbbell className="w-3 h-3" />,
+          bg: 'bg-primary/80',
+          text: 'text-primary-foreground',
+          ring: 'ring-primary/30',
+          cellBg: 'border-primary/30',
+        };
         return {
           icon: <Dumbbell className="w-3 h-3" />,
           bg: 'bg-primary/80',
@@ -152,9 +156,103 @@ const Calendar = () => {
     setSelectedDate(date);
     if (isTrainer) {
       setShowClientSheet(true);
+    } else {
+      setShowClientActionSheet(true);
     }
   };
 
+  const handleWorkoutSave = async (exercises: { name: string; sets: number; reps: number; weight: number }[]) => {
+    if (!profile || !selectedDate) return;
+
+    try {
+      // First create or get the workout for this date
+      const dateStr = format(selectedDate, 'yyyy-MM-dd');
+      
+      let workoutId: string;
+      const existingWorkout = getWorkoutForDate(selectedDate);
+      
+      if (existingWorkout) {
+        workoutId = existingWorkout.id;
+        // Update workout status to completed
+        await supabase
+          .from('workouts')
+          .update({ status: 'completed' })
+          .eq('id', workoutId);
+      } else {
+        // Create new workout
+        const { data: newWorkout, error: workoutError } = await supabase
+          .from('workouts')
+          .insert({
+            client_id: profile.id,
+            date: dateStr,
+            status: 'completed'
+          })
+          .select()
+          .single();
+        
+        if (workoutError) throw workoutError;
+        workoutId = newWorkout.id;
+      }
+
+      // Insert exercises
+      const exerciseInserts = exercises.map(ex => ({
+        workout_id: workoutId,
+        exercise_name: ex.name,
+        actual_sets: ex.sets,
+        actual_reps: ex.reps,
+        actual_weight: ex.weight
+      }));
+
+      const { error: exerciseError } = await supabase
+        .from('exercises')
+        .insert(exerciseInserts);
+
+      if (exerciseError) throw exerciseError;
+
+      toast.success('Workout logged successfully!');
+      queryClient.invalidateQueries({ queryKey: ['workouts'] });
+      setShowWorkoutModal(false);
+      setShowClientActionSheet(false);
+    } catch (error) {
+      console.error('Failed to save workout:', error);
+      toast.error('Failed to save workout');
+    }
+  };
+
+  const handleFoodSave = async (data: {
+    mealType: 'breakfast' | 'lunch' | 'dinner' | 'snack';
+    rawText: string;
+    calories: number;
+    protein: number;
+    carbs: number;
+    fat: number;
+  }) => {
+    if (!profile || !selectedDate) return;
+
+    try {
+      const { error } = await supabase
+        .from('food_logs')
+        .insert({
+          client_id: profile.id,
+          logged_date: format(selectedDate, 'yyyy-MM-dd'),
+          meal_type: data.mealType,
+          raw_text: data.rawText,
+          calories: data.calories,
+          protein: data.protein,
+          carbs: data.carbs,
+          fat: data.fat
+        });
+
+      if (error) throw error;
+
+      toast.success('Food logged successfully!');
+      setShowFoodModal(false);
+      setShowClientActionSheet(false);
+    } catch (error) {
+      console.error('Failed to save food log:', error);
+      toast.error('Failed to save food log');
+    }
+  };
   const getSectionLabel = (section: 'past' | 'current' | 'future') => {
     switch (section) {
       case 'past':
@@ -306,13 +404,7 @@ const Calendar = () => {
                     <div className="w-5 h-5 rounded-full bg-success flex items-center justify-center">
                       <Check className="w-3 h-3 text-success-foreground" />
                     </div>
-                    <span className="text-xs text-muted-foreground">Done</span>
-                  </div>
-                  <div className="flex items-center gap-1.5">
-                    <div className="w-5 h-5 rounded-full bg-warning flex items-center justify-center">
-                      <AlertCircle className="w-3 h-3 text-warning-foreground" />
-                    </div>
-                    <span className="text-xs text-muted-foreground">Partial</span>
+                    <span className="text-xs text-muted-foreground">Completed</span>
                   </div>
                   <div className="flex items-center gap-1.5">
                     <div className="w-5 h-5 rounded-full bg-destructive flex items-center justify-center">
@@ -389,30 +481,34 @@ const Calendar = () => {
         </SheetContent>
       </Sheet>
 
-      {/* Workout Details Sheet for Clients */}
-      {!isTrainer && selectedDate && (
-        <Sheet open={!!selectedDate && !isTrainer} onOpenChange={() => setSelectedDate(null)}>
+      {/* Client Action Sheet - Log Workout or Food */}
+      {!isTrainer && (
+        <Sheet open={showClientActionSheet} onOpenChange={setShowClientActionSheet}>
           <SheetContent side="bottom" className="rounded-t-3xl">
             <SheetHeader className="pb-4">
               <SheetTitle>
-                <span className="flex items-center gap-2">
-                  <Dumbbell className="w-5 h-5 text-primary" />
-                  {format(selectedDate, 'EEEE, MMMM d')}
-                </span>
+                {selectedDate && (
+                  <span className="flex items-center gap-2">
+                    <Dumbbell className="w-5 h-5 text-primary" />
+                    {format(selectedDate, 'EEEE, MMMM d')}
+                  </span>
+                )}
               </SheetTitle>
             </SheetHeader>
             
             {(() => {
-              const workout = getWorkoutForDate(selectedDate);
-              if (workout) {
-                return (
-                  <div className="space-y-4">
+              const workout = selectedDate ? getWorkoutForDate(selectedDate) : null;
+              
+              return (
+                <div className="space-y-4">
+                  {/* Workout Status Card */}
+                  {workout && (
                     <div className="p-4 rounded-xl bg-primary/10 border border-primary/30">
                       <div className="flex items-center justify-between mb-2">
                         <span className="font-semibold text-foreground">Assigned Workout</span>
                         <span className={`text-xs px-2 py-1 rounded-full ${
                           workout.status === 'completed' 
-                            ? 'bg-primary/20 text-primary' 
+                            ? 'bg-success/20 text-success' 
                             : workout.status === 'skipped'
                               ? 'bg-destructive/20 text-destructive'
                               : 'bg-secondary text-muted-foreground'
@@ -421,29 +517,105 @@ const Calendar = () => {
                         </span>
                       </div>
                       <p className="text-sm text-muted-foreground">
-                        View exercises and log your progress
+                        Log your progress for this workout
                       </p>
                     </div>
-                    <Button className="w-full h-12 rounded-xl">
-                      View Workout Details
-                    </Button>
+                  )}
+
+                  {/* Action Buttons */}
+                  <div className="grid grid-cols-2 gap-3">
+                    <motion.button
+                      whileTap={{ scale: 0.95 }}
+                      onClick={() => setShowWorkoutModal(true)}
+                      className="flex flex-col items-center gap-3 p-6 rounded-2xl bg-card border-2 border-border hover:border-primary/50 transition-colors"
+                    >
+                      <div className="w-14 h-14 rounded-full bg-primary/20 flex items-center justify-center">
+                        <Dumbbell className="w-7 h-7 text-primary" />
+                      </div>
+                      <div className="text-center">
+                        <p className="font-semibold text-foreground">Log Workout</p>
+                        <p className="text-xs text-muted-foreground">Track exercises</p>
+                      </div>
+                    </motion.button>
+
+                    <motion.button
+                      whileTap={{ scale: 0.95 }}
+                      onClick={() => setShowFoodModal(true)}
+                      className="flex flex-col items-center gap-3 p-6 rounded-2xl bg-card border-2 border-border hover:border-primary/50 transition-colors"
+                    >
+                      <div className="w-14 h-14 rounded-full bg-success/20 flex items-center justify-center">
+                        <Utensils className="w-7 h-7 text-success" />
+                      </div>
+                      <div className="text-center">
+                        <p className="font-semibold text-foreground">Log Food</p>
+                        <p className="text-xs text-muted-foreground">Track nutrition</p>
+                      </div>
+                    </motion.button>
                   </div>
-                );
-              }
-              return (
-                <div className="text-center py-8">
-                  <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center mx-auto mb-4">
-                    <Clock className="w-8 h-8 text-muted-foreground" />
-                  </div>
-                  <p className="text-muted-foreground">
-                    No workout scheduled for this day
-                  </p>
+
+                  {/* Quick Status Update */}
+                  {workout && workout.status === 'pending' && (
+                    <div className="pt-2">
+                      <p className="text-xs text-muted-foreground mb-2">Quick status update:</p>
+                      <div className="flex gap-2">
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          className="flex-1 border-destructive/50 text-destructive hover:bg-destructive/10"
+                          onClick={async () => {
+                            await supabase
+                              .from('workouts')
+                              .update({ status: 'skipped' })
+                              .eq('id', workout.id);
+                            queryClient.invalidateQueries({ queryKey: ['workouts'] });
+                            setShowClientActionSheet(false);
+                            toast.success('Marked as missed');
+                          }}
+                        >
+                          <X className="w-4 h-4 mr-1" />
+                          Missed
+                        </Button>
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          className="flex-1 border-success/50 text-success hover:bg-success/10"
+                          onClick={async () => {
+                            await supabase
+                              .from('workouts')
+                              .update({ status: 'completed' })
+                              .eq('id', workout.id);
+                            queryClient.invalidateQueries({ queryKey: ['workouts'] });
+                            setShowClientActionSheet(false);
+                            toast.success('Marked as done!');
+                          }}
+                        >
+                          <Check className="w-4 h-4 mr-1" />
+                          Done
+                        </Button>
+                      </div>
+                    </div>
+                  )}
                 </div>
               );
             })()}
           </SheetContent>
         </Sheet>
       )}
+
+      {/* Workout Log Modal */}
+      <WorkoutLogModal
+        open={showWorkoutModal}
+        onOpenChange={setShowWorkoutModal}
+        onSave={handleWorkoutSave}
+        date={selectedDate || undefined}
+      />
+
+      {/* Food Log Modal */}
+      <FoodLogModal
+        open={showFoodModal}
+        onOpenChange={setShowFoodModal}
+        onSave={handleFoodSave}
+      />
     </div>
   );
 };
