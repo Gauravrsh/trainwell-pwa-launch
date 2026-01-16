@@ -20,24 +20,44 @@ const RoleSelection = () => {
     setSelectedRole(role);
 
     try {
-      if (role === 'trainer') {
-        // Generate a new 6-digit unique ID for trainer
-        const { data: newId, error: idError } = await supabase
-          .rpc('generate_unique_id', { p_role: 'trainer' });
-        
-        if (idError) throw idError;
+      // Generate unique ID based on role
+      const { data: newId, error: idError } = await supabase
+        .rpc('generate_unique_id', { p_role: role });
+      
+      if (idError) throw idError;
 
-        // Update profile to trainer with new unique_id
+      // Check if profile exists
+      const { data: existingProfile } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('user_id', user.id)
+        .maybeSingle();
+
+      if (existingProfile) {
+        // Update existing profile
         const { error: updateError } = await supabase
           .from('profiles')
           .update({ 
-            role: 'trainer',
+            role,
             unique_id: newId 
           })
           .eq('user_id', user.id);
 
         if (updateError) throw updateError;
+      } else {
+        // Insert new profile
+        const { error: insertError } = await supabase
+          .from('profiles')
+          .insert({ 
+            user_id: user.id,
+            role,
+            unique_id: newId 
+          });
 
+        if (insertError) throw insertError;
+      }
+
+      if (role === 'trainer') {
         toast({
           title: "Welcome, Trainer!",
           description: `Your trainer ID is: ${newId}`,
@@ -47,31 +67,29 @@ const RoleSelection = () => {
         const refCode = localStorage.getItem('ref');
         
         if (refCode) {
-          // Look up trainer by unique_id
+          // Look up trainer by unique_id using the public view
           const { data: trainer, error: trainerError } = await supabase
-            .from('profiles')
+            .from('trainers_public')
             .select('id')
             .eq('unique_id', refCode)
-            .eq('role', 'trainer')
             .maybeSingle();
 
           if (trainerError) throw trainerError;
 
           if (trainer) {
             // Link client to trainer
-            const { error: updateError } = await supabase
+            const { error: linkError } = await supabase
               .from('profiles')
               .update({ trainer_id: trainer.id })
               .eq('user_id', user.id);
 
-            if (updateError) throw updateError;
+            if (linkError) throw linkError;
 
             toast({
               title: "Connected to Trainer!",
               description: "You've been linked to your trainer successfully.",
             });
 
-            // Clear the ref from localStorage
             localStorage.removeItem('ref');
           } else {
             toast({
