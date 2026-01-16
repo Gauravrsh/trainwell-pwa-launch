@@ -14,16 +14,284 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      exercises: {
+        Row: {
+          actual_reps: number | null
+          actual_sets: number | null
+          actual_weight: number | null
+          created_at: string | null
+          exercise_name: string
+          id: string
+          recommended_reps: number | null
+          recommended_sets: number | null
+          recommended_weight: number | null
+          updated_at: string | null
+          workout_id: string
+        }
+        Insert: {
+          actual_reps?: number | null
+          actual_sets?: number | null
+          actual_weight?: number | null
+          created_at?: string | null
+          exercise_name: string
+          id?: string
+          recommended_reps?: number | null
+          recommended_sets?: number | null
+          recommended_weight?: number | null
+          updated_at?: string | null
+          workout_id: string
+        }
+        Update: {
+          actual_reps?: number | null
+          actual_sets?: number | null
+          actual_weight?: number | null
+          created_at?: string | null
+          exercise_name?: string
+          id?: string
+          recommended_reps?: number | null
+          recommended_sets?: number | null
+          recommended_weight?: number | null
+          updated_at?: string | null
+          workout_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "exercises_workout_id_fkey"
+            columns: ["workout_id"]
+            isOneToOne: false
+            referencedRelation: "workouts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      food_logs: {
+        Row: {
+          calories: number | null
+          carbs: number | null
+          client_id: string
+          created_at: string | null
+          fat: number | null
+          id: string
+          logged_date: string
+          meal_type: Database["public"]["Enums"]["meal_type"]
+          protein: number | null
+          raw_text: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          calories?: number | null
+          carbs?: number | null
+          client_id: string
+          created_at?: string | null
+          fat?: number | null
+          id?: string
+          logged_date: string
+          meal_type: Database["public"]["Enums"]["meal_type"]
+          protein?: number | null
+          raw_text?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          calories?: number | null
+          carbs?: number | null
+          client_id?: string
+          created_at?: string | null
+          fat?: number | null
+          id?: string
+          logged_date?: string
+          meal_type?: Database["public"]["Enums"]["meal_type"]
+          protein?: number | null
+          raw_text?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "food_logs_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      payments: {
+        Row: {
+          amount: number
+          created_at: string | null
+          id: string
+          payment_status: Database["public"]["Enums"]["payment_status"] | null
+          razorpay_order_id: string | null
+          subscription_cycle_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          amount: number
+          created_at?: string | null
+          id?: string
+          payment_status?: Database["public"]["Enums"]["payment_status"] | null
+          razorpay_order_id?: string | null
+          subscription_cycle_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          amount?: number
+          created_at?: string | null
+          id?: string
+          payment_status?: Database["public"]["Enums"]["payment_status"] | null
+          razorpay_order_id?: string | null
+          subscription_cycle_id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payments_subscription_cycle_id_fkey"
+            columns: ["subscription_cycle_id"]
+            isOneToOne: false
+            referencedRelation: "subscription_cycles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profiles: {
+        Row: {
+          created_at: string | null
+          id: string
+          role: Database["public"]["Enums"]["user_role"]
+          trainer_id: string | null
+          unique_id: string
+          updated_at: string | null
+          user_id: string
+          vpa_address: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          role?: Database["public"]["Enums"]["user_role"]
+          trainer_id?: string | null
+          unique_id: string
+          updated_at?: string | null
+          user_id: string
+          vpa_address?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          role?: Database["public"]["Enums"]["user_role"]
+          trainer_id?: string | null
+          unique_id?: string
+          updated_at?: string | null
+          user_id?: string
+          vpa_address?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "profiles_trainer_id_fkey"
+            columns: ["trainer_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      subscription_cycles: {
+        Row: {
+          client_id: string
+          created_at: string | null
+          end_date: string
+          id: string
+          start_date: string
+          status: Database["public"]["Enums"]["subscription_status"] | null
+          updated_at: string | null
+        }
+        Insert: {
+          client_id: string
+          created_at?: string | null
+          end_date: string
+          id?: string
+          start_date: string
+          status?: Database["public"]["Enums"]["subscription_status"] | null
+          updated_at?: string | null
+        }
+        Update: {
+          client_id?: string
+          created_at?: string | null
+          end_date?: string
+          id?: string
+          start_date?: string
+          status?: Database["public"]["Enums"]["subscription_status"] | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "subscription_cycles_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      workouts: {
+        Row: {
+          client_id: string
+          created_at: string | null
+          date: string
+          id: string
+          status: Database["public"]["Enums"]["workout_status"] | null
+          updated_at: string | null
+        }
+        Insert: {
+          client_id: string
+          created_at?: string | null
+          date: string
+          id?: string
+          status?: Database["public"]["Enums"]["workout_status"] | null
+          updated_at?: string | null
+        }
+        Update: {
+          client_id?: string
+          created_at?: string | null
+          date?: string
+          id?: string
+          status?: Database["public"]["Enums"]["workout_status"] | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "workouts_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      generate_unique_id: {
+        Args: { p_role: Database["public"]["Enums"]["user_role"] }
+        Returns: string
+      }
+      get_trainer_profile_id: { Args: { _user_id: string }; Returns: string }
+      get_user_profile_id: { Args: { _user_id: string }; Returns: string }
+      get_user_role: {
+        Args: { _user_id: string }
+        Returns: Database["public"]["Enums"]["user_role"]
+      }
+      is_trainer_of_client: {
+        Args: { _client_profile_id: string; _trainer_user_id: string }
+        Returns: boolean
+      }
     }
     Enums: {
-      [_ in never]: never
+      meal_type: "breakfast" | "lunch" | "dinner" | "snack"
+      payment_status: "pending" | "completed" | "failed" | "refunded"
+      subscription_status: "active" | "pending_renewal" | "completed"
+      user_role: "trainer" | "client"
+      workout_status: "completed" | "skipped" | "pending"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +418,12 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      meal_type: ["breakfast", "lunch", "dinner", "snack"],
+      payment_status: ["pending", "completed", "failed", "refunded"],
+      subscription_status: ["active", "pending_renewal", "completed"],
+      user_role: ["trainer", "client"],
+      workout_status: ["completed", "skipped", "pending"],
+    },
   },
 } as const
