@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { format, addDays, subDays, startOfDay, isSameDay, isAfter, isBefore } from 'date-fns';
-import { ChevronLeft, ChevronRight, Plus, Dumbbell, Check, Clock, X } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Plus, Dumbbell, Check, Clock, X, AlertCircle } from 'lucide-react';
 import { useProfile } from '@/hooks/useProfile';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery } from '@tanstack/react-query';
@@ -11,7 +11,7 @@ import { Button } from '@/components/ui/button';
 interface Workout {
   id: string;
   date: string;
-  status: 'pending' | 'completed' | 'skipped';
+  status: 'pending' | 'completed' | 'skipped' | 'partial';
   client_id: string;
 }
 
@@ -109,12 +109,40 @@ const Calendar = () => {
     return workouts.find(w => isSameDay(new Date(w.date), date));
   };
 
-  const getStatusIcon = (status?: string) => {
+  const getStatusStyles = (status?: string) => {
     switch (status) {
       case 'completed':
-        return <Check className="w-3 h-3 text-primary" />;
+        return {
+          icon: <Check className="w-3.5 h-3.5" />,
+          bg: 'bg-success',
+          text: 'text-success-foreground',
+          ring: 'ring-success/50',
+          cellBg: 'bg-success/20 border-success/40',
+        };
       case 'skipped':
-        return <X className="w-3 h-3 text-destructive" />;
+        return {
+          icon: <X className="w-3.5 h-3.5" />,
+          bg: 'bg-destructive',
+          text: 'text-destructive-foreground',
+          ring: 'ring-destructive/50',
+          cellBg: 'bg-destructive/20 border-destructive/40',
+        };
+      case 'partial':
+        return {
+          icon: <AlertCircle className="w-3.5 h-3.5" />,
+          bg: 'bg-warning',
+          text: 'text-warning-foreground',
+          ring: 'ring-warning/50',
+          cellBg: 'bg-warning/20 border-warning/40',
+        };
+      case 'pending':
+        return {
+          icon: <Dumbbell className="w-3 h-3" />,
+          bg: 'bg-primary/80',
+          text: 'text-primary-foreground',
+          ring: 'ring-primary/30',
+          cellBg: 'border-primary/30',
+        };
       default:
         return null;
     }
@@ -189,26 +217,44 @@ const Calendar = () => {
                 )}
               </div>
 
+              {/* Month Label */}
+              {(() => {
+                const firstDate = sectionDates[0]?.date;
+                const lastDate = sectionDates[sectionDates.length - 1]?.date;
+                const startMonth = firstDate ? format(firstDate, 'MMMM yyyy') : '';
+                const endMonth = lastDate ? format(lastDate, 'MMMM yyyy') : '';
+                const monthLabel = startMonth === endMonth ? startMonth : `${format(firstDate!, 'MMM')} - ${format(lastDate!, 'MMM yyyy')}`;
+                
+                return (
+                  <div className="mb-2 px-1">
+                    <span className="text-lg font-bold text-foreground">
+                      {monthLabel}
+                    </span>
+                  </div>
+                );
+              })()}
+
               {/* Dates Grid */}
               <div className={`rounded-2xl border ${
                 isCurrentSection ? 'border-primary/30 bg-primary/5' : 
                 isPastSection ? 'border-border/50 bg-muted/30' : 'border-border bg-card/50'
               } p-3`}>
-                <div className="grid grid-cols-7 gap-1">
+                <div className="grid grid-cols-7 gap-1.5">
                   {/* Weekday Headers */}
-                  {sectionIndex === 0 && ['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((day, i) => (
-                    <div key={i} className="text-center text-xs text-muted-foreground font-medium py-1">
+                  {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((day, i) => (
+                    <div key={i} className="text-center text-xs text-muted-foreground font-semibold py-2">
                       {day}
                     </div>
                   ))}
                   
                   {/* Date Cells */}
-                  {sectionDates.map(({ date }, index) => {
+                  {sectionDates.map(({ date }) => {
                     const workout = getWorkoutForDate(date);
                     const isToday = isSameDay(date, today);
                     const isPast = isBefore(date, today);
                     const hasWorkout = !!workout;
                     const isSelected = selectedDate && isSameDay(date, selectedDate);
+                    const statusStyles = getStatusStyles(workout?.status);
 
                     return (
                       <motion.button
@@ -217,42 +263,71 @@ const Calendar = () => {
                         whileTap={{ scale: 0.9 }}
                         className={`
                           relative aspect-square rounded-xl flex flex-col items-center justify-center
-                          transition-all duration-200 text-sm font-medium
+                          transition-all duration-200 text-sm font-medium border-2
                           ${isToday 
-                            ? 'bg-primary text-primary-foreground ring-2 ring-primary ring-offset-2 ring-offset-background' 
+                            ? 'bg-primary text-primary-foreground ring-2 ring-primary ring-offset-2 ring-offset-background border-primary' 
                             : isSelected
-                              ? 'bg-secondary ring-2 ring-primary/50'
-                              : isPast && section === 'past'
-                                ? 'bg-muted/50 text-muted-foreground'
-                                : 'bg-card hover:bg-secondary text-foreground'
+                              ? 'bg-secondary ring-2 ring-primary/50 border-primary/50'
+                              : hasWorkout && statusStyles
+                                ? statusStyles.cellBg
+                                : isPast && section === 'past'
+                                  ? 'bg-muted/50 text-muted-foreground border-transparent'
+                                  : 'bg-card hover:bg-secondary text-foreground border-transparent hover:border-border'
                           }
-                          ${hasWorkout && !isToday ? 'border-2 border-primary/50' : ''}
                         `}
                       >
-                        <span className={isToday ? 'font-bold' : ''}>
+                        <span className={`${isToday ? 'font-bold' : ''} ${hasWorkout && !isToday ? 'mb-0.5' : ''}`}>
                           {format(date, 'd')}
                         </span>
                         
-                        {/* Workout indicator */}
-                        {hasWorkout && (
-                          <div className="absolute bottom-1">
-                            {getStatusIcon(workout.status) || (
-                              <Dumbbell className="w-2.5 h-2.5 text-primary" />
-                            )}
+                        {/* Workout Status Indicator */}
+                        {hasWorkout && statusStyles && !isToday && (
+                          <div className={`absolute bottom-1 rounded-full p-0.5 ${statusStyles.bg} ${statusStyles.text}`}>
+                            {statusStyles.icon}
                           </div>
                         )}
                         
-                        {/* Month label for first day */}
-                        {date.getDate() === 1 && (
-                          <span className="absolute -top-5 left-0 text-[10px] text-muted-foreground font-medium">
-                            {format(date, 'MMM')}
-                          </span>
+                        {/* Workout indicator on today */}
+                        {hasWorkout && isToday && (
+                          <div className="absolute bottom-1">
+                            <Dumbbell className="w-3 h-3 text-primary-foreground" />
+                          </div>
                         )}
                       </motion.button>
                     );
                   })}
                 </div>
               </div>
+              
+              {/* Status Legend for current section */}
+              {isCurrentSection && (
+                <div className="flex flex-wrap gap-3 mt-3 px-1">
+                  <div className="flex items-center gap-1.5">
+                    <div className="w-5 h-5 rounded-full bg-success flex items-center justify-center">
+                      <Check className="w-3 h-3 text-success-foreground" />
+                    </div>
+                    <span className="text-xs text-muted-foreground">Done</span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <div className="w-5 h-5 rounded-full bg-warning flex items-center justify-center">
+                      <AlertCircle className="w-3 h-3 text-warning-foreground" />
+                    </div>
+                    <span className="text-xs text-muted-foreground">Partial</span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <div className="w-5 h-5 rounded-full bg-destructive flex items-center justify-center">
+                      <X className="w-3 h-3 text-destructive-foreground" />
+                    </div>
+                    <span className="text-xs text-muted-foreground">Missed</span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <div className="w-5 h-5 rounded-full bg-primary/80 flex items-center justify-center">
+                      <Dumbbell className="w-2.5 h-2.5 text-primary-foreground" />
+                    </div>
+                    <span className="text-xs text-muted-foreground">Pending</span>
+                  </div>
+                </div>
+              )}
             </motion.div>
           );
         })}
