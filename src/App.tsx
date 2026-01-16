@@ -10,6 +10,7 @@ import Auth from "./pages/Auth";
 import ResetPassword from "./pages/ResetPassword";
 import RoleSelection from "./pages/RoleSelection";
 import Home from "./pages/Home";
+import Calendar from "./pages/Calendar";
 import Refer from "./pages/Refer";
 import Profile from "./pages/Profile";
 import NotFound from "./pages/NotFound";
@@ -106,6 +107,14 @@ const AppRoutes = () => (
     />
     <Route
       path="/"
+      element={
+        <ProtectedRoute>
+          <Calendar />
+        </ProtectedRoute>
+      }
+    />
+    <Route
+      path="/home"
       element={
         <ProtectedRoute>
           <Home />
