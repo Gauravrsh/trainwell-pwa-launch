@@ -1,81 +1,94 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Phone, ArrowRight, Loader2 } from 'lucide-react';
+import { Mail, Lock, ArrowRight, Loader2, Eye, EyeOff } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { InputOTP, InputOTPGroup, InputOTPSlot } from '@/components/ui/input-otp';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
+import { z } from 'zod';
 
-type AuthStep = 'phone' | 'otp';
+type AuthMode = 'signin' | 'signup';
+
+const emailSchema = z.string().email('Please enter a valid email');
+const passwordSchema = z.string().min(6, 'Password must be at least 6 characters');
 
 export default function Auth() {
   const navigate = useNavigate();
-  const { signInWithOtp, verifyOtp } = useAuth();
+  const { signIn, signUp } = useAuth();
   const { toast } = useToast();
   
-  const [step, setStep] = useState<AuthStep>('phone');
-  const [phone, setPhone] = useState('');
-  const [otp, setOtp] = useState('');
+  const [mode, setMode] = useState<AuthMode>('signin');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
 
-  const handleSendOtp = async () => {
-    if (!phone || phone.length < 10) {
+  const validateInputs = () => {
+    const emailResult = emailSchema.safeParse(email);
+    if (!emailResult.success) {
       toast({
-        title: 'Invalid phone number',
-        description: 'Please enter a valid phone number',
+        title: 'Invalid email',
+        description: emailResult.error.errors[0].message,
         variant: 'destructive',
       });
-      return;
+      return false;
     }
 
-    setLoading(true);
-    const formattedPhone = phone.startsWith('+') ? phone : `+${phone}`;
-    const { error } = await signInWithOtp(formattedPhone);
-    setLoading(false);
-
-    if (error) {
+    const passwordResult = passwordSchema.safeParse(password);
+    if (!passwordResult.success) {
       toast({
-        title: 'Error sending OTP',
-        description: error.message,
+        title: 'Invalid password',
+        description: passwordResult.error.errors[0].message,
         variant: 'destructive',
       });
-      return;
+      return false;
     }
 
-    toast({
-      title: 'OTP Sent',
-      description: 'Check your phone for the verification code',
-    });
-    setStep('otp');
+    return true;
   };
 
-  const handleVerifyOtp = async () => {
-    if (otp.length !== 6) {
-      toast({
-        title: 'Invalid OTP',
-        description: 'Please enter the 6-digit code',
-        variant: 'destructive',
-      });
-      return;
-    }
+  const handleSubmit = async () => {
+    if (!validateInputs()) return;
 
     setLoading(true);
-    const formattedPhone = phone.startsWith('+') ? phone : `+${phone}`;
-    const { error } = await verifyOtp(formattedPhone, otp);
+    
+    const { error } = mode === 'signin' 
+      ? await signIn(email, password)
+      : await signUp(email, password);
+    
     setLoading(false);
 
     if (error) {
+      let message = error.message;
+      if (message.includes('User already registered')) {
+        message = 'An account with this email already exists. Try signing in instead.';
+      } else if (message.includes('Invalid login credentials')) {
+        message = 'Invalid email or password. Please try again.';
+      }
+      
       toast({
-        title: 'Verification failed',
-        description: error.message,
+        title: mode === 'signin' ? 'Sign in failed' : 'Sign up failed',
+        description: message,
         variant: 'destructive',
       });
       return;
     }
 
-    navigate('/');
+    if (mode === 'signup') {
+      toast({
+        title: 'Account created!',
+        description: 'You can now sign in with your credentials.',
+      });
+      setMode('signin');
+    } else {
+      navigate('/');
+    }
+  };
+
+  const toggleMode = () => {
+    setMode(mode === 'signin' ? 'signup' : 'signin');
+    setPassword('');
   };
 
   return (
@@ -103,115 +116,107 @@ export default function Auth() {
         </div>
 
         <AnimatePresence mode="wait">
-          {step === 'phone' ? (
-            <motion.div
-              key="phone"
-              initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: 20 }}
-              className="space-y-6"
-            >
-              <div className="space-y-2">
-                <label className="text-sm font-medium text-foreground">
-                  Phone Number
-                </label>
-                <div className="relative">
-                  <Phone className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
-                  <Input
-                    type="tel"
-                    placeholder="+1 (555) 000-0000"
-                    value={phone}
-                    onChange={(e) => setPhone(e.target.value)}
-                    className="pl-12 h-14 bg-secondary border-border text-lg"
-                  />
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  We'll send you a verification code
-                </p>
+          <motion.div
+            key={mode}
+            initial={{ opacity: 0, x: mode === 'signin' ? -20 : 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: mode === 'signin' ? 20 : -20 }}
+            className="space-y-5"
+          >
+            <div className="text-center mb-6">
+              <h2 className="text-xl font-semibold text-foreground">
+                {mode === 'signin' ? 'Welcome back' : 'Create account'}
+              </h2>
+              <p className="text-sm text-muted-foreground mt-1">
+                {mode === 'signin' 
+                  ? 'Sign in to continue your journey' 
+                  : 'Start your fitness transformation'}
+              </p>
+            </div>
+
+            {/* Email Input */}
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-foreground">
+                Email
+              </label>
+              <div className="relative">
+                <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+                <Input
+                  type="email"
+                  placeholder="you@example.com"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="pl-12 h-14 bg-secondary border-border text-base"
+                  autoComplete="email"
+                />
               </div>
+            </div>
 
-              <Button
-                onClick={handleSendOtp}
-                disabled={loading || !phone}
-                className="w-full h-14 text-lg font-semibold bg-primary text-primary-foreground hover:bg-primary/90"
-              >
-                {loading ? (
-                  <Loader2 className="w-5 h-5 animate-spin" />
-                ) : (
-                  <>
-                    Continue
-                    <ArrowRight className="w-5 h-5 ml-2" />
-                  </>
-                )}
-              </Button>
-            </motion.div>
-          ) : (
-            <motion.div
-              key="otp"
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -20 }}
-              className="space-y-6"
-            >
-              <div className="space-y-4">
-                <div className="text-center">
-                  <h2 className="text-xl font-semibold text-foreground mb-1">
-                    Enter verification code
-                  </h2>
-                  <p className="text-sm text-muted-foreground">
-                    Sent to {phone}
-                  </p>
-                </div>
-
-                <div className="flex justify-center">
-                  <InputOTP
-                    maxLength={6}
-                    value={otp}
-                    onChange={setOtp}
-                  >
-                    <InputOTPGroup>
-                      <InputOTPSlot index={0} className="w-12 h-14 text-xl bg-secondary border-border" />
-                      <InputOTPSlot index={1} className="w-12 h-14 text-xl bg-secondary border-border" />
-                      <InputOTPSlot index={2} className="w-12 h-14 text-xl bg-secondary border-border" />
-                      <InputOTPSlot index={3} className="w-12 h-14 text-xl bg-secondary border-border" />
-                      <InputOTPSlot index={4} className="w-12 h-14 text-xl bg-secondary border-border" />
-                      <InputOTPSlot index={5} className="w-12 h-14 text-xl bg-secondary border-border" />
-                    </InputOTPGroup>
-                  </InputOTP>
-                </div>
-
+            {/* Password Input */}
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-foreground">
+                Password
+              </label>
+              <div className="relative">
+                <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+                <Input
+                  type={showPassword ? 'text' : 'password'}
+                  placeholder="••••••••"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="pl-12 pr-12 h-14 bg-secondary border-border text-base"
+                  autoComplete={mode === 'signin' ? 'current-password' : 'new-password'}
+                />
                 <button
-                  onClick={() => setStep('phone')}
-                  className="w-full text-sm text-muted-foreground hover:text-foreground transition-colors"
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
                 >
-                  Change phone number
+                  {showPassword ? (
+                    <EyeOff className="w-5 h-5" />
+                  ) : (
+                    <Eye className="w-5 h-5" />
+                  )}
                 </button>
               </div>
+            </div>
 
-              <Button
-                onClick={handleVerifyOtp}
-                disabled={loading || otp.length !== 6}
-                className="w-full h-14 text-lg font-semibold bg-primary text-primary-foreground hover:bg-primary/90"
+            {/* Submit Button */}
+            <Button
+              onClick={handleSubmit}
+              disabled={loading || !email || !password}
+              className="w-full h-14 text-lg font-semibold bg-primary text-primary-foreground hover:bg-primary/90"
+            >
+              {loading ? (
+                <Loader2 className="w-5 h-5 animate-spin" />
+              ) : (
+                <>
+                  {mode === 'signin' ? 'Sign In' : 'Create Account'}
+                  <ArrowRight className="w-5 h-5 ml-2" />
+                </>
+              )}
+            </Button>
+
+            {/* Toggle Mode */}
+            <div className="text-center pt-4">
+              <button
+                onClick={toggleMode}
+                className="text-sm text-muted-foreground hover:text-foreground transition-colors"
               >
-                {loading ? (
-                  <Loader2 className="w-5 h-5 animate-spin" />
+                {mode === 'signin' ? (
+                  <>
+                    Don't have an account?{' '}
+                    <span className="text-primary font-medium">Sign up</span>
+                  </>
                 ) : (
                   <>
-                    Verify
-                    <ArrowRight className="w-5 h-5 ml-2" />
+                    Already have an account?{' '}
+                    <span className="text-primary font-medium">Sign in</span>
                   </>
                 )}
-              </Button>
-
-              <button
-                onClick={handleSendOtp}
-                disabled={loading}
-                className="w-full text-sm text-primary hover:text-primary/80 transition-colors font-medium"
-              >
-                Resend code
               </button>
-            </motion.div>
-          )}
+            </div>
+          </motion.div>
         </AnimatePresence>
       </motion.div>
     </div>
