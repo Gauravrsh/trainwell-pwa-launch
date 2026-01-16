@@ -6,6 +6,7 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "@/hooks/useAuth";
 import { AppLayout } from "@/components/layout/AppLayout";
 import Auth from "./pages/Auth";
+import ResetPassword from "./pages/ResetPassword";
 import Home from "./pages/Home";
 import Refer from "./pages/Refer";
 import Profile from "./pages/Profile";
@@ -58,6 +59,10 @@ const AppRoutes = () => (
           <Auth />
         </AuthRoute>
       }
+    />
+    <Route
+      path="/reset-password"
+      element={<ResetPassword />}
     />
     <Route
       path="/"
