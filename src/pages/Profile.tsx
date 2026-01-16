@@ -36,7 +36,7 @@ export default function Profile() {
           <User className="w-12 h-12 text-primary" />
         </motion.div>
         <h1 className="text-xl font-bold text-foreground mb-1">
-          {user?.phone || 'TrainWell User'}
+          {user?.email || 'TrainWell User'}
         </h1>
         <p className="text-sm text-muted-foreground">
           Member since {new Date().getFullYear()}
