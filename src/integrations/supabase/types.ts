@@ -112,6 +112,13 @@ export type Database = {
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "food_logs_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "trainers_public"
+            referencedColumns: ["id"]
+          },
         ]
       }
       payments: {
@@ -191,6 +198,13 @@ export type Database = {
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "profiles_trainer_id_fkey"
+            columns: ["trainer_id"]
+            isOneToOne: false
+            referencedRelation: "trainers_public"
+            referencedColumns: ["id"]
+          },
         ]
       }
       subscription_cycles: {
@@ -229,6 +243,13 @@ export type Database = {
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "subscription_cycles_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "trainers_public"
+            referencedColumns: ["id"]
+          },
         ]
       }
       workouts: {
@@ -264,11 +285,38 @@ export type Database = {
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "workouts_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "trainers_public"
+            referencedColumns: ["id"]
+          },
         ]
       }
     }
     Views: {
-      [_ in never]: never
+      trainers_public: {
+        Row: {
+          created_at: string | null
+          id: string | null
+          role: Database["public"]["Enums"]["user_role"] | null
+          unique_id: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string | null
+          role?: Database["public"]["Enums"]["user_role"] | null
+          unique_id?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string | null
+          role?: Database["public"]["Enums"]["user_role"] | null
+          unique_id?: string | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       generate_unique_id: {
