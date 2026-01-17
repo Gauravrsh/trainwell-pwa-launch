@@ -161,34 +161,52 @@ export type Database = {
       }
       profiles: {
         Row: {
+          city: string | null
           created_at: string | null
+          date_of_birth: string | null
+          full_name: string | null
+          height_cm: number | null
           id: string
+          profile_complete: boolean | null
           role: Database["public"]["Enums"]["user_role"]
           trainer_id: string | null
           unique_id: string
           updated_at: string | null
           user_id: string
           vpa_address: string | null
+          weight_kg: number | null
         }
         Insert: {
+          city?: string | null
           created_at?: string | null
+          date_of_birth?: string | null
+          full_name?: string | null
+          height_cm?: number | null
           id?: string
+          profile_complete?: boolean | null
           role?: Database["public"]["Enums"]["user_role"]
           trainer_id?: string | null
           unique_id: string
           updated_at?: string | null
           user_id: string
           vpa_address?: string | null
+          weight_kg?: number | null
         }
         Update: {
+          city?: string | null
           created_at?: string | null
+          date_of_birth?: string | null
+          full_name?: string | null
+          height_cm?: number | null
           id?: string
+          profile_complete?: boolean | null
           role?: Database["public"]["Enums"]["user_role"]
           trainer_id?: string | null
           unique_id?: string
           updated_at?: string | null
           user_id?: string
           vpa_address?: string | null
+          weight_kg?: number | null
         }
         Relationships: [
           {
