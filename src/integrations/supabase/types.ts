@@ -341,6 +341,20 @@ export type Database = {
         Args: { p_role: Database["public"]["Enums"]["user_role"] }
         Returns: string
       }
+      get_client_profile_for_trainer: {
+        Args: { _client_profile_id: string }
+        Returns: {
+          city: string
+          created_at: string
+          date_of_birth: string
+          full_name: string
+          height_cm: number
+          id: string
+          profile_complete: boolean
+          unique_id: string
+          weight_kg: number
+        }[]
+      }
       get_trainer_profile_id: { Args: { _user_id: string }; Returns: string }
       get_user_profile_id: { Args: { _user_id: string }; Returns: string }
       get_user_role: {
