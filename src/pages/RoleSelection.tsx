@@ -67,14 +67,15 @@ const RoleSelection = () => {
         const refCode = localStorage.getItem('ref');
         
         if (refCode) {
-          // Look up trainer by unique_id using the public view
-          const { data: trainer, error: trainerError } = await supabase
-            .from('trainers_public')
-            .select('id')
-            .eq('unique_id', refCode)
-            .maybeSingle();
+          // Look up trainer by unique_id using the secure RPC function
+          // This function only returns non-sensitive fields (id, unique_id, role, created_at)
+          const { data: trainers, error: trainerError } = await supabase
+            .rpc('lookup_trainer_by_unique_id', { p_unique_id: refCode });
 
           if (trainerError) throw trainerError;
+          
+          // Get the first trainer from the result (should be at most one)
+          const trainer = trainers && trainers.length > 0 ? trainers[0] : null;
 
           if (trainer) {
             // Link client to trainer
