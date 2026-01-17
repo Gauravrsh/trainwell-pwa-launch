@@ -174,8 +174,12 @@ Return ONLY the JSON object, no additional text.`
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error('AI Gateway error:', errorText);
-      throw new Error(`AI Gateway error: ${response.status}`);
+      console.error('AI Gateway error:', response.status, errorText);
+      // Return generic error to client, keep details in server logs
+      return new Response(
+        JSON.stringify({ error: 'Unable to analyze food. Please try again.' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
     }
 
     const data = await response.json();
@@ -183,7 +187,11 @@ Return ONLY the JSON object, no additional text.`
 
     const content = data.choices?.[0]?.message?.content;
     if (!content) {
-      throw new Error('No content in AI response');
+      console.error('No content in AI response');
+      return new Response(
+        JSON.stringify({ error: 'Unable to analyze food. Please try again.' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
     }
 
     // Parse the JSON from the response
@@ -194,7 +202,10 @@ Return ONLY the JSON object, no additional text.`
       analysisResult = JSON.parse(jsonStr);
     } catch (parseError) {
       console.error('Failed to parse AI response:', content);
-      throw new Error('Failed to parse nutrition data');
+      return new Response(
+        JSON.stringify({ error: 'Unable to process the analysis. Please try again.' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
     }
 
     return new Response(
@@ -204,9 +215,9 @@ Return ONLY the JSON object, no additional text.`
 
   } catch (error: unknown) {
     console.error('Error in analyze-food function:', error);
-    const message = error instanceof Error ? error.message : 'Failed to analyze food';
+    // Return generic error message to client, keep details in server logs
     return new Response(
-      JSON.stringify({ error: message }),
+      JSON.stringify({ error: 'An unexpected error occurred. Please try again.' }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }

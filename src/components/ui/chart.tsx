@@ -58,6 +58,24 @@ const ChartContainer = React.forwardRef<
 });
 ChartContainer.displayName = "Chart";
 
+// Validates color values to prevent CSS injection
+const isValidColor = (color: string): boolean => {
+  // Allow hex colors, hsl/hsla, rgb/rgba, and CSS color names
+  const hexPattern = /^#([0-9A-Fa-f]{3}|[0-9A-Fa-f]{6}|[0-9A-Fa-f]{8})$/;
+  const hslPattern = /^hsla?\(\s*\d+(\.\d+)?(deg|rad|turn)?\s*,?\s*\d+(\.\d+)?%?\s*,?\s*\d+(\.\d+)?%?\s*(,?\s*[\d.]+%?)?\s*\)$/i;
+  const rgbPattern = /^rgba?\(\s*\d+(\.\d+)?\s*,?\s*\d+(\.\d+)?\s*,?\s*\d+(\.\d+)?\s*(,?\s*[\d.]+%?)?\s*\)$/i;
+  const cssVarPattern = /^var\(--[\w-]+\)$/;
+  const namedColorPattern = /^[a-zA-Z]+$/;
+  
+  return (
+    hexPattern.test(color) ||
+    hslPattern.test(color) ||
+    rgbPattern.test(color) ||
+    cssVarPattern.test(color) ||
+    namedColorPattern.test(color)
+  );
+};
+
 const ChartStyle = ({ id, config }: { id: string; config: ChartConfig }) => {
   const colorConfig = Object.entries(config).filter(([_, config]) => config.theme || config.color);
 
@@ -75,8 +93,10 @@ ${prefix} [data-chart=${id}] {
 ${colorConfig
   .map(([key, itemConfig]) => {
     const color = itemConfig.theme?.[theme as keyof typeof itemConfig.theme] || itemConfig.color;
-    return color ? `  --color-${key}: ${color};` : null;
+    // Only include validated color values to prevent CSS injection
+    return color && isValidColor(color) ? `  --color-${key}: ${color};` : null;
   })
+  .filter(Boolean)
   .join("\n")}
 }
 `,
