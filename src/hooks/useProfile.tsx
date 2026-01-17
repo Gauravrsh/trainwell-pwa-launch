@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
+import { logError } from '@/lib/errorUtils';
 
 interface Profile {
   id: string;
@@ -43,7 +44,7 @@ export const useProfile = () => {
         if (fetchError) throw fetchError;
         setProfile(data);
       } catch (err) {
-        console.error('Error fetching profile:', err);
+        logError('useProfile.fetchProfile', err);
         setError(err as Error);
       } finally {
         setLoading(false);
@@ -67,7 +68,7 @@ export const useProfile = () => {
       if (fetchError) throw fetchError;
       setProfile(data);
     } catch (err) {
-      console.error('Error refetching profile:', err);
+      logError('useProfile.refetchProfile', err);
       setError(err as Error);
     } finally {
       setLoading(false);
