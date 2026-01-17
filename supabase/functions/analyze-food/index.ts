@@ -64,11 +64,48 @@ serve(async (req) => {
 
     const { foodText, imageBase64 } = await req.json();
 
+    // Input validation
     if (!foodText && !imageBase64) {
       return new Response(
         JSON.stringify({ error: 'Either foodText or imageBase64 is required' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
+    }
+
+    // Validate text length (max 1000 characters)
+    if (foodText && typeof foodText === 'string' && foodText.length > 1000) {
+      return new Response(
+        JSON.stringify({ error: 'Food text too long. Maximum 1000 characters.' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Validate image size (max 5MB when decoded)
+    if (imageBase64) {
+      if (typeof imageBase64 !== 'string') {
+        return new Response(
+          JSON.stringify({ error: 'Invalid image format' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      
+      // Check base64 format
+      if (!/^[A-Za-z0-9+/]*={0,2}$/.test(imageBase64)) {
+        return new Response(
+          JSON.stringify({ error: 'Invalid base64 image format' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      
+      // Estimate decoded size (base64 is ~4/3 larger than binary)
+      const estimatedSizeBytes = (imageBase64.length * 3) / 4;
+      const maxSizeBytes = 5 * 1024 * 1024; // 5MB
+      if (estimatedSizeBytes > maxSizeBytes) {
+        return new Response(
+          JSON.stringify({ error: 'Image too large. Maximum 5MB.' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
     }
 
     const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
