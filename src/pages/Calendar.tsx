@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button';
 import { WorkoutLogModal } from '@/components/modals/WorkoutLogModal';
 import { FoodLogModal } from '@/components/modals/FoodLogModal';
 import { toast } from 'sonner';
+import { logError } from '@/lib/errorUtils';
 interface Workout {
   id: string;
   date: string;
@@ -214,7 +215,7 @@ const Calendar = () => {
       setShowWorkoutModal(false);
       setShowClientActionSheet(false);
     } catch (error) {
-      console.error('Failed to save workout:', error);
+      logError('Calendar.handleWorkoutSave', error);
       toast.error('Failed to save workout');
     }
   };
@@ -249,7 +250,7 @@ const Calendar = () => {
       setShowFoodModal(false);
       setShowClientActionSheet(false);
     } catch (error) {
-      console.error('Failed to save food log:', error);
+      logError('Calendar.handleFoodSave', error);
       toast.error('Failed to save food log');
     }
   };

@@ -5,6 +5,7 @@ import { Dumbbell, Users, Loader2 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { sanitizeErrorMessage, logError } from '@/lib/errorUtils';
 
 const RoleSelection = () => {
   const [loading, setLoading] = useState(false);
@@ -73,11 +74,11 @@ const RoleSelection = () => {
       
       // Navigate to profile setup instead of home
       navigate('/profile-setup');
-    } catch (error: any) {
-      console.error('Role selection error:', error);
+    } catch (error: unknown) {
+      logError('RoleSelection.handleRoleSelect', error);
       toast({
         title: "Error",
-        description: error.message || "Failed to set up your profile. Please try again.",
+        description: sanitizeErrorMessage(error),
         variant: "destructive",
       });
       setSelectedRole(null);

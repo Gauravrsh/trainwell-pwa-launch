@@ -8,6 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { logError } from '@/lib/errorUtils';
 
 type MealType = 'breakfast' | 'lunch' | 'dinner' | 'snack';
 
@@ -64,7 +65,7 @@ export const FoodLogModal = ({ open, onOpenChange, onSave }: FoodLogModalProps) 
       }
       setShowCamera(true);
     } catch (error) {
-      console.error('Failed to access camera:', error);
+      logError('FoodLogModal.startCamera', error);
       toast.error('Could not access camera. Please check permissions.');
     }
   };
@@ -118,7 +119,7 @@ export const FoodLogModal = ({ open, onOpenChange, onSave }: FoodLogModalProps) 
       setAnalysis(data as FoodAnalysis);
       toast.success('Food analyzed successfully!');
     } catch (error) {
-      console.error('Failed to analyze food:', error);
+      logError('FoodLogModal.analyzeFood', error);
       toast.error('Failed to analyze food. Please try again.');
     } finally {
       setIsAnalyzing(false);
