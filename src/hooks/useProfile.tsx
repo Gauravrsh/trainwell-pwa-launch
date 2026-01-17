@@ -9,6 +9,12 @@ interface Profile {
   unique_id: string;
   trainer_id: string | null;
   vpa_address: string | null;
+  full_name: string | null;
+  date_of_birth: string | null;
+  city: string | null;
+  height_cm: number | null;
+  weight_kg: number | null;
+  profile_complete: boolean;
   created_at: string;
   updated_at: string;
 }
@@ -68,11 +74,11 @@ export const useProfile = () => {
     }
   };
 
-  // Check if user needs to select a role (new signup)
-  // A user needs role selection if they have the default 'client' role 
-  // but haven't been explicitly assigned (we'll track this by checking if they have a trainer_id or not)
-  // For now, we'll add a flag to indicate role selection is needed
+  // Check if user needs to select a role (no profile exists)
   const needsRoleSelection = profile === null && user !== null && !loading;
+
+  // Check if user has selected role but hasn't completed profile setup
+  const needsProfileSetup = profile !== null && !profile.profile_complete && user !== null && !loading;
 
   return { 
     profile, 
@@ -80,6 +86,7 @@ export const useProfile = () => {
     error, 
     refetchProfile,
     needsRoleSelection,
+    needsProfileSetup,
     isTrainer: profile?.role === 'trainer',
     isClient: profile?.role === 'client',
   };

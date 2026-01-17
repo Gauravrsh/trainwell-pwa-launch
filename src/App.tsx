@@ -9,6 +9,7 @@ import { AppLayout } from "@/components/layout/AppLayout";
 import Auth from "./pages/Auth";
 import ResetPassword from "./pages/ResetPassword";
 import RoleSelection from "./pages/RoleSelection";
+import ProfileSetup from "./pages/ProfileSetup";
 import Home from "./pages/Home";
 import Calendar from "./pages/Calendar";
 import Refer from "./pages/Refer";
@@ -19,7 +20,7 @@ const queryClient = new QueryClient();
 
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   const { user, loading: authLoading } = useAuth();
-  const { profile, loading: profileLoading, needsRoleSelection } = useProfile();
+  const { profile, loading: profileLoading, needsRoleSelection, needsProfileSetup } = useProfile();
 
   if (authLoading || profileLoading) {
     return (
@@ -36,6 +37,11 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   // Redirect to role selection if profile doesn't exist yet
   if (needsRoleSelection) {
     return <Navigate to="/role-selection" replace />;
+  }
+
+  // Redirect to profile setup if profile exists but not complete
+  if (needsProfileSetup) {
+    return <Navigate to="/profile-setup" replace />;
   }
 
   return <AppLayout>{children}</AppLayout>;
@@ -63,6 +69,36 @@ const RoleSelectionRoute = ({ children }: { children: React.ReactNode }) => {
   }
 
   return <>{children}</>;
+};
+
+const ProfileSetupRoute = () => {
+  const { user, loading: authLoading } = useAuth();
+  const { profile, loading: profileLoading } = useProfile();
+
+  if (authLoading || profileLoading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
+
+  if (!user) {
+    return <Navigate to="/auth" replace />;
+  }
+
+  // If no profile, go to role selection
+  if (!profile) {
+    return <Navigate to="/role-selection" replace />;
+  }
+
+  // If profile is complete, go to home
+  if (profile.profile_complete) {
+    return <Navigate to="/" replace />;
+  }
+
+  // Get role from profile
+  return <ProfileSetup role={profile.role} />;
 };
 
 const AuthRoute = ({ children }: { children: React.ReactNode }) => {
@@ -104,6 +140,10 @@ const AppRoutes = () => (
           <RoleSelection />
         </RoleSelectionRoute>
       }
+    />
+    <Route
+      path="/profile-setup"
+      element={<ProfileSetupRoute />}
     />
     <Route
       path="/"

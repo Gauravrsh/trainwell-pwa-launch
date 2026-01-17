@@ -57,57 +57,11 @@ const RoleSelection = () => {
         if (insertError) throw insertError;
       }
 
-      if (role === 'trainer') {
-        toast({
-          title: "Welcome, Trainer!",
-          description: `Your trainer ID is: ${newId}`,
-        });
-      } else {
-        // Client role - check for referral
-        const refCode = localStorage.getItem('ref');
-        
-        if (refCode) {
-          // Look up trainer by unique_id using the secure RPC function
-          // This function only returns non-sensitive fields (id, unique_id, role, created_at)
-          const { data: trainers, error: trainerError } = await supabase
-            .rpc('lookup_trainer_by_unique_id', { p_unique_id: refCode });
-
-          if (trainerError) throw trainerError;
-          
-          // Get the first trainer from the result (should be at most one)
-          const trainer = trainers && trainers.length > 0 ? trainers[0] : null;
-
-          if (trainer) {
-            // Link client to trainer
-            const { error: linkError } = await supabase
-              .from('profiles')
-              .update({ trainer_id: trainer.id })
-              .eq('user_id', user.id);
-
-            if (linkError) throw linkError;
-
-            toast({
-              title: "Connected to Trainer!",
-              description: "You've been linked to your trainer successfully.",
-            });
-
-            localStorage.removeItem('ref');
-          } else {
-            toast({
-              title: "Trainer not found",
-              description: "The referral code was invalid. You can connect with a trainer later.",
-              variant: "destructive",
-            });
-          }
-        } else {
-          toast({
-            title: "Welcome!",
-            description: "You can connect with a trainer later from your profile.",
-          });
-        }
-      }
-
-      navigate('/');
+      // Store role in localStorage temporarily for profile setup page
+      localStorage.setItem('selectedRole', role);
+      
+      // Navigate to profile setup instead of home
+      navigate('/profile-setup');
     } catch (error: any) {
       console.error('Role selection error:', error);
       toast({
