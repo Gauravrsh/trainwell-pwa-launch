@@ -1,12 +1,13 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Users, Check, X, IndianRupee, Dumbbell, Utensils, ChevronRight } from 'lucide-react';
+import { Users, Check, X, IndianRupee, Dumbbell, Utensils, ChevronRight, UserPlus, Share2 } from 'lucide-react';
 import { useProfile } from '@/hooks/useProfile';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery } from '@tanstack/react-query';
 import { format } from 'date-fns';
 import { Button } from '@/components/ui/button';
 import { PaymentRequestModal } from '@/components/modals/PaymentRequestModal';
+import { toast } from 'sonner';
 
 interface ClientWithStatus {
   id: string;
@@ -74,6 +75,20 @@ export const TrainerDashboard = () => {
   const handleRequestPayment = (client: ClientWithStatus) => {
     setSelectedClient(client);
     setShowPaymentModal(true);
+  };
+
+  const handleInviteClient = () => {
+    if (!profile?.unique_id) {
+      toast.error('Unable to generate invite link. Please try again.');
+      return;
+    }
+
+    const inviteUrl = `https://trainwell.lovable.app/auth?trainer=${profile.unique_id}`;
+    const message = `Hey! Join me on TrainWell for personalized fitness coaching. Click here to sign up: ${inviteUrl}`;
+    const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(message)}`;
+    
+    window.open(whatsappUrl, '_blank');
+    toast.success('Opening WhatsApp to share invite link');
   };
 
   return (
@@ -228,15 +243,30 @@ export const TrainerDashboard = () => {
             })}
           </div>
         ) : (
-          <div className="text-center py-12">
-            <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center mx-auto mb-4">
-              <Users className="w-8 h-8 text-muted-foreground" />
+          <motion.div 
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="text-center py-12"
+          >
+            <div className="w-20 h-20 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-6">
+              <UserPlus className="w-10 h-10 text-primary" />
             </div>
-            <p className="text-muted-foreground mb-2">No clients yet</p>
-            <p className="text-sm text-muted-foreground">
-              Share your trainer ID to get started!
+            <h3 className="text-xl font-semibold text-foreground mb-2">No clients yet</h3>
+            <p className="text-muted-foreground mb-6 max-w-xs mx-auto">
+              Invite your first client to start their fitness journey with you
             </p>
-          </div>
+            <Button 
+              onClick={handleInviteClient}
+              size="lg"
+              className="gap-2"
+            >
+              <Share2 className="w-5 h-5" />
+              Invite Client via WhatsApp
+            </Button>
+            <p className="text-xs text-muted-foreground mt-4">
+              Your unique trainer ID: <span className="font-mono font-semibold text-foreground">{profile?.unique_id}</span>
+            </p>
+          </motion.div>
         )}
       </div>
 

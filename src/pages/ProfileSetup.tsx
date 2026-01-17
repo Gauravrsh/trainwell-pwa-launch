@@ -142,6 +142,26 @@ const ProfileSetup = ({ role }: ProfileSetupProps) => {
       if (role === 'client') {
         updateData.height_cm = parseInt(height);
         updateData.weight_kg = parseFloat(weight);
+
+        // Check if user came from trainer invite - link to trainer
+        const inviteTrainerCode = localStorage.getItem('inviteTrainerCode');
+        if (inviteTrainerCode) {
+          // Look up trainer by unique_id using the RPC function
+          const { data: trainerData, error: lookupError } = await supabase
+            .rpc('lookup_trainer_by_unique_id', { p_unique_id: inviteTrainerCode });
+
+          if (lookupError) {
+            console.error('Trainer lookup error:', lookupError);
+          } else if (trainerData && trainerData.length > 0) {
+            // Set trainer_id to link client to trainer
+            updateData.trainer_id = trainerData[0].id;
+          } else {
+            console.warn('Trainer not found with code:', inviteTrainerCode);
+          }
+
+          // Clean up the invite code from localStorage
+          localStorage.removeItem('inviteTrainerCode');
+        }
       }
 
       const { error } = await supabase
@@ -153,7 +173,9 @@ const ProfileSetup = ({ role }: ProfileSetupProps) => {
 
       toast({
         title: "Profile Complete!",
-        description: "Your profile has been set up successfully.",
+        description: role === 'client' && updateData.trainer_id 
+          ? "Your profile has been set up and linked to your trainer."
+          : "Your profile has been set up successfully.",
       });
 
       navigate('/');

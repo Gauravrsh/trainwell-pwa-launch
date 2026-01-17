@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { format, addDays, subDays, startOfDay, isSameDay, isAfter, isBefore } from 'date-fns';
-import { ChevronLeft, ChevronRight, Plus, Dumbbell, Check, Clock, X, AlertCircle, Utensils } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Plus, Dumbbell, Check, Clock, X, AlertCircle, Utensils, UserPlus, Share2 } from 'lucide-react';
 import { useProfile } from '@/hooks/useProfile';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -470,12 +470,26 @@ const Calendar = () => {
             </div>
           ) : (
             <div className="text-center py-8">
-              <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center mx-auto mb-4">
-                <Clock className="w-8 h-8 text-muted-foreground" />
+              <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-4">
+                <UserPlus className="w-8 h-8 text-primary" />
               </div>
-              <p className="text-muted-foreground">
-                No clients yet. Share your trainer ID to get started!
+              <p className="text-muted-foreground mb-4">
+                No clients yet. Invite your first client to get started!
               </p>
+              <Button
+                onClick={() => {
+                  if (!profile?.unique_id) return;
+                  const inviteUrl = `https://trainwell.lovable.app/auth?trainer=${profile.unique_id}`;
+                  const message = `Hey! Join me on TrainWell for personalized fitness coaching. Click here to sign up: ${inviteUrl}`;
+                  const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(message)}`;
+                  window.open(whatsappUrl, '_blank');
+                  toast.success('Opening WhatsApp to share invite link');
+                }}
+                className="gap-2"
+              >
+                <Share2 className="w-4 h-4" />
+                Invite via WhatsApp
+              </Button>
             </div>
           )}
         </SheetContent>
