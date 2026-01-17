@@ -1,7 +1,7 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Dumbbell, Users } from 'lucide-react';
+import { Dumbbell, Users, Loader2 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -9,9 +9,20 @@ import { useToast } from '@/hooks/use-toast';
 const RoleSelection = () => {
   const [loading, setLoading] = useState(false);
   const [selectedRole, setSelectedRole] = useState<'trainer' | 'client' | null>(null);
+  const [autoProcessing, setAutoProcessing] = useState(false);
   const { user } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
+
+  // Check if user came from trainer invite - auto-assign client role
+  useEffect(() => {
+    const inviteTrainerCode = localStorage.getItem('inviteTrainerCode');
+    if (inviteTrainerCode && user && !loading && !autoProcessing) {
+      setAutoProcessing(true);
+      // Auto-select client role for invited users
+      handleRoleSelect('client');
+    }
+  }, [user]);
 
   const handleRoleSelect = async (role: 'trainer' | 'client') => {
     if (!user || loading) return;
@@ -70,10 +81,34 @@ const RoleSelection = () => {
         variant: "destructive",
       });
       setSelectedRole(null);
+      setAutoProcessing(false);
     } finally {
       setLoading(false);
     }
   };
+
+  // Show loading state when auto-processing invited client
+  if (autoProcessing) {
+    return (
+      <div className="min-h-screen bg-background flex flex-col items-center justify-center p-6">
+        <motion.div
+          initial={{ opacity: 0, scale: 0.9 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="text-center"
+        >
+          <div className="w-16 h-16 rounded-2xl bg-primary flex items-center justify-center mx-auto mb-6">
+            <Loader2 className="w-8 h-8 text-primary-foreground animate-spin" />
+          </div>
+          <h1 className="text-xl font-bold text-foreground mb-2">
+            Setting up your account...
+          </h1>
+          <p className="text-muted-foreground">
+            You're being connected to your trainer
+          </p>
+        </motion.div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background flex flex-col items-center justify-center p-6">

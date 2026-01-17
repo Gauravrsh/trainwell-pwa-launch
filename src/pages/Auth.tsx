@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { useNavigate, Link, useSearchParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Mail, Lock, ArrowRight, Loader2, Eye, EyeOff, ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -15,6 +15,7 @@ const passwordSchema = z.string().min(6, 'Password must be at least 6 characters
 
 export default function Auth() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { signIn, signUp, resetPassword } = useAuth();
   const { toast } = useToast();
   
@@ -23,6 +24,16 @@ export default function Auth() {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+
+  // Capture trainer invite param and store in localStorage
+  useEffect(() => {
+    const trainerCode = searchParams.get('trainer');
+    if (trainerCode) {
+      localStorage.setItem('inviteTrainerCode', trainerCode);
+      // If coming from invite, default to signup mode
+      setMode('signup');
+    }
+  }, [searchParams]);
 
   const validateEmail = () => {
     const emailResult = emailSchema.safeParse(email);
