@@ -333,6 +333,15 @@ export type Database = {
         Args: { _client_profile_id: string; _trainer_user_id: string }
         Returns: boolean
       }
+      lookup_trainer_by_unique_id: {
+        Args: { p_unique_id: string }
+        Returns: {
+          created_at: string
+          id: string
+          role: Database["public"]["Enums"]["user_role"]
+          unique_id: string
+        }[]
+      }
     }
     Enums: {
       meal_type: "breakfast" | "lunch" | "dinner" | "snack"
