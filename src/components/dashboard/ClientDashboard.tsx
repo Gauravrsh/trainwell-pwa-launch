@@ -10,6 +10,7 @@ import { WorkoutLogModal } from '@/components/modals/WorkoutLogModal';
 import { FoodLogModal } from '@/components/modals/FoodLogModal';
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
+import { logError } from '@/lib/errorUtils';
 
 export const ClientDashboard = () => {
   const { profile } = useProfile();
@@ -108,7 +109,7 @@ export const ClientDashboard = () => {
       queryClient.invalidateQueries({ queryKey: ['today-workout'] });
       setShowWorkoutModal(false);
     } catch (error) {
-      console.error('Failed to save workout:', error);
+      logError('ClientDashboard.handleWorkoutSave', error);
       toast.error('Failed to save workout');
     }
   };
@@ -143,7 +144,7 @@ export const ClientDashboard = () => {
       queryClient.invalidateQueries({ queryKey: ['today-food'] });
       setShowFoodModal(false);
     } catch (error) {
-      console.error('Failed to save food:', error);
+      logError('ClientDashboard.handleFoodSave', error);
       toast.error('Failed to save food');
     }
   };
