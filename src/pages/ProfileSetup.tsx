@@ -5,6 +5,7 @@ import { User, Calendar, MapPin, Ruler, Scale, ChevronDown, Check } from 'lucide
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { sanitizeErrorMessage, logError } from '@/lib/errorUtils';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -151,12 +152,12 @@ const ProfileSetup = ({ role }: ProfileSetupProps) => {
             .rpc('lookup_trainer_by_unique_id', { p_unique_id: inviteTrainerCode });
 
           if (lookupError) {
-            console.error('Trainer lookup error:', lookupError);
+            logError('ProfileSetup.trainerLookup', lookupError);
           } else if (trainerData && trainerData.length > 0) {
             // Set trainer_id to link client to trainer
             updateData.trainer_id = trainerData[0].id;
           } else {
-            console.warn('Trainer not found with code:', inviteTrainerCode);
+            logError('ProfileSetup.trainerNotFound', `Trainer not found with code: ${inviteTrainerCode}`);
           }
 
           // Clean up the invite code from localStorage
@@ -180,11 +181,10 @@ const ProfileSetup = ({ role }: ProfileSetupProps) => {
 
       navigate('/');
     } catch (error: unknown) {
-      console.error('Profile setup error:', error);
-      const errorMessage = error instanceof Error ? error.message : "Failed to save profile. Please try again.";
+      logError('ProfileSetup.handleSubmit', error);
       toast({
         title: "Error",
-        description: errorMessage,
+        description: sanitizeErrorMessage(error),
         variant: "destructive",
       });
     } finally {

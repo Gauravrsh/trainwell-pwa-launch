@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
+import { sanitizeErrorMessage } from '@/lib/errorUtils';
 import { z } from 'zod';
 
 type AuthMode = 'signin' | 'signup' | 'forgot';
@@ -75,7 +76,7 @@ export default function Auth() {
       if (error) {
         toast({
           title: 'Error',
-          description: error.message,
+          description: sanitizeErrorMessage(error),
           variant: 'destructive',
         });
         return;
@@ -100,16 +101,9 @@ export default function Auth() {
     setLoading(false);
 
     if (error) {
-      let message = error.message;
-      if (message.includes('User already registered')) {
-        message = 'An account with this email already exists. Try signing in instead.';
-      } else if (message.includes('Invalid login credentials')) {
-        message = 'Invalid email or password. Please try again.';
-      }
-      
       toast({
         title: mode === 'signin' ? 'Sign in failed' : 'Sign up failed',
-        description: message,
+        description: sanitizeErrorMessage(error),
         variant: 'destructive',
       });
       return;
