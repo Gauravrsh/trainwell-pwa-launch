@@ -6,20 +6,116 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+interface FoodItem {
+  name: string;
+  quantity: string;
+  calories: number;
+  protein: number;
+  carbs: number;
+  fat: number;
+}
+
 interface FoodAnalysisResponse {
-  items: {
-    name: string;
-    quantity: string;
-    calories: number;
-    protein: number;
-    carbs: number;
-    fat: number;
-  }[];
+  items: FoodItem[];
   totals: {
     calories: number;
     protein: number;
     carbs: number;
     fat: number;
+  };
+}
+
+// Validation constants
+const MAX_CALORIES = 10000;
+const MAX_MACROS = 1000; // grams
+const MAX_STRING_LENGTH = 200;
+const MAX_ITEMS = 50;
+
+// Sanitize string to prevent XSS - removes HTML tags and limits length
+function sanitizeString(str: unknown, maxLength: number = MAX_STRING_LENGTH): string {
+  if (typeof str !== 'string') return '';
+  // Remove HTML tags, trim, and limit length
+  return str.replace(/<[^>]*>/g, '').trim().slice(0, maxLength);
+}
+
+// Clamp number to valid range
+function clampNumber(value: unknown, min: number, max: number): number {
+  const num = typeof value === 'number' ? value : parseFloat(String(value));
+  if (isNaN(num) || num < min) return min;
+  if (num > max) return max;
+  return Math.round(num * 100) / 100; // Round to 2 decimal places
+}
+
+// Validate and sanitize a food item
+function validateFoodItem(item: unknown): FoodItem | null {
+  if (!item || typeof item !== 'object') return null;
+  
+  const obj = item as Record<string, unknown>;
+  
+  const name = sanitizeString(obj.name);
+  if (!name) return null; // Name is required
+  
+  return {
+    name,
+    quantity: sanitizeString(obj.quantity) || '1 serving',
+    calories: clampNumber(obj.calories, 0, MAX_CALORIES),
+    protein: clampNumber(obj.protein, 0, MAX_MACROS),
+    carbs: clampNumber(obj.carbs, 0, MAX_MACROS),
+    fat: clampNumber(obj.fat, 0, MAX_MACROS),
+  };
+}
+
+// Validate and sanitize the entire AI response
+function validateAIResponse(data: unknown): FoodAnalysisResponse | null {
+  if (!data || typeof data !== 'object') {
+    console.log('AI response validation failed: not an object');
+    return null;
+  }
+  
+  const obj = data as Record<string, unknown>;
+  
+  // Validate items array
+  if (!Array.isArray(obj.items)) {
+    console.log('AI response validation failed: items is not an array');
+    return null;
+  }
+  
+  // Limit number of items and validate each
+  const validItems: FoodItem[] = [];
+  for (const item of obj.items.slice(0, MAX_ITEMS)) {
+    const validItem = validateFoodItem(item);
+    if (validItem) {
+      validItems.push(validItem);
+    }
+  }
+  
+  if (validItems.length === 0) {
+    console.log('AI response validation failed: no valid food items');
+    return null;
+  }
+  
+  // Calculate totals from validated items (don't trust AI-provided totals)
+  const totals = validItems.reduce(
+    (acc, item) => ({
+      calories: acc.calories + item.calories,
+      protein: acc.protein + item.protein,
+      carbs: acc.carbs + item.carbs,
+      fat: acc.fat + item.fat,
+    }),
+    { calories: 0, protein: 0, carbs: 0, fat: 0 }
+  );
+  
+  // Round totals
+  totals.calories = Math.round(totals.calories);
+  totals.protein = Math.round(totals.protein * 10) / 10;
+  totals.carbs = Math.round(totals.carbs * 10) / 10;
+  totals.fat = Math.round(totals.fat * 10) / 10;
+  
+  console.log(`Validated ${validItems.length} food items, totals: ${JSON.stringify(totals)}`);
+  
+  return {
+    items: validItems,
+    totals,
   };
 }
 
@@ -194,12 +290,24 @@ Return ONLY the JSON object, no additional text.`
       );
     }
 
-    // Parse the JSON from the response
+    // Parse and validate the JSON from the response
     let analysisResult: FoodAnalysisResponse;
     try {
       // Remove any markdown code blocks if present
       const jsonStr = content.replace(/```json\n?|\n?```/g, '').trim();
-      analysisResult = JSON.parse(jsonStr);
+      const rawData = JSON.parse(jsonStr);
+      
+      // Validate and sanitize the AI response
+      const validatedResult = validateAIResponse(rawData);
+      if (!validatedResult) {
+        console.error('AI response failed validation:', JSON.stringify(rawData).slice(0, 500));
+        return new Response(
+          JSON.stringify({ error: 'Unable to process the analysis. Please try again.' }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      
+      analysisResult = validatedResult;
     } catch (parseError) {
       console.error('Failed to parse AI response:', content);
       return new Response(
