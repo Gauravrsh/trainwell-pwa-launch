@@ -14,6 +14,90 @@ export type Database = {
   }
   public: {
     Tables: {
+      client_training_plans: {
+        Row: {
+          amount_due: number | null
+          amount_paid: number | null
+          billing_model: Database["public"]["Enums"]["billing_model"]
+          client_id: string
+          completed_sessions: number | null
+          created_at: string
+          end_date: string
+          id: string
+          missed_sessions: number | null
+          notes: string | null
+          plan_name: string
+          service_type: Database["public"]["Enums"]["service_type"]
+          start_date: string
+          status: Database["public"]["Enums"]["training_plan_status"]
+          terminated_by: string | null
+          termination_date: string | null
+          total_amount: number
+          total_sessions: number
+          trainer_id: string
+          updated_at: string
+        }
+        Insert: {
+          amount_due?: number | null
+          amount_paid?: number | null
+          billing_model?: Database["public"]["Enums"]["billing_model"]
+          client_id: string
+          completed_sessions?: number | null
+          created_at?: string
+          end_date: string
+          id?: string
+          missed_sessions?: number | null
+          notes?: string | null
+          plan_name: string
+          service_type?: Database["public"]["Enums"]["service_type"]
+          start_date: string
+          status?: Database["public"]["Enums"]["training_plan_status"]
+          terminated_by?: string | null
+          termination_date?: string | null
+          total_amount: number
+          total_sessions: number
+          trainer_id: string
+          updated_at?: string
+        }
+        Update: {
+          amount_due?: number | null
+          amount_paid?: number | null
+          billing_model?: Database["public"]["Enums"]["billing_model"]
+          client_id?: string
+          completed_sessions?: number | null
+          created_at?: string
+          end_date?: string
+          id?: string
+          missed_sessions?: number | null
+          notes?: string | null
+          plan_name?: string
+          service_type?: Database["public"]["Enums"]["service_type"]
+          start_date?: string
+          status?: Database["public"]["Enums"]["training_plan_status"]
+          terminated_by?: string | null
+          termination_date?: string | null
+          total_amount?: number
+          total_sessions?: number
+          trainer_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_training_plans_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "client_training_plans_trainer_id_fkey"
+            columns: ["trainer_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       exercises: {
         Row: {
           actual_reps: number | null
@@ -184,6 +268,73 @@ export type Database = {
           },
         ]
       }
+      plan_sessions: {
+        Row: {
+          client_notes: string | null
+          created_at: string
+          food_log_id: string | null
+          id: string
+          plan_id: string
+          reschedule_reason: string | null
+          session_date: string
+          session_number: number
+          status: Database["public"]["Enums"]["session_status"]
+          trainer_notes: string | null
+          updated_at: string
+          workout_id: string | null
+        }
+        Insert: {
+          client_notes?: string | null
+          created_at?: string
+          food_log_id?: string | null
+          id?: string
+          plan_id: string
+          reschedule_reason?: string | null
+          session_date: string
+          session_number: number
+          status?: Database["public"]["Enums"]["session_status"]
+          trainer_notes?: string | null
+          updated_at?: string
+          workout_id?: string | null
+        }
+        Update: {
+          client_notes?: string | null
+          created_at?: string
+          food_log_id?: string | null
+          id?: string
+          plan_id?: string
+          reschedule_reason?: string | null
+          session_date?: string
+          session_number?: number
+          status?: Database["public"]["Enums"]["session_status"]
+          trainer_notes?: string | null
+          updated_at?: string
+          workout_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "plan_sessions_food_log_id_fkey"
+            columns: ["food_log_id"]
+            isOneToOne: false
+            referencedRelation: "food_logs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "plan_sessions_plan_id_fkey"
+            columns: ["plan_id"]
+            isOneToOne: false
+            referencedRelation: "client_training_plans"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "plan_sessions_workout_id_fkey"
+            columns: ["workout_id"]
+            isOneToOne: false
+            referencedRelation: "workouts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           city: string | null
@@ -278,6 +429,71 @@ export type Database = {
           },
         ]
       }
+      trainer_platform_subscriptions: {
+        Row: {
+          amount: number | null
+          created_at: string
+          end_date: string
+          grace_end_date: string | null
+          id: string
+          is_trial_used: boolean | null
+          max_trial_clients: number | null
+          payment_status: string | null
+          plan_type: Database["public"]["Enums"]["platform_plan_type"]
+          razorpay_order_id: string | null
+          razorpay_payment_id: string | null
+          start_date: string
+          status: Database["public"]["Enums"]["platform_subscription_status"]
+          trainer_id: string
+          trial_clients_count: number | null
+          updated_at: string
+        }
+        Insert: {
+          amount?: number | null
+          created_at?: string
+          end_date: string
+          grace_end_date?: string | null
+          id?: string
+          is_trial_used?: boolean | null
+          max_trial_clients?: number | null
+          payment_status?: string | null
+          plan_type?: Database["public"]["Enums"]["platform_plan_type"]
+          razorpay_order_id?: string | null
+          razorpay_payment_id?: string | null
+          start_date?: string
+          status?: Database["public"]["Enums"]["platform_subscription_status"]
+          trainer_id: string
+          trial_clients_count?: number | null
+          updated_at?: string
+        }
+        Update: {
+          amount?: number | null
+          created_at?: string
+          end_date?: string
+          grace_end_date?: string | null
+          id?: string
+          is_trial_used?: boolean | null
+          max_trial_clients?: number | null
+          payment_status?: string | null
+          plan_type?: Database["public"]["Enums"]["platform_plan_type"]
+          razorpay_order_id?: string | null
+          razorpay_payment_id?: string | null
+          start_date?: string
+          status?: Database["public"]["Enums"]["platform_subscription_status"]
+          trainer_id?: string
+          trial_clients_count?: number | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "trainer_platform_subscriptions_trainer_id_fkey"
+            columns: ["trainer_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       workouts: {
         Row: {
           client_id: string
@@ -345,10 +561,26 @@ export type Database = {
         }[]
       }
       get_trainer_profile_id: { Args: { _user_id: string }; Returns: string }
+      get_trainer_subscription_status: {
+        Args: { _trainer_profile_id: string }
+        Returns: {
+          days_remaining: number
+          end_date: string
+          grace_end_date: string
+          is_read_only: boolean
+          plan_type: Database["public"]["Enums"]["platform_plan_type"]
+          status: Database["public"]["Enums"]["platform_subscription_status"]
+          subscription_id: string
+        }[]
+      }
       get_user_profile_id: { Args: { _user_id: string }; Returns: string }
       get_user_role: {
         Args: { _user_id: string }
         Returns: Database["public"]["Enums"]["user_role"]
+      }
+      has_active_platform_subscription: {
+        Args: { _trainer_profile_id: string }
+        Returns: boolean
       }
       is_profile_owner: { Args: { _profile_id: string }; Returns: boolean }
       is_trainer_of_client: {
@@ -366,9 +598,30 @@ export type Database = {
       }
     }
     Enums: {
+      billing_model: "prepaid" | "postpaid"
       meal_type: "breakfast" | "lunch" | "dinner" | "snack"
       payment_status: "pending" | "completed" | "failed" | "refunded"
+      platform_plan_type: "trial" | "monthly" | "annual"
+      platform_subscription_status:
+        | "trial"
+        | "active"
+        | "grace"
+        | "expired"
+        | "cancelled"
+      service_type: "workout" | "nutrition" | "both"
+      session_status:
+        | "scheduled"
+        | "completed"
+        | "missed"
+        | "cancelled"
+        | "rescheduled"
       subscription_status: "active" | "pending_renewal" | "completed"
+      training_plan_status:
+        | "draft"
+        | "active"
+        | "paused"
+        | "completed"
+        | "cancelled"
       user_role: "trainer" | "client"
       workout_status: "completed" | "skipped" | "pending"
     }
@@ -498,9 +751,33 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
+      billing_model: ["prepaid", "postpaid"],
       meal_type: ["breakfast", "lunch", "dinner", "snack"],
       payment_status: ["pending", "completed", "failed", "refunded"],
+      platform_plan_type: ["trial", "monthly", "annual"],
+      platform_subscription_status: [
+        "trial",
+        "active",
+        "grace",
+        "expired",
+        "cancelled",
+      ],
+      service_type: ["workout", "nutrition", "both"],
+      session_status: [
+        "scheduled",
+        "completed",
+        "missed",
+        "cancelled",
+        "rescheduled",
+      ],
       subscription_status: ["active", "pending_renewal", "completed"],
+      training_plan_status: [
+        "draft",
+        "active",
+        "paused",
+        "completed",
+        "cancelled",
+      ],
       user_role: ["trainer", "client"],
       workout_status: ["completed", "skipped", "pending"],
     },

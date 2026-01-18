@@ -1,7 +1,9 @@
 import { motion } from 'framer-motion';
 import { User, Settings, Bell, Shield, HelpCircle, LogOut, ChevronRight } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
+import { useProfile } from '@/hooks/useProfile';
 import { useNavigate } from 'react-router-dom';
+import { SubscriptionSection } from '@/components/subscription/SubscriptionSection';
 
 const menuItems = [
   { icon: Settings, label: 'Settings', href: '#' },
@@ -12,6 +14,7 @@ const menuItems = [
 
 export default function Profile() {
   const { user, signOut } = useAuth();
+  const { profile } = useProfile();
   const navigate = useNavigate();
 
   const handleSignOut = async () => {
@@ -20,7 +23,7 @@ export default function Profile() {
   };
 
   return (
-    <div className="min-h-screen px-4 pt-12 pb-8">
+    <div className="min-h-screen px-4 pt-12 pb-24">
       {/* Profile Header */}
       <motion.div
         initial={{ opacity: 0, y: -20 }}
@@ -36,10 +39,10 @@ export default function Profile() {
           <User className="w-12 h-12 text-primary" />
         </motion.div>
         <h1 className="text-xl font-bold text-foreground mb-1">
-          {user?.email || 'TrainWell User'}
+          {profile?.full_name || user?.email || 'TrainWell User'}
         </h1>
         <p className="text-sm text-muted-foreground">
-          Member since {new Date().getFullYear()}
+          {profile?.unique_id ? `ID: ${profile.unique_id}` : `Member since ${new Date().getFullYear()}`}
         </p>
       </motion.div>
 
@@ -68,6 +71,21 @@ export default function Profile() {
         ))}
       </motion.div>
 
+      {/* Subscription Section */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.15 }}
+        className="mb-6"
+      >
+        <SubscriptionSection 
+          onNavigateToClientPlans={() => {
+            // TODO: Navigate to client plans management page
+            console.log('Navigate to client plans');
+          }}
+        />
+      </motion.div>
+
       {/* Menu Items */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
@@ -75,7 +93,7 @@ export default function Profile() {
         transition={{ delay: 0.2 }}
         className="bg-card rounded-2xl border border-border overflow-hidden mb-6"
       >
-        {menuItems.map((item, index) => {
+        {menuItems.map((item) => {
           const Icon = item.icon;
           return (
             <motion.button
