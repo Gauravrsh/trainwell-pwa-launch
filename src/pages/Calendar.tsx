@@ -7,7 +7,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
-import { WorkoutLogModal } from '@/components/modals/WorkoutLogModal';
+import { ClientWorkoutLogModal } from '@/components/modals/ClientWorkoutLogModal';
 import { TrainerWorkoutLogModal } from '@/components/modals/TrainerWorkoutLogModal';
 import { FoodLogModal } from '@/components/modals/FoodLogModal';
 import { ClientFilter } from '@/components/calendar/ClientFilter';
@@ -51,6 +51,7 @@ const Calendar = () => {
   const [selectedClientId, setSelectedClientId] = useState<string | null>(null);
   const [existingExercises, setExistingExercises] = useState<{ name: string; sets: { weight: number; reps: number }[] }[]>([]);
   const [clientHasLogged, setClientHasLogged] = useState(false);
+  const [clientTrainerExercises, setClientTrainerExercises] = useState<{ name: string; sets: { weight: number; reps: number }[] }[]>([]);
 
   // Calculate cycle dates - cycle starts from when client joined trainer or account creation
   const cycleStartDate = useMemo(() => {
@@ -227,6 +228,36 @@ const Calendar = () => {
       
       setShowTrainerWorkoutModal(true);
     } else {
+      // Client view - fetch trainer-assigned exercises for this date
+      const workout = getWorkoutForDate(date);
+      if (workout) {
+        const { data: exercises, error } = await supabase
+          .from('exercises')
+          .select('*')
+          .eq('workout_id', workout.id);
+        
+        if (!error && exercises) {
+          // Group exercises by name with their recommended sets
+          const exerciseMap = new Map<string, { weight: number; reps: number }[]>();
+          exercises.forEach(ex => {
+            const sets = exerciseMap.get(ex.exercise_name) || [];
+            sets.push({
+              weight: ex.recommended_weight || 0,
+              reps: ex.recommended_reps || 0,
+            });
+            exerciseMap.set(ex.exercise_name, sets);
+          });
+          
+          setClientTrainerExercises(
+            Array.from(exerciseMap.entries()).map(([name, sets]) => ({ name, sets }))
+          );
+        } else {
+          setClientTrainerExercises([]);
+        }
+      } else {
+        setClientTrainerExercises([]);
+      }
+      
       setShowClientActionSheet(true);
     }
   };
@@ -735,12 +766,13 @@ const Calendar = () => {
         </Sheet>
       )}
 
-      {/* Workout Log Modal for Clients */}
-      <WorkoutLogModal
+      {/* Client Workout Log Modal */}
+      <ClientWorkoutLogModal
         open={showWorkoutModal}
         onOpenChange={setShowWorkoutModal}
         onSave={handleWorkoutSave}
         date={selectedDate || undefined}
+        trainerExercises={clientTrainerExercises}
       />
 
       {/* Trainer Workout Log Modal */}
