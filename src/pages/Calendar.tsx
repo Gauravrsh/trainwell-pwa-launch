@@ -8,9 +8,12 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
 import { WorkoutLogModal } from '@/components/modals/WorkoutLogModal';
+import { TrainerWorkoutLogModal } from '@/components/modals/TrainerWorkoutLogModal';
 import { FoodLogModal } from '@/components/modals/FoodLogModal';
+import { ClientFilter } from '@/components/calendar/ClientFilter';
 import { toast } from 'sonner';
 import { logError } from '@/lib/errorUtils';
+
 interface Workout {
   id: string;
   date: string;
@@ -18,9 +21,22 @@ interface Workout {
   client_id: string;
 }
 
+interface Exercise {
+  id: string;
+  workout_id: string;
+  exercise_name: string;
+  recommended_sets: number | null;
+  recommended_reps: number | null;
+  recommended_weight: number | null;
+  actual_sets: number | null;
+  actual_reps: number | null;
+  actual_weight: number | null;
+}
+
 interface Client {
   id: string;
   unique_id: string;
+  full_name?: string | null;
 }
 
 const Calendar = () => {
@@ -30,11 +46,14 @@ const Calendar = () => {
   const [showClientSheet, setShowClientSheet] = useState(false);
   const [showClientActionSheet, setShowClientActionSheet] = useState(false);
   const [showWorkoutModal, setShowWorkoutModal] = useState(false);
+  const [showTrainerWorkoutModal, setShowTrainerWorkoutModal] = useState(false);
   const [showFoodModal, setShowFoodModal] = useState(false);
+  const [selectedClientId, setSelectedClientId] = useState<string | null>(null);
+  const [existingExercises, setExistingExercises] = useState<{ name: string; sets: { weight: number; reps: number }[] }[]>([]);
+  const [clientHasLogged, setClientHasLogged] = useState(false);
+
   // Calculate cycle dates - cycle starts from when client joined trainer or account creation
   const cycleStartDate = useMemo(() => {
-    // For simplicity, we'll use the start of the current month as cycle start
-    // In production, this would come from subscription_cycles table
     const today = new Date();
     return startOfDay(subDays(today, today.getDate() - 1));
   }, []);
@@ -45,7 +64,7 @@ const Calendar = () => {
   const previousCycleStart = subDays(currentCycleStart, 30);
   const previousCycleEnd = subDays(currentCycleStart, 1);
 
-  // Fetch workouts for the user
+  // Fetch workouts for the user (client view)
   const { data: workouts = [] } = useQuery({
     queryKey: ['workouts', profile?.id],
     queryFn: async () => {
@@ -71,13 +90,31 @@ const Calendar = () => {
       
       const { data, error } = await supabase
         .from('profiles')
-        .select('id, unique_id')
+        .select('id, unique_id, full_name')
         .eq('trainer_id', profile.id);
       
       if (error) throw error;
       return data as Client[];
     },
     enabled: !!profile && isTrainer,
+  });
+
+  // Fetch workouts for selected client (trainer view)
+  const { data: clientWorkouts = [] } = useQuery({
+    queryKey: ['client-workouts', selectedClientId],
+    queryFn: async () => {
+      if (!selectedClientId) return [];
+      
+      const { data, error } = await supabase
+        .from('workouts')
+        .select('*')
+        .eq('client_id', selectedClientId)
+        .order('date', { ascending: true });
+      
+      if (error) throw error;
+      return data as Workout[];
+    },
+    enabled: !!selectedClientId && isTrainer,
   });
 
   // Generate all dates to display (previous cycle + current cycle + future)
@@ -111,8 +148,8 @@ const Calendar = () => {
     return dates;
   }, [previousCycleStart, currentCycleStart, currentCycleEnd]);
 
-  const getWorkoutForDate = (date: Date) => {
-    return workouts.find(w => isSameDay(new Date(w.date), date));
+  const getWorkoutForDate = (date: Date, workoutList: Workout[] = workouts) => {
+    return workoutList.find(w => isSameDay(new Date(w.date), date));
   };
 
   const getStatusStyles = (status?: string) => {
@@ -141,24 +178,118 @@ const Calendar = () => {
           ring: 'ring-primary/30',
           cellBg: 'border-primary/30',
         };
-        return {
-          icon: <Dumbbell className="w-3 h-3" />,
-          bg: 'bg-primary/80',
-          text: 'text-primary-foreground',
-          ring: 'ring-primary/30',
-          cellBg: 'border-primary/30',
-        };
       default:
         return null;
     }
   };
 
-  const handleDateClick = (date: Date) => {
+  const handleDateClick = async (date: Date) => {
     setSelectedDate(date);
+    
     if (isTrainer) {
-      setShowClientSheet(true);
+      if (!selectedClientId) {
+        toast.error('Please select a client first');
+        return;
+      }
+      
+      // Fetch existing exercises for this date
+      const workout = getWorkoutForDate(date, clientWorkouts);
+      if (workout) {
+        const { data: exercises, error } = await supabase
+          .from('exercises')
+          .select('*')
+          .eq('workout_id', workout.id);
+        
+        if (!error && exercises) {
+          // Check if client has logged actual values
+          const hasActualValues = exercises.some(ex => 
+            ex.actual_sets !== null || ex.actual_reps !== null || ex.actual_weight !== null
+          );
+          setClientHasLogged(hasActualValues);
+          
+          // Group exercises by name with their sets
+          const exerciseMap = new Map<string, { weight: number; reps: number }[]>();
+          exercises.forEach(ex => {
+            const sets = exerciseMap.get(ex.exercise_name) || [];
+            sets.push({
+              weight: ex.recommended_weight || 0,
+              reps: ex.recommended_reps || 0,
+            });
+            exerciseMap.set(ex.exercise_name, sets);
+          });
+          
+          setExistingExercises(
+            Array.from(exerciseMap.entries()).map(([name, sets]) => ({ name, sets }))
+          );
+        }
+      } else {
+        setExistingExercises([]);
+        setClientHasLogged(false);
+      }
+      
+      setShowTrainerWorkoutModal(true);
     } else {
       setShowClientActionSheet(true);
+    }
+  };
+
+  const handleTrainerWorkoutSave = async (exercises: { name: string; sets: { weight: number; reps: number }[] }[]) => {
+    if (!selectedClientId || !selectedDate) return;
+
+    try {
+      const dateStr = format(selectedDate, 'yyyy-MM-dd');
+      
+      // Check if workout exists for this date
+      const existingWorkout = getWorkoutForDate(selectedDate, clientWorkouts);
+      let workoutId: string;
+      
+      if (existingWorkout) {
+        workoutId = existingWorkout.id;
+        
+        // Delete existing exercises for this workout
+        await supabase
+          .from('exercises')
+          .delete()
+          .eq('workout_id', workoutId);
+      } else {
+        // Create new workout
+        const { data: newWorkout, error: workoutError } = await supabase
+          .from('workouts')
+          .insert({
+            client_id: selectedClientId,
+            date: dateStr,
+            status: 'pending'
+          })
+          .select()
+          .single();
+        
+        if (workoutError) throw workoutError;
+        workoutId = newWorkout.id;
+      }
+
+      // Insert exercises with recommended values (each set as a separate row)
+      const exerciseInserts = exercises.flatMap(ex =>
+        ex.sets.map(set => ({
+          workout_id: workoutId,
+          exercise_name: ex.name,
+          recommended_sets: 1, // Each row represents one set
+          recommended_reps: set.reps,
+          recommended_weight: set.weight,
+        }))
+      );
+
+      const { error: exerciseError } = await supabase
+        .from('exercises')
+        .insert(exerciseInserts);
+
+      if (exerciseError) throw exerciseError;
+
+      toast.success('Workout saved successfully!');
+      queryClient.invalidateQueries({ queryKey: ['client-workouts', selectedClientId] });
+      setShowTrainerWorkoutModal(false);
+    } catch (error) {
+      logError('Calendar.handleTrainerWorkoutSave', error);
+      toast.error('Failed to save workout');
     }
   };
 
@@ -166,7 +297,6 @@ const Calendar = () => {
     if (!profile || !selectedDate) return;
 
     try {
-      // First create or get the workout for this date
       const dateStr = format(selectedDate, 'yyyy-MM-dd');
       
       let workoutId: string;
@@ -174,13 +304,11 @@ const Calendar = () => {
       
       if (existingWorkout) {
         workoutId = existingWorkout.id;
-        // Update workout status to completed
         await supabase
           .from('workouts')
           .update({ status: 'completed' })
           .eq('id', workoutId);
       } else {
-        // Create new workout
         const { data: newWorkout, error: workoutError } = await supabase
           .from('workouts')
           .insert({
@@ -195,7 +323,6 @@ const Calendar = () => {
         workoutId = newWorkout.id;
       }
 
-      // Insert exercises
       const exerciseInserts = exercises.map(ex => ({
         workout_id: workoutId,
         exercise_name: ex.name,
@@ -254,6 +381,7 @@ const Calendar = () => {
       toast.error('Failed to save food log');
     }
   };
+
   const getSectionLabel = (section: 'past' | 'current' | 'future') => {
     switch (section) {
       case 'past':
@@ -268,6 +396,9 @@ const Calendar = () => {
   // Group dates by section
   const sections = ['past', 'current', 'future'] as const;
 
+  // Use client workouts for trainer view, regular workouts for client view
+  const displayWorkouts = isTrainer && selectedClientId ? clientWorkouts : workouts;
+
   return (
     <div className="min-h-screen bg-background pb-24">
       {/* Header */}
@@ -281,11 +412,70 @@ const Calendar = () => {
             {isTrainer ? 'Manage client workouts' : 'Your workout schedule'}
           </p>
         </motion.div>
+
+        {/* Client Filter for Trainers */}
+        {isTrainer && clients.length > 0 && (
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.1 }}
+            className="mt-4"
+          >
+            <ClientFilter
+              clients={clients}
+              selectedClientId={selectedClientId}
+              onSelectClient={setSelectedClientId}
+            />
+          </motion.div>
+        )}
       </div>
 
       {/* Calendar Sections */}
       <div className="px-4 py-4 space-y-6">
-        {sections.map((section, sectionIndex) => {
+        {/* No client selected message for trainers */}
+        {isTrainer && !selectedClientId && clients.length > 0 && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="text-center py-12"
+          >
+            <Dumbbell className="w-12 h-12 text-muted-foreground/30 mx-auto mb-4" />
+            <p className="text-muted-foreground">
+              Select a client above to view and manage their workouts
+            </p>
+          </motion.div>
+        )}
+
+        {/* No clients message for trainers */}
+        {isTrainer && clients.length === 0 && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="text-center py-12"
+          >
+            <UserPlus className="w-12 h-12 text-muted-foreground/30 mx-auto mb-4" />
+            <p className="text-muted-foreground mb-4">
+              No clients yet. Invite your first client to get started!
+            </p>
+            <Button
+              onClick={() => {
+                if (!profile?.unique_id) return;
+                const inviteUrl = `https://trainwell.lovable.app/auth?trainer=${profile.unique_id}`;
+                const message = `Hey! Join me on TrainWell for personalized fitness coaching. Click here to sign up: ${inviteUrl}`;
+                const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(message)}`;
+                window.open(whatsappUrl, '_blank');
+                toast.success('Opening WhatsApp to share invite link');
+              }}
+              className="gap-2"
+            >
+              <Share2 className="w-4 h-4" />
+              Invite via WhatsApp
+            </Button>
+          </motion.div>
+        )}
+
+        {/* Show calendar for clients OR trainers with selected client */}
+        {(!isTrainer || selectedClientId) && sections.map((section, sectionIndex) => {
           const sectionDates = allDates.filter(d => d.section === section);
           const isCurrentSection = section === 'current';
           const isPastSection = section === 'past';
@@ -348,7 +538,7 @@ const Calendar = () => {
                   
                   {/* Date Cells */}
                   {sectionDates.map(({ date }) => {
-                    const workout = getWorkoutForDate(date);
+                    const workout = getWorkoutForDate(date, displayWorkouts);
                     const isToday = isSameDay(date, today);
                     const isPast = isBefore(date, today);
                     const hasWorkout = !!workout;
@@ -425,76 +615,6 @@ const Calendar = () => {
           );
         })}
       </div>
-
-      {/* Client Selection Sheet for Trainers */}
-      <Sheet open={showClientSheet} onOpenChange={setShowClientSheet}>
-        <SheetContent side="bottom" className="rounded-t-3xl">
-          <SheetHeader className="pb-4">
-            <SheetTitle>
-              {selectedDate && (
-                <span className="flex items-center gap-2">
-                  <Dumbbell className="w-5 h-5 text-primary" />
-                  {format(selectedDate, 'EEEE, MMMM d')}
-                </span>
-              )}
-            </SheetTitle>
-          </SheetHeader>
-          
-          {clients.length > 0 ? (
-            <div className="space-y-2 max-h-[50vh] overflow-y-auto">
-              <p className="text-sm text-muted-foreground mb-3">
-                Select a client to assign a workout
-              </p>
-              {clients.map((client) => (
-                <motion.button
-                  key={client.id}
-                  whileTap={{ scale: 0.98 }}
-                  className="w-full flex items-center justify-between p-4 rounded-xl bg-card border border-border hover:border-primary/50 transition-colors"
-                  onClick={() => {
-                    // Navigate to workout creation for this client
-                    setShowClientSheet(false);
-                  }}
-                >
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-full bg-secondary flex items-center justify-center">
-                      <span className="text-sm font-semibold text-foreground">
-                        {client.unique_id.slice(0, 2)}
-                      </span>
-                    </div>
-                    <span className="font-medium text-foreground">
-                      Client #{client.unique_id}
-                    </span>
-                  </div>
-                  <Plus className="w-5 h-5 text-primary" />
-                </motion.button>
-              ))}
-            </div>
-          ) : (
-            <div className="text-center py-8">
-              <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-4">
-                <UserPlus className="w-8 h-8 text-primary" />
-              </div>
-              <p className="text-muted-foreground mb-4">
-                No clients yet. Invite your first client to get started!
-              </p>
-              <Button
-                onClick={() => {
-                  if (!profile?.unique_id) return;
-                  const inviteUrl = `https://trainwell.lovable.app/auth?trainer=${profile.unique_id}`;
-                  const message = `Hey! Join me on TrainWell for personalized fitness coaching. Click here to sign up: ${inviteUrl}`;
-                  const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(message)}`;
-                  window.open(whatsappUrl, '_blank');
-                  toast.success('Opening WhatsApp to share invite link');
-                }}
-                className="gap-2"
-              >
-                <Share2 className="w-4 h-4" />
-                Invite via WhatsApp
-              </Button>
-            </div>
-          )}
-        </SheetContent>
-      </Sheet>
 
       {/* Client Action Sheet - Log Workout or Food */}
       {!isTrainer && (
@@ -617,12 +737,22 @@ const Calendar = () => {
         </Sheet>
       )}
 
-      {/* Workout Log Modal */}
+      {/* Workout Log Modal for Clients */}
       <WorkoutLogModal
         open={showWorkoutModal}
         onOpenChange={setShowWorkoutModal}
         onSave={handleWorkoutSave}
         date={selectedDate || undefined}
+      />
+
+      {/* Trainer Workout Log Modal */}
+      <TrainerWorkoutLogModal
+        open={showTrainerWorkoutModal}
+        onOpenChange={setShowTrainerWorkoutModal}
+        onSave={handleTrainerWorkoutSave}
+        date={selectedDate || undefined}
+        existingExercises={existingExercises}
+        clientHasLogged={clientHasLogged}
       />
 
       {/* Food Log Modal */}
