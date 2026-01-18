@@ -206,15 +206,23 @@ const Calendar = () => {
           );
           setClientHasLogged(hasActualValues);
           
-          // Group exercises by name with their sets
+          // Group exercises by name with their sets (only trainer-planned sets)
           const exerciseMap = new Map<string, { weight: number; reps: number }[]>();
           exercises.forEach(ex => {
-            const sets = exerciseMap.get(ex.exercise_name) || [];
+            const name = ex.exercise_name.trim();
+            const isPlannedSet =
+              ex.recommended_sets !== null ||
+              ex.recommended_reps !== null ||
+              ex.recommended_weight !== null;
+
+            if (!name || !isPlannedSet) return;
+
+            const sets = exerciseMap.get(name) || [];
             sets.push({
-              weight: ex.recommended_weight || 0,
-              reps: ex.recommended_reps || 0,
+              weight: ex.recommended_weight ?? 0,
+              reps: ex.recommended_reps ?? 0,
             });
-            exerciseMap.set(ex.exercise_name, sets);
+            exerciseMap.set(name, sets);
           });
           
           setExistingExercises(
@@ -237,15 +245,23 @@ const Calendar = () => {
           .eq('workout_id', workout.id);
         
         if (!error && exercises) {
-          // Group exercises by name with their recommended sets
+          // Group exercises by name with their recommended sets (ignore client-only logged rows)
           const exerciseMap = new Map<string, { weight: number; reps: number }[]>();
           exercises.forEach(ex => {
-            const sets = exerciseMap.get(ex.exercise_name) || [];
+            const name = ex.exercise_name.trim();
+            const isPlannedSet =
+              ex.recommended_sets !== null ||
+              ex.recommended_reps !== null ||
+              ex.recommended_weight !== null;
+
+            if (!name || !isPlannedSet) return;
+
+            const sets = exerciseMap.get(name) || [];
             sets.push({
-              weight: ex.recommended_weight || 0,
-              reps: ex.recommended_reps || 0,
+              weight: ex.recommended_weight ?? 0,
+              reps: ex.recommended_reps ?? 0,
             });
-            exerciseMap.set(ex.exercise_name, sets);
+            exerciseMap.set(name, sets);
           });
           
           setClientTrainerExercises(
@@ -297,7 +313,11 @@ const Calendar = () => {
       }
 
       // Insert exercises with recommended values (each set as a separate row)
-      const exerciseInserts = exercises.flatMap(ex =>
+      const normalizedExercises = exercises
+        .map(ex => ({ ...ex, name: ex.name.trim() }))
+        .filter(ex => ex.name.length > 0);
+
+      const exerciseInserts = normalizedExercises.flatMap(ex =>
         ex.sets.map(set => ({
           workout_id: workoutId,
           exercise_name: ex.name,
@@ -326,11 +346,20 @@ const Calendar = () => {
     if (!profile || !selectedDate) return;
 
     try {
+      const cleanedExercises = exercises
+        .map(ex => ({ ...ex, name: ex.name.trim() }))
+        .filter(ex => ex.name.length > 0);
+
+      if (cleanedExercises.length === 0) {
+        toast.error('Please add at least one exercise');
+        return;
+      }
+
       const dateStr = format(selectedDate, 'yyyy-MM-dd');
-      
+
       let workoutId: string;
       const existingWorkout = getWorkoutForDate(selectedDate);
-      
+
       if (existingWorkout) {
         workoutId = existingWorkout.id;
         await supabase
@@ -343,28 +372,112 @@ const Calendar = () => {
           .insert({
             client_id: profile.id,
             date: dateStr,
-            status: 'completed'
+            status: 'completed',
           })
           .select()
           .single();
-        
+
         if (workoutError) throw workoutError;
         workoutId = newWorkout.id;
       }
 
-      const exerciseInserts = exercises.map(ex => ({
-        workout_id: workoutId,
-        exercise_name: ex.name,
-        actual_sets: ex.sets,
-        actual_reps: ex.reps,
-        actual_weight: ex.weight
-      }));
-
-      const { error: exerciseError } = await supabase
+      // Remove any previous client-only log rows for this workout (these caused duplicate/blank sets in UI)
+      const { error: cleanupError } = await supabase
         .from('exercises')
-        .insert(exerciseInserts);
+        .delete()
+        .eq('workout_id', workoutId)
+        .is('recommended_sets', null);
+      if (cleanupError) throw cleanupError;
 
-      if (exerciseError) throw exerciseError;
+      // Fetch trainer-planned rows (if any) so we can update them with actual values instead of inserting duplicates
+      const { data: plannedRows, error: plannedError } = await supabase
+        .from('exercises')
+        .select('id, exercise_name, recommended_sets, created_at')
+        .eq('workout_id', workoutId)
+        .not('recommended_sets', 'is', null)
+        .order('created_at', { ascending: true });
+      if (plannedError) throw plannedError;
+
+      const plannedByName = new Map<string, { id: string; exercise_name: string }[]>();
+      (plannedRows || []).forEach(row => {
+        const name = row.exercise_name.trim();
+        if (!name) return;
+        const list = plannedByName.get(name) || [];
+        list.push({ id: row.id, exercise_name: name });
+        plannedByName.set(name, list);
+      });
+
+      const actualByName = new Map<string, { sets: number; reps: number; weight: number }[]>();
+      cleanedExercises.forEach(ex => {
+        const list = actualByName.get(ex.name) || [];
+        list.push({ sets: ex.sets, reps: ex.reps, weight: ex.weight });
+        actualByName.set(ex.name, list);
+      });
+
+      const updates: { id: string; sets: number; reps: number; weight: number }[] = [];
+      const inserts: { workout_id: string; exercise_name: string; actual_sets: number; actual_reps: number; actual_weight: number }[] = [];
+
+      // Update planned rows first (best UX: client fills in the trainer plan)
+      for (const [name, planned] of plannedByName.entries()) {
+        const actual = actualByName.get(name) || [];
+
+        const count = Math.min(planned.length, actual.length);
+        for (let i = 0; i < count; i++) {
+          updates.push({ id: planned[i].id, ...actual[i] });
+        }
+
+        // Extra actual sets beyond the plan become additional rows
+        for (let i = count; i < actual.length; i++) {
+          inserts.push({
+            workout_id: workoutId,
+            exercise_name: name,
+            actual_sets: actual[i].sets,
+            actual_reps: actual[i].reps,
+            actual_weight: actual[i].weight,
+          });
+        }
+
+        actualByName.delete(name);
+      }
+
+      // Any remaining exercises were client-added (no trainer plan) — insert them
+      for (const [name, actual] of actualByName.entries()) {
+        actual.forEach(set => {
+          inserts.push({
+            workout_id: workoutId,
+            exercise_name: name,
+            actual_sets: set.sets,
+            actual_reps: set.reps,
+            actual_weight: set.weight,
+          });
+        });
+      }
+
+      // Apply updates
+      if (updates.length > 0) {
+        const results = await Promise.all(
+          updates.map(u =>
+            supabase
+              .from('exercises')
+              .update({
+                actual_sets: u.sets,
+                actual_reps: u.reps,
+                actual_weight: u.weight,
+              })
+              .eq('id', u.id)
+          )
+        );
+        const updateError = results.find(r => r.error)?.error;
+        if (updateError) throw updateError;
+      }
+
+      // Insert extras/client-only rows
+      if (inserts.length > 0) {
+        const { error: exerciseError } = await supabase
+          .from('exercises')
+          .insert(inserts);
+        if (exerciseError) throw exerciseError;
+      }
 
       toast.success('Workout logged successfully!');
       queryClient.invalidateQueries({ queryKey: ['workouts'] });
