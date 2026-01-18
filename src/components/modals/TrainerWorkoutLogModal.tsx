@@ -256,7 +256,7 @@ export const TrainerWorkoutLogModal = ({
           )}
         </DialogHeader>
 
-        <div className="flex-1 overflow-y-auto px-6 py-4">
+        <div className="flex-1 overflow-y-auto overscroll-contain touch-pan-y px-6 py-4" style={{ WebkitOverflowScrolling: 'touch' }}>
           <div className="space-y-4">
             {exerciseBlocks.map((block, blockIndex) => {
               const filteredExercises = getFilteredExercises(block.searchTerm);

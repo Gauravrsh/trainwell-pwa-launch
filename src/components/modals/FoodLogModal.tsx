@@ -169,7 +169,7 @@ export const FoodLogModal = ({ open, onOpenChange, onSave }: FoodLogModalProps) 
           </DialogTitle>
         </DialogHeader>
 
-        <div className="flex-1 overflow-y-auto space-y-4 p-6">
+        <div className="flex-1 overflow-y-auto overscroll-contain touch-pan-y space-y-4 p-6" style={{ WebkitOverflowScrolling: 'touch' }}>
           {/* Meal Type Selector */}
           <div>
             <Label className="text-xs text-muted-foreground">Meal Type</Label>
