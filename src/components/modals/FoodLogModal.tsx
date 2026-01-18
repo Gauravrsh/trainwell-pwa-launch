@@ -162,14 +162,14 @@ export const FoodLogModal = ({ open, onOpenChange, onSave }: FoodLogModalProps) 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
       <DialogContent className="max-w-md max-h-[90dvh] flex flex-col p-0 gap-0 overflow-hidden">
-        <DialogHeader className="pb-2">
+        <DialogHeader className="p-6 pb-4 border-b border-border shrink-0">
           <DialogTitle className="flex items-center gap-2">
             <Utensils className="w-5 h-5 text-primary" />
             Log Food
           </DialogTitle>
         </DialogHeader>
 
-        <div className="flex-1 overflow-y-auto space-y-4 py-4">
+        <div className="flex-1 overflow-y-auto space-y-4 p-6">
           {/* Meal Type Selector */}
           <div>
             <Label className="text-xs text-muted-foreground">Meal Type</Label>
@@ -354,7 +354,7 @@ export const FoodLogModal = ({ open, onOpenChange, onSave }: FoodLogModalProps) 
         </div>
 
         {/* Save Button */}
-        <div className="pt-4 border-t border-border">
+        <div className="p-6 pt-4 border-t border-border shrink-0">
           <Button 
             className="w-full h-12 rounded-xl"
             onClick={handleSave}
