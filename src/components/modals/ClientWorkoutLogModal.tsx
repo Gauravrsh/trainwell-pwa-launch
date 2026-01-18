@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { Dumbbell, Save, ChevronDown, ChevronUp, Plus, X, Search, AlertCircle } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -41,6 +41,7 @@ export const ClientWorkoutLogModal = ({
 }: ClientWorkoutLogModalProps) => {
   const [exerciseBlocks, setExerciseBlocks] = useState<ExerciseBlock[]>([]);
   const [customExercises, setCustomExercises] = useState<string[]>([]);
+  const inputRefs = useRef<Record<string, HTMLInputElement | null>>({});
 
   const generateId = useCallback(() => Math.random().toString(36).substring(2, 9), []);
 
@@ -71,7 +72,7 @@ export const ClientWorkoutLogModal = ({
   }, [customExercises]);
 
   const getFilteredExercises = useCallback((searchTerm: string) => {
-    if (!searchTerm) return allExercises;
+    if (!searchTerm.trim()) return allExercises.slice(0, 15);
     const term = searchTerm.toLowerCase();
     return allExercises.filter(ex => ex.toLowerCase().includes(term));
   }, [allExercises]);
@@ -81,8 +82,9 @@ export const ClientWorkoutLogModal = ({
   }, [allExercises]);
 
   const addExerciseBlock = () => {
+    const newId = generateId();
     const newBlock: ExerciseBlock = {
-      id: generateId(),
+      id: newId,
       exerciseName: '',
       searchTerm: '',
       showDropdown: true,
@@ -92,6 +94,10 @@ export const ClientWorkoutLogModal = ({
       isFromTrainer: false,
     };
     setExerciseBlocks(prev => [...prev, newBlock]);
+    
+    setTimeout(() => {
+      inputRefs.current[newId]?.focus();
+    }, 50);
   };
 
   const updateBlockSearch = (blockId: string, searchTerm: string) => {
@@ -121,10 +127,34 @@ export const ClientWorkoutLogModal = ({
   };
 
   const addCustomExercise = (blockId: string, searchTerm: string) => {
-    if (searchTerm.trim() && !checkExactMatch(searchTerm)) {
+    if (searchTerm.trim()) {
       const newExercise = searchTerm.trim();
-      setCustomExercises(prev => [newExercise, ...prev]);
+      if (!checkExactMatch(searchTerm)) {
+        setCustomExercises(prev => [newExercise, ...prev]);
+      }
       selectExercise(blockId, newExercise);
+    }
+  };
+
+  const handleKeyDown = (blockId: string, e: React.KeyboardEvent, searchTerm: string) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      const filtered = getFilteredExercises(searchTerm);
+      
+      if (filtered.length > 0 && searchTerm.trim()) {
+        const firstMatch = filtered.find(ex => 
+          ex.toLowerCase().includes(searchTerm.toLowerCase())
+        );
+        if (firstMatch) {
+          selectExercise(blockId, firstMatch);
+        } else {
+          addCustomExercise(blockId, searchTerm);
+        }
+      } else if (searchTerm.trim()) {
+        addCustomExercise(blockId, searchTerm);
+      }
+    } else if (e.key === 'Escape') {
+      setBlockDropdownOpen(blockId, false);
     }
   };
 
@@ -176,7 +206,6 @@ export const ClientWorkoutLogModal = ({
   };
 
   const handleSave = () => {
-    // Transform blocks to the expected format - flatten sets
     const validExercises = exerciseBlocks
       .filter(block => block.exerciseName && block.actualSets.length > 0)
       .flatMap(block =>
@@ -201,7 +230,7 @@ export const ClientWorkoutLogModal = ({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg max-h-[90dvh] flex flex-col p-0 gap-0">
+      <DialogContent className="max-w-lg max-h-[90dvh] flex flex-col p-0 gap-0 overflow-visible">
         <DialogHeader className="p-6 pb-4 border-b border-border">
           <DialogTitle className="flex items-center gap-2">
             <Dumbbell className="w-5 h-5 text-primary" />
@@ -214,7 +243,7 @@ export const ClientWorkoutLogModal = ({
           )}
         </DialogHeader>
 
-        <ScrollArea className="flex-1 px-6 py-4">
+        <ScrollArea className="flex-1 px-6 py-4 overflow-visible">
           <div className="space-y-4">
             {/* Trainer Plan Notice */}
             {hasTrainerPlan && (
@@ -244,12 +273,11 @@ export const ClientWorkoutLogModal = ({
                   key={block.id}
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, x: -100 }}
-                  className="border border-border rounded-xl overflow-hidden bg-card"
+                  className="border border-border rounded-xl overflow-visible bg-card"
                 >
                   {/* Exercise Header */}
                   <div className="flex items-center justify-between p-4 bg-secondary/30">
-                    <div className="flex-1">
+                    <div className="flex-1 relative">
                       {block.exerciseName ? (
                         <button
                           type="button"
@@ -272,54 +300,54 @@ export const ClientWorkoutLogModal = ({
                           )}
                         </button>
                       ) : (
-                        <div className="relative">
+                        <>
                           <div className="relative">
-                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none z-10" />
                             <Input
+                              ref={(el) => { inputRefs.current[block.id] = el; }}
                               placeholder="Search exercise..."
                               value={block.searchTerm}
                               onChange={(e) => updateBlockSearch(block.id, e.target.value)}
                               onFocus={() => setBlockDropdownOpen(block.id, true)}
-                              onBlur={() => {
-                                // Delay to allow click on dropdown item
-                                setTimeout(() => setBlockDropdownOpen(block.id, false), 200);
-                              }}
+                              onKeyDown={(e) => handleKeyDown(block.id, e, block.searchTerm)}
                               className="pl-9 bg-background"
-                              autoFocus
                             />
                           </div>
 
                           {block.showDropdown && (
-                            <div className="absolute z-50 top-full left-0 right-0 mt-1 bg-popover border border-border rounded-lg shadow-lg max-h-48 overflow-y-auto">
+                            <div 
+                              className="absolute left-0 right-0 mt-1 bg-popover border border-border rounded-lg shadow-xl max-h-60 overflow-y-auto"
+                              style={{ zIndex: 9999, top: '100%' }}
+                            >
                               {!exactMatchExists && block.searchTerm.trim() && (
                                 <button
                                   type="button"
-                                  onMouseDown={(e) => {
-                                    e.preventDefault();
-                                    addCustomExercise(block.id, block.searchTerm);
-                                  }}
-                                  className="w-full px-4 py-3 text-left text-sm bg-primary/10 hover:bg-primary/20 text-primary font-medium border-b border-border"
+                                  onClick={() => addCustomExercise(block.id, block.searchTerm)}
+                                  className="w-full px-4 py-3 text-left text-sm bg-primary/10 hover:bg-primary/20 text-primary font-medium border-b border-border flex items-center gap-2"
                                 >
-                                  <Plus className="w-4 h-4 inline mr-2" />
+                                  <Plus className="w-4 h-4" />
                                   Add "{block.searchTerm.trim()}"
                                 </button>
                               )}
-                              {filteredExercises.slice(0, 10).map((exercise) => (
-                                <button
-                                  key={exercise}
-                                  type="button"
-                                  onMouseDown={(e) => {
-                                    e.preventDefault();
-                                    selectExercise(block.id, exercise);
-                                  }}
-                                  className="w-full px-4 py-2.5 text-left text-sm hover:bg-secondary transition-colors"
-                                >
-                                  {exercise}
-                                </button>
-                              ))}
+                              {filteredExercises.length > 0 ? (
+                                filteredExercises.slice(0, 10).map((exercise) => (
+                                  <button
+                                    key={exercise}
+                                    type="button"
+                                    onClick={() => selectExercise(block.id, exercise)}
+                                    className="w-full px-4 py-2.5 text-left text-sm hover:bg-secondary transition-colors text-foreground"
+                                  >
+                                    {exercise}
+                                  </button>
+                                ))
+                              ) : (
+                                <div className="px-4 py-3 text-sm text-muted-foreground">
+                                  No exercises found - press Enter to add custom
+                                </div>
+                              )}
                             </div>
                           )}
-                        </div>
+                        </>
                       )}
                     </div>
 
@@ -328,19 +356,18 @@ export const ClientWorkoutLogModal = ({
                         variant="ghost"
                         size="icon"
                         onClick={() => removeExerciseBlock(block.id)}
-                        className="text-destructive hover:bg-destructive/10"
+                        className="text-destructive hover:bg-destructive/10 ml-2"
                       >
                         <X className="w-4 h-4" />
                       </Button>
                     )}
                   </div>
 
-                  {/* Sets */}
+                  {/* Sets - Only show when exercise is selected */}
                   {block.isExpanded && block.exerciseName && (
                     <motion.div
                       initial={{ height: 0, opacity: 0 }}
                       animate={{ height: 'auto', opacity: 1 }}
-                      exit={{ height: 0, opacity: 0 }}
                       className="overflow-hidden"
                     >
                       <div className="p-4 space-y-3">
