@@ -231,7 +231,7 @@ export const ClientWorkoutLogModal = ({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg h-[85vh] h-[85dvh] flex flex-col p-0 gap-0">
+      <DialogContent className="max-w-lg max-h-modal flex flex-col p-0 gap-0">
         <DialogHeader className="p-6 pb-4 border-b border-border flex-shrink-0">
           <DialogTitle className="flex items-center gap-2">
             <Dumbbell className="w-5 h-5 text-primary" />
@@ -244,13 +244,7 @@ export const ClientWorkoutLogModal = ({
           )}
         </DialogHeader>
 
-          <div 
-            className="flex-1 min-h-0 overflow-y-auto overscroll-contain touch-pan-y px-6 py-4"
-            style={{ 
-              WebkitOverflowScrolling: 'touch',
-              overscrollBehavior: 'contain'
-            }}
-          >
+          <div className="dialog-scroll-area px-6 py-4">
           <div className="space-y-4">
             {/* Trainer Plan Notice */}
             {hasTrainerPlan && (
@@ -509,7 +503,7 @@ export const ClientWorkoutLogModal = ({
         </div>
 
         {/* Footer */}
-        <div className="p-6 pt-4 border-t border-border flex-shrink-0 safe-bottom">
+        <div className="dialog-footer p-6 pt-4 border-t border-border">
           <Button
             onClick={handleSave}
             disabled={!hasValidExercises}
