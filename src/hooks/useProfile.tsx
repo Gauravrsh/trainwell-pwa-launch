@@ -9,7 +9,6 @@ interface Profile {
   role: 'trainer' | 'client';
   unique_id: string;
   trainer_id: string | null;
-  vpa_address: string | null;
   full_name: string | null;
   date_of_birth: string | null;
   city: string | null;
@@ -20,9 +19,14 @@ interface Profile {
   updated_at: string;
 }
 
+interface PaymentInfo {
+  vpa_address: string | null;
+}
+
 export const useProfile = () => {
   const { user } = useAuth();
   const [profile, setProfile] = useState<Profile | null>(null);
+  const [paymentInfo, setPaymentInfo] = useState<PaymentInfo | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
 
@@ -30,19 +34,36 @@ export const useProfile = () => {
     const fetchProfile = async () => {
       if (!user) {
         setProfile(null);
+        setPaymentInfo(null);
         setLoading(false);
         return;
       }
 
       try {
-        const { data, error: fetchError } = await supabase
+        // Fetch profile data
+        const { data: profileData, error: fetchError } = await supabase
           .from('profiles')
           .select('*')
           .eq('user_id', user.id)
           .maybeSingle();
 
         if (fetchError) throw fetchError;
-        setProfile(data);
+        setProfile(profileData);
+
+        // Fetch payment info separately (owner-only access)
+        if (profileData?.id) {
+          const { data: paymentData, error: paymentError } = await supabase
+            .from('payment_info')
+            .select('vpa_address')
+            .eq('profile_id', profileData.id)
+            .maybeSingle();
+
+          if (paymentError) {
+            logError('useProfile.fetchPaymentInfo', paymentError);
+          } else {
+            setPaymentInfo(paymentData);
+          }
+        }
       } catch (err) {
         logError('useProfile.fetchProfile', err);
         setError(err as Error);
@@ -59,14 +80,29 @@ export const useProfile = () => {
     
     setLoading(true);
     try {
-      const { data, error: fetchError } = await supabase
+      const { data: profileData, error: fetchError } = await supabase
         .from('profiles')
         .select('*')
         .eq('user_id', user.id)
         .maybeSingle();
 
       if (fetchError) throw fetchError;
-      setProfile(data);
+      setProfile(profileData);
+
+      // Refetch payment info
+      if (profileData?.id) {
+        const { data: paymentData, error: paymentError } = await supabase
+          .from('payment_info')
+          .select('vpa_address')
+          .eq('profile_id', profileData.id)
+          .maybeSingle();
+
+        if (paymentError) {
+          logError('useProfile.refetchPaymentInfo', paymentError);
+        } else {
+          setPaymentInfo(paymentData);
+        }
+      }
     } catch (err) {
       logError('useProfile.refetchProfile', err);
       setError(err as Error);
@@ -83,6 +119,7 @@ export const useProfile = () => {
 
   return { 
     profile, 
+    paymentInfo,
     loading, 
     error, 
     refetchProfile,

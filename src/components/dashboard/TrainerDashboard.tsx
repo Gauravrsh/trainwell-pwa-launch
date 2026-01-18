@@ -18,7 +18,7 @@ interface ClientWithStatus {
 }
 
 export const TrainerDashboard = () => {
-  const { profile } = useProfile();
+  const { profile, paymentInfo } = useProfile();
   const [selectedClient, setSelectedClient] = useState<ClientWithStatus | null>(null);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
 
@@ -275,7 +275,7 @@ export const TrainerDashboard = () => {
           onOpenChange={setShowPaymentModal}
           clientName={`Client #${selectedClient.unique_id}`}
           clientId={selectedClient.unique_id}
-          trainerVpa={profile?.vpa_address || ''}
+          trainerVpa={paymentInfo?.vpa_address || ''}
         />
       )}
     </div>
