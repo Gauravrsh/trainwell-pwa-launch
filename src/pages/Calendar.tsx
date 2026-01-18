@@ -82,20 +82,17 @@ const Calendar = () => {
     enabled: !!profile && !isTrainer,
   });
 
-  // Fetch trainer's clients using secure view (excludes payment info)
+  // Fetch trainer's clients using secure RPC (excludes payment info)
   const { data: clients = [] } = useQuery({
     queryKey: ['trainer-clients', profile?.id],
     queryFn: async () => {
       if (!profile) return [];
       
-      // Use secure view that excludes sensitive payment info (vpa_address)
-      const { data, error } = await supabase
-        .from('client_profiles_for_trainer')
-        .select('id, unique_id, full_name')
-        .eq('trainer_id', profile.id);
+      // Use secure RPC that returns only non-sensitive client data
+      const { data, error } = await supabase.rpc('get_trainer_clients');
       
       if (error) throw error;
-      return data as Client[];
+      return (data || []) as Client[];
     },
     enabled: !!profile && isTrainer,
   });
