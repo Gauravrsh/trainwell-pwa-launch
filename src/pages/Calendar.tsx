@@ -544,8 +544,14 @@ const Calendar = () => {
   // Ref for current section to auto-scroll
   const currentSectionRef = useRef<HTMLDivElement>(null);
 
-  // Auto-scroll to current training cycle on mount
+  // Auto-scroll to current training cycle on mount or when client is selected (for trainers)
   useEffect(() => {
+    // For trainers, only scroll when a client is selected
+    // For clients, scroll on mount
+    const shouldScroll = isTrainer ? !!selectedClientId : true;
+    
+    if (!shouldScroll) return;
+
     // Small delay to ensure DOM is rendered
     const timer = setTimeout(() => {
       if (currentSectionRef.current) {
@@ -554,10 +560,10 @@ const Calendar = () => {
           block: 'center'
         });
       }
-    }, 100);
+    }, 150);
 
     return () => clearTimeout(timer);
-  }, []);
+  }, [isTrainer, selectedClientId]);
 
   return (
     <div className="min-h-screen bg-background pb-24">
