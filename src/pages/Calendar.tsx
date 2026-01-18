@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, useRef } from 'react';
+import { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { format, addDays, subDays, startOfDay, isSameDay, isAfter, isBefore } from 'date-fns';
 import { ChevronLeft, ChevronRight, Plus, Dumbbell, Check, Clock, X, AlertCircle, Utensils, UserPlus, Share2 } from 'lucide-react';
@@ -541,29 +541,20 @@ const Calendar = () => {
   // Use client workouts for trainer view, regular workouts for client view
   const displayWorkouts = isTrainer && selectedClientId ? clientWorkouts : workouts;
 
-  // Ref for current section to auto-scroll
-  const currentSectionRef = useRef<HTMLDivElement>(null);
-
-  // Auto-scroll to current training cycle on mount or when client is selected (for trainers)
-  useEffect(() => {
-    // For trainers, only scroll when a client is selected
-    // For clients, scroll on mount
-    const shouldScroll = isTrainer ? !!selectedClientId : true;
-    
-    if (!shouldScroll) return;
-
-    // Small delay to ensure DOM is rendered
-    const timer = setTimeout(() => {
-      if (currentSectionRef.current) {
-        currentSectionRef.current.scrollIntoView({
-          behavior: 'smooth',
-          block: 'center'
+  // Callback ref for current section to auto-scroll when element mounts
+  const currentSectionRef = useCallback((node: HTMLDivElement | null) => {
+    if (node) {
+      // Use requestAnimationFrame to ensure layout is complete
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          node.scrollIntoView({
+            behavior: 'smooth',
+            block: 'center'
+          });
         });
-      }
-    }, 150);
-
-    return () => clearTimeout(timer);
-  }, [isTrainer, selectedClientId]);
+      });
+    }
+  }, [selectedClientId]); // Re-create callback when client changes to trigger scroll
 
   return (
     <div className="min-h-screen bg-background pb-24">
