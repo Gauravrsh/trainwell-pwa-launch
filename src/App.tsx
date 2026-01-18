@@ -12,6 +12,7 @@ import RoleSelection from "./pages/RoleSelection";
 import ProfileSetup from "./pages/ProfileSetup";
 import Home from "./pages/Home";
 import Calendar from "./pages/Calendar";
+import Plans from "./pages/Plans";
 import Refer from "./pages/Refer";
 import Profile from "./pages/Profile";
 import NotFound from "./pages/NotFound";
@@ -158,6 +159,14 @@ const AppRoutes = () => (
       element={
         <ProtectedRoute>
           <Home />
+        </ProtectedRoute>
+      }
+    />
+    <Route
+      path="/plans"
+      element={
+        <ProtectedRoute>
+          <Plans />
         </ProtectedRoute>
       }
     />
