@@ -109,13 +109,6 @@ export type Database = {
             foreignKeyName: "food_logs_client_id_fkey"
             columns: ["client_id"]
             isOneToOne: false
-            referencedRelation: "client_profiles_for_trainer"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "food_logs_client_id_fkey"
-            columns: ["client_id"]
-            isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
@@ -220,13 +213,6 @@ export type Database = {
             foreignKeyName: "profiles_trainer_id_fkey"
             columns: ["trainer_id"]
             isOneToOne: false
-            referencedRelation: "client_profiles_for_trainer"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "profiles_trainer_id_fkey"
-            columns: ["trainer_id"]
-            isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
@@ -268,13 +254,6 @@ export type Database = {
           updated_at?: string | null
         }
         Relationships: [
-          {
-            foreignKeyName: "subscription_cycles_client_id_fkey"
-            columns: ["client_id"]
-            isOneToOne: false
-            referencedRelation: "client_profiles_for_trainer"
-            referencedColumns: ["id"]
-          },
           {
             foreignKeyName: "subscription_cycles_client_id_fkey"
             columns: ["client_id"]
@@ -321,13 +300,6 @@ export type Database = {
             foreignKeyName: "workouts_client_id_fkey"
             columns: ["client_id"]
             isOneToOne: false
-            referencedRelation: "client_profiles_for_trainer"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "workouts_client_id_fkey"
-            columns: ["client_id"]
-            isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
@@ -342,70 +314,6 @@ export type Database = {
       }
     }
     Views: {
-      client_profiles_for_trainer: {
-        Row: {
-          city: string | null
-          created_at: string | null
-          date_of_birth: string | null
-          full_name: string | null
-          height_cm: number | null
-          id: string | null
-          profile_complete: boolean | null
-          trainer_id: string | null
-          unique_id: string | null
-          updated_at: string | null
-          weight_kg: number | null
-        }
-        Insert: {
-          city?: string | null
-          created_at?: string | null
-          date_of_birth?: string | null
-          full_name?: string | null
-          height_cm?: number | null
-          id?: string | null
-          profile_complete?: boolean | null
-          trainer_id?: string | null
-          unique_id?: string | null
-          updated_at?: string | null
-          weight_kg?: number | null
-        }
-        Update: {
-          city?: string | null
-          created_at?: string | null
-          date_of_birth?: string | null
-          full_name?: string | null
-          height_cm?: number | null
-          id?: string | null
-          profile_complete?: boolean | null
-          trainer_id?: string | null
-          unique_id?: string | null
-          updated_at?: string | null
-          weight_kg?: number | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "profiles_trainer_id_fkey"
-            columns: ["trainer_id"]
-            isOneToOne: false
-            referencedRelation: "client_profiles_for_trainer"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "profiles_trainer_id_fkey"
-            columns: ["trainer_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "profiles_trainer_id_fkey"
-            columns: ["trainer_id"]
-            isOneToOne: false
-            referencedRelation: "trainers_public"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       trainers_public: {
         Row: {
           created_at: string | null
@@ -445,6 +353,14 @@ export type Database = {
           profile_complete: boolean
           unique_id: string
           weight_kg: number
+        }[]
+      }
+      get_trainer_clients: {
+        Args: never
+        Returns: {
+          full_name: string
+          id: string
+          unique_id: string
         }[]
       }
       get_trainer_profile_id: { Args: { _user_id: string }; Returns: string }

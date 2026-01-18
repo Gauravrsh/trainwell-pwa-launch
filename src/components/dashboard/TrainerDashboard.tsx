@@ -30,11 +30,9 @@ export const TrainerDashboard = () => {
     queryFn: async () => {
       if (!profile) return [];
 
-      // Use secure view that excludes sensitive payment info (vpa_address)
+      // Use secure RPC that returns only non-sensitive client data
       const { data: clients, error: clientsError } = await supabase
-        .from('client_profiles_for_trainer')
-        .select('id, unique_id')
-        .eq('trainer_id', profile.id);
+        .rpc('get_trainer_clients');
 
       if (clientsError) throw clientsError;
       if (!clients?.length) return [];
