@@ -1,6 +1,6 @@
-// Common gym weight training exercises organized by muscle group
+// 100 common gym weight training exercises organized by muscle group
 export const gymExercises = [
-  // Chest
+  // Chest (12)
   "Bench Press",
   "Incline Bench Press",
   "Decline Bench Press",
@@ -12,8 +12,9 @@ export const gymExercises = [
   "Push-Ups",
   "Machine Chest Press",
   "Pec Deck Fly",
+  "Landmine Press",
   
-  // Back
+  // Back (14)
   "Deadlift",
   "Barbell Row",
   "Dumbbell Row",
@@ -26,8 +27,10 @@ export const gymExercises = [
   "Straight Arm Pulldown",
   "Rack Pull",
   "Hyperextension",
+  "Pendlay Row",
+  "Meadows Row",
   
-  // Shoulders
+  // Shoulders (12)
   "Overhead Press",
   "Military Press",
   "Dumbbell Shoulder Press",
@@ -38,8 +41,10 @@ export const gymExercises = [
   "Upright Row",
   "Shrugs",
   "Cable Lateral Raise",
+  "Barbell Shrugs",
+  "Seated Dumbbell Press",
   
-  // Biceps
+  // Biceps (10)
   "Barbell Curl",
   "Dumbbell Curl",
   "Hammer Curl",
@@ -49,8 +54,9 @@ export const gymExercises = [
   "Incline Dumbbell Curl",
   "EZ Bar Curl",
   "Spider Curl",
+  "Reverse Curl",
   
-  // Triceps
+  // Triceps (10)
   "Tricep Pushdown",
   "Skull Crusher",
   "Close Grip Bench Press",
@@ -59,8 +65,10 @@ export const gymExercises = [
   "Diamond Push-Ups",
   "Cable Overhead Extension",
   "Tricep Kickback",
+  "Rope Pushdown",
+  "Bench Dips",
   
-  // Legs - Quadriceps
+  // Legs - Quadriceps (12)
   "Squat",
   "Front Squat",
   "Leg Press",
@@ -70,29 +78,35 @@ export const gymExercises = [
   "Bulgarian Split Squat",
   "Goblet Squat",
   "Sissy Squat",
+  "Box Squat",
+  "Pistol Squat",
+  "Wall Sit",
   
-  // Legs - Hamstrings
+  // Legs - Hamstrings (8)
   "Romanian Deadlift",
   "Stiff Leg Deadlift",
   "Leg Curl",
   "Seated Leg Curl",
   "Good Morning",
   "Glute Ham Raise",
+  "Nordic Curl",
+  "Single Leg Deadlift",
   
-  // Legs - Glutes
+  // Legs - Glutes (6)
   "Hip Thrust",
   "Glute Bridge",
   "Cable Kickback",
   "Step Ups",
   "Sumo Deadlift",
+  "Frog Pumps",
   
-  // Calves
+  // Calves (4)
   "Standing Calf Raise",
   "Seated Calf Raise",
   "Donkey Calf Raise",
   "Calf Press on Leg Press",
   
-  // Core
+  // Core (10)
   "Plank",
   "Hanging Leg Raise",
   "Cable Crunch",
@@ -102,16 +116,19 @@ export const gymExercises = [
   "Dead Bug",
   "Bicycle Crunch",
   "Weighted Sit-Up",
+  "Mountain Climbers",
   
-  // Compound Movements
+  // Compound Movements (8)
   "Clean and Press",
   "Power Clean",
   "Snatch",
   "Thruster",
   "Farmer's Walk",
   "Kettlebell Swing",
+  "Burpees",
+  "Turkish Get-Up",
   
-  // Machine Exercises
+  // Machine Exercises (6)
   "Smith Machine Squat",
   "Smith Machine Bench Press",
   "Cable Fly",
