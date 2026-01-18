@@ -59,7 +59,7 @@ const Calendar = () => {
     return startOfDay(subDays(today, today.getDate() - 1));
   }, []);
 
-  const today = startOfDay(new Date());
+  const today = useMemo(() => startOfDay(new Date()), []);
   const currentCycleStart = cycleStartDate;
   const currentCycleEnd = addDays(currentCycleStart, 29);
   const previousCycleStart = subDays(currentCycleStart, 30);
@@ -541,20 +541,41 @@ const Calendar = () => {
   // Use client workouts for trainer view, regular workouts for client view
   const displayWorkouts = isTrainer && selectedClientId ? clientWorkouts : workouts;
 
-  // Callback ref for current section to auto-scroll when element mounts
-  const currentSectionRef = useCallback((node: HTMLDivElement | null) => {
-    if (node) {
-      // Use requestAnimationFrame to ensure layout is complete
+  // Ensure we only auto-center once per "viewer + selected client + day" combination
+  const lastAutoScrollKeyRef = useRef<string | null>(null);
+
+  const centerScrollToNode = useCallback((node: HTMLElement) => {
+    const rect = node.getBoundingClientRect();
+    const targetTop = rect.top + window.scrollY - window.innerHeight / 2 + rect.height / 2;
+
+    window.scrollTo({
+      top: Math.max(0, targetTop),
+      behavior: 'smooth',
+    });
+  }, []);
+
+  // Callback ref for today's cell; when it mounts we center it in the viewport.
+  const todayCellRef = useCallback(
+    (node: HTMLButtonElement | null) => {
+      if (!node) return;
+      if (isTrainer && !selectedClientId) return;
+
+      const viewerKey = (selectedClientId ?? profile?.id ?? 'self').toString();
+      const dayKey = format(today, 'yyyy-MM-dd');
+      const scrollKey = `${viewerKey}:${dayKey}`;
+
+      if (lastAutoScrollKeyRef.current === scrollKey) return;
+      lastAutoScrollKeyRef.current = scrollKey;
+
+      // Wait for layout + framer-motion initial positioning to settle.
       requestAnimationFrame(() => {
         requestAnimationFrame(() => {
-          node.scrollIntoView({
-            behavior: 'smooth',
-            block: 'center'
-          });
+          centerScrollToNode(node);
         });
       });
-    }
-  }, [selectedClientId]); // Re-create callback when client changes to trigger scroll
+    },
+    [isTrainer, selectedClientId, profile?.id, today, centerScrollToNode]
+  );
 
   return (
     <div className="min-h-screen bg-background pb-24">
@@ -641,7 +662,6 @@ const Calendar = () => {
           return (
             <motion.div
               key={section}
-              ref={isCurrentSection ? currentSectionRef : undefined}
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: sectionIndex * 0.1 }}
@@ -706,6 +726,7 @@ const Calendar = () => {
                     return (
                       <motion.button
                         key={date.toISOString()}
+                        ref={isToday ? todayCellRef : undefined}
                         onClick={() => handleDateClick(date)}
                         whileTap={{ scale: 0.9 }}
                         className={`
