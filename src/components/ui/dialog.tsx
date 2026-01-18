@@ -33,18 +33,18 @@ const DialogContent = React.forwardRef<
 >(({ className, children, ...props }, ref) => (
   <DialogPortal>
     <DialogOverlay />
-    {/* Flex-based centering wrapper for rock-solid alignment on Android Chrome, iOS Safari, and desktop browsers */}
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 pointer-events-none">
+    {/* Cross-browser flex centering wrapper - works on Samsung Internet, Opera, Firefox, UC Browser, Chrome, Safari */}
+    <div className="dialog-wrapper">
       <DialogPrimitive.Content
         ref={ref}
         className={cn(
-          "pointer-events-auto relative flex max-h-[calc(100vh-2rem)] max-h-[calc(100dvh-2rem)] w-full max-w-lg flex-col gap-4 rounded-lg border bg-background p-6 shadow-lg duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95",
+          "dialog-content data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95",
           className,
         )}
         {...props}
       >
         {children}
-        <DialogPrimitive.Close className="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity data-[state=open]:bg-accent data-[state=open]:text-muted-foreground hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none">
+        <DialogPrimitive.Close className="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity data-[state=open]:bg-accent data-[state=open]:text-muted-foreground hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none btn-touch">
           <X className="h-4 w-4" />
           <span className="sr-only">Close</span>
         </DialogPrimitive.Close>
