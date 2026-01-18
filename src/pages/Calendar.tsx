@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { format, addDays, subDays, startOfDay, isSameDay, isAfter, isBefore } from 'date-fns';
 import { ChevronLeft, ChevronRight, Plus, Dumbbell, Check, Clock, X, AlertCircle, Utensils, UserPlus, Share2 } from 'lucide-react';
@@ -541,6 +541,24 @@ const Calendar = () => {
   // Use client workouts for trainer view, regular workouts for client view
   const displayWorkouts = isTrainer && selectedClientId ? clientWorkouts : workouts;
 
+  // Ref for current section to auto-scroll
+  const currentSectionRef = useRef<HTMLDivElement>(null);
+
+  // Auto-scroll to current training cycle on mount
+  useEffect(() => {
+    // Small delay to ensure DOM is rendered
+    const timer = setTimeout(() => {
+      if (currentSectionRef.current) {
+        currentSectionRef.current.scrollIntoView({
+          behavior: 'smooth',
+          block: 'center'
+        });
+      }
+    }, 100);
+
+    return () => clearTimeout(timer);
+  }, []);
+
   return (
     <div className="min-h-screen bg-background pb-24">
       {/* Header */}
@@ -626,6 +644,7 @@ const Calendar = () => {
           return (
             <motion.div
               key={section}
+              ref={isCurrentSection ? currentSectionRef : undefined}
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: sectionIndex * 0.1 }}
