@@ -161,15 +161,21 @@ export const FoodLogModal = ({ open, onOpenChange, onSave }: FoodLogModalProps) 
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="max-w-md max-h-[90dvh] flex flex-col p-0 gap-0 overflow-hidden">
-        <DialogHeader className="p-6 pb-4 border-b border-border shrink-0">
+      <DialogContent className="max-w-md h-[85vh] h-[85dvh] flex flex-col p-0 gap-0">
+        <DialogHeader className="p-6 pb-4 border-b border-border flex-shrink-0">
           <DialogTitle className="flex items-center gap-2">
             <Utensils className="w-5 h-5 text-primary" />
             Log Food
           </DialogTitle>
         </DialogHeader>
 
-        <div className="flex-1 overflow-y-auto overscroll-contain touch-pan-y space-y-4 p-6" style={{ WebkitOverflowScrolling: 'touch' }}>
+        <div 
+          className="flex-1 min-h-0 overflow-y-scroll space-y-4 p-6"
+          style={{ 
+            WebkitOverflowScrolling: 'touch',
+            overscrollBehavior: 'contain'
+          }}
+        >
           {/* Meal Type Selector */}
           <div>
             <Label className="text-xs text-muted-foreground">Meal Type</Label>
@@ -354,7 +360,7 @@ export const FoodLogModal = ({ open, onOpenChange, onSave }: FoodLogModalProps) 
         </div>
 
         {/* Save Button */}
-        <div className="p-6 pt-4 border-t border-border shrink-0">
+        <div className="p-6 pt-4 border-t border-border flex-shrink-0">
           <Button 
             className="w-full h-12 rounded-xl"
             onClick={handleSave}
