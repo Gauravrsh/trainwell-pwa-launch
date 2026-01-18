@@ -59,8 +59,8 @@ export const WorkoutLogModal = ({ open, onOpenChange, onSave, date }: WorkoutLog
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md max-h-[85vh] overflow-hidden flex flex-col">
-        <DialogHeader className="pb-2">
+      <DialogContent className="max-w-md max-h-modal flex flex-col p-0 gap-0">
+        <DialogHeader className="p-6 pb-4 border-b border-border flex-shrink-0">
           <DialogTitle className="flex items-center gap-2">
             <Dumbbell className="w-5 h-5 text-primary" />
             Log Workout
@@ -72,7 +72,7 @@ export const WorkoutLogModal = ({ open, onOpenChange, onSave, date }: WorkoutLog
           )}
         </DialogHeader>
 
-        <div className="flex-1 overflow-y-auto space-y-4 py-4">
+        <div className="dialog-scroll-area space-y-4 p-6">
           <AnimatePresence mode="popLayout">
             {exercises.map((exercise, index) => (
               <motion.div
@@ -167,8 +167,8 @@ export const WorkoutLogModal = ({ open, onOpenChange, onSave, date }: WorkoutLog
           </Button>
         </div>
 
-        <div className="pt-4 border-t border-border">
-          <Button 
+        <div className="dialog-footer p-6 pt-4 border-t border-border">
+          <Button
             className="w-full h-12 rounded-xl"
             onClick={handleSave}
             disabled={!exercises.some(e => e.name.trim())}
