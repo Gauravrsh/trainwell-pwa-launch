@@ -170,7 +170,7 @@ export const FoodLogModal = ({ open, onOpenChange, onSave }: FoodLogModalProps) 
         </DialogHeader>
 
         <div 
-          className="flex-1 min-h-0 overflow-y-scroll space-y-4 p-6"
+          className="flex-1 min-h-0 overflow-y-auto overscroll-contain touch-pan-y space-y-4 p-6"
           style={{ 
             WebkitOverflowScrolling: 'touch',
             overscrollBehavior: 'contain'
@@ -360,7 +360,7 @@ export const FoodLogModal = ({ open, onOpenChange, onSave }: FoodLogModalProps) 
         </div>
 
         {/* Save Button */}
-        <div className="p-6 pt-4 border-t border-border flex-shrink-0">
+        <div className="p-6 pt-4 border-t border-border flex-shrink-0 safe-bottom">
           <Button 
             className="w-full h-12 rounded-xl"
             onClick={handleSave}

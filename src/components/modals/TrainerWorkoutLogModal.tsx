@@ -257,7 +257,7 @@ export const TrainerWorkoutLogModal = ({
         </DialogHeader>
 
         <div 
-          className="flex-1 min-h-0 overflow-y-scroll px-6 py-4"
+          className="flex-1 min-h-0 overflow-y-auto overscroll-contain touch-pan-y px-6 py-4"
           style={{ 
             WebkitOverflowScrolling: 'touch',
             overscrollBehavior: 'contain'
@@ -483,7 +483,7 @@ export const TrainerWorkoutLogModal = ({
 
         {/* Footer */}
         {!isReadOnly && (
-          <div className="p-6 pt-4 border-t border-border flex-shrink-0">
+          <div className="p-6 pt-4 border-t border-border flex-shrink-0 safe-bottom">
             <Button
               onClick={handleSave}
               disabled={!hasValidExercises}
