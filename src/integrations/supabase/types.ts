@@ -114,6 +114,38 @@ export type Database = {
           },
         ]
       }
+      payment_info: {
+        Row: {
+          created_at: string | null
+          id: string
+          profile_id: string
+          updated_at: string | null
+          vpa_address: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          profile_id: string
+          updated_at?: string | null
+          vpa_address?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          profile_id?: string
+          updated_at?: string | null
+          vpa_address?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payment_info_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       payments: {
         Row: {
           amount: number
@@ -166,7 +198,6 @@ export type Database = {
           unique_id: string
           updated_at: string | null
           user_id: string
-          vpa_address: string | null
           weight_kg: number | null
         }
         Insert: {
@@ -182,7 +213,6 @@ export type Database = {
           unique_id: string
           updated_at?: string | null
           user_id: string
-          vpa_address?: string | null
           weight_kg?: number | null
         }
         Update: {
@@ -198,7 +228,6 @@ export type Database = {
           unique_id?: string
           updated_at?: string | null
           user_id?: string
-          vpa_address?: string | null
           weight_kg?: number | null
         }
         Relationships: [
