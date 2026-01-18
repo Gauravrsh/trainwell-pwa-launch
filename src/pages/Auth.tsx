@@ -8,7 +8,6 @@ import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
 import { sanitizeErrorMessage } from '@/lib/errorUtils';
 import { z } from 'zod';
-import logoTW from '@/assets/logo-tw.png';
 
 type AuthMode = 'signin' | 'signup' | 'forgot';
 
@@ -164,9 +163,12 @@ export default function Auth() {
             initial={{ scale: 0.8 }}
             animate={{ scale: 1 }}
             transition={{ type: 'spring', stiffness: 200 }}
-            className="inline-flex items-center justify-center mb-6"
+            className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-primary/10 mb-6"
           >
-            <img src={logoTW} alt="TrainWell" className="w-24 h-24 object-contain" />
+            <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
+              <path d="M8 16L12 12L16 16L20 12L24 16" stroke="currentColor" className="text-primary" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"/>
+              <path d="M8 20L12 16L16 20L20 16L24 20" stroke="currentColor" className="text-primary" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" opacity="0.5"/>
+            </svg>
           </motion.div>
           <h1 className="text-3xl font-bold text-foreground mb-2">TrainWell</h1>
           <p className="text-muted-foreground">Your fitness journey starts here</p>
