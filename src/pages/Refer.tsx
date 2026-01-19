@@ -209,15 +209,13 @@ export default function Refer() {
             </div>
             {/* Elite Trainer Reward Row */}
             <div className="grid grid-cols-3 text-sm text-center bg-primary/5 border-l-2 border-l-primary">
-              <div className="px-3 py-3 border-r border-border text-foreground font-medium">Annual</div>
-              <div className="px-3 py-3 border-r border-border text-foreground font-medium">Annual</div>
-              <div className="px-3 py-3 text-primary font-bold">+90 Days</div>
+              <div className="px-3 py-4 border-r border-border text-foreground font-medium">Annual</div>
+              <div className="px-3 py-4 border-r border-border text-foreground font-medium">Annual</div>
+              <div className="px-3 py-4 flex flex-col items-center gap-1">
+                <span className="text-primary font-bold">+90 Days</span>
+                <span className="text-xs text-primary font-medium">⭐ Elite Trainer Reward</span>
+              </div>
             </div>
-          </div>
-          {/* Elite Label */}
-          <div className="bg-primary/10 px-3 py-2.5 text-xs text-primary font-medium flex items-center gap-1.5 border-t border-primary/20">
-            <span>⭐</span>
-            <span>Elite Trainer Reward</span>
           </div>
         </div>
       </motion.div>
