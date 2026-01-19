@@ -1,9 +1,12 @@
 import { useProfile } from '@/hooks/useProfile';
 import { TrainerDashboard } from '@/components/dashboard/TrainerDashboard';
 import { ClientDashboard } from '@/components/dashboard/ClientDashboard';
+import { InstallPromptModal } from '@/components/modals/InstallPromptModal';
+import { useInstallPrompt } from '@/hooks/useInstallPrompt';
 
 export default function Home() {
   const { profile, loading, isTrainer } = useProfile();
+  const { shouldShow, dismiss, remindLater } = useInstallPrompt(profile?.created_at ?? null);
 
   if (loading) {
     return (
@@ -15,8 +18,18 @@ export default function Home() {
 
   // Show appropriate dashboard based on role
   if (isTrainer) {
-    return <TrainerDashboard />;
+    return (
+      <>
+        <TrainerDashboard />
+        <InstallPromptModal open={shouldShow} onClose={dismiss} onRemindLater={remindLater} />
+      </>
+    );
   }
 
-  return <ClientDashboard />;
+  return (
+    <>
+      <ClientDashboard />
+      <InstallPromptModal open={shouldShow} onClose={dismiss} onRemindLater={remindLater} />
+    </>
+  );
 }
