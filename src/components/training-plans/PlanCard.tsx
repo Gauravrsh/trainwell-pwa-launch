@@ -179,6 +179,15 @@ export function PlanCard({
                   </DropdownMenuItem>
                 </>
               )}
+              {(plan.status === 'completed' || plan.status === 'cancelled') && (
+                <DropdownMenuItem 
+                  onClick={() => onDelete?.(plan.id)}
+                  className="text-destructive focus:text-destructive"
+                >
+                  <Trash2 className="w-4 h-4 mr-2" />
+                  Delete Plan
+                </DropdownMenuItem>
+              )}
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
