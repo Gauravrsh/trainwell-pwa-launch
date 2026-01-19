@@ -183,27 +183,41 @@ export default function Refer() {
         <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-4">
           Reward Matrix
         </h3>
-        <div className="bg-card rounded-2xl p-4 border border-border space-y-3">
-          <div className="flex justify-between items-center text-sm">
-            <span className="text-muted-foreground">Your Plan → Their Plan</span>
-            <span className="text-muted-foreground font-medium">Reward</span>
+        <div className="rounded-2xl overflow-hidden border border-border">
+          {/* Table Header */}
+          <div className="grid grid-cols-3 bg-secondary/80 text-xs font-semibold text-muted-foreground">
+            <div className="px-3 py-2.5 border-r border-border">Your Plan</div>
+            <div className="px-3 py-2.5 border-r border-border">Their Plan</div>
+            <div className="px-3 py-2.5 text-right">Reward</div>
           </div>
-          <div className="h-px bg-border" />
-          <div className="flex justify-between items-center text-sm">
-            <span className="text-foreground">Monthly → Monthly</span>
-            <span className="text-primary font-semibold">+15 Days</span>
+          {/* Table Body */}
+          <div className="divide-y divide-border bg-card">
+            <div className="grid grid-cols-3 text-sm">
+              <div className="px-3 py-3 border-r border-border text-foreground">Monthly</div>
+              <div className="px-3 py-3 border-r border-border text-foreground">Monthly</div>
+              <div className="px-3 py-3 text-right text-primary font-semibold">+15 Days</div>
+            </div>
+            <div className="grid grid-cols-3 text-sm">
+              <div className="px-3 py-3 border-r border-border text-foreground">Monthly</div>
+              <div className="px-3 py-3 border-r border-border text-foreground">Annual</div>
+              <div className="px-3 py-3 text-right text-primary font-semibold">+30 Days</div>
+            </div>
+            <div className="grid grid-cols-3 text-sm">
+              <div className="px-3 py-3 border-r border-border text-foreground">Annual</div>
+              <div className="px-3 py-3 border-r border-border text-foreground">Monthly</div>
+              <div className="px-3 py-3 text-right text-primary font-semibold">+30 Days</div>
+            </div>
+            {/* Elite Trainer Reward Row */}
+            <div className="grid grid-cols-3 text-sm bg-primary/5 border-l-2 border-l-primary">
+              <div className="px-3 py-3 border-r border-border text-foreground font-medium">Annual</div>
+              <div className="px-3 py-3 border-r border-border text-foreground font-medium">Annual</div>
+              <div className="px-3 py-3 text-right text-primary font-bold">+90 Days</div>
+            </div>
           </div>
-          <div className="flex justify-between items-center text-sm">
-            <span className="text-foreground">Monthly → Annual</span>
-            <span className="text-primary font-semibold">+30 Days</span>
-          </div>
-          <div className="flex justify-between items-center text-sm">
-            <span className="text-foreground">Annual → Monthly</span>
-            <span className="text-primary font-semibold">+30 Days</span>
-          </div>
-          <div className="flex justify-between items-center text-sm bg-primary/5 -mx-4 px-4 py-2 rounded-xl">
-            <span className="text-foreground font-medium">Annual → Annual</span>
-            <span className="text-primary font-bold">+90 Days ⭐</span>
+          {/* Elite Label */}
+          <div className="bg-primary/10 px-3 py-2.5 text-xs text-primary font-medium flex items-center gap-1.5 border-t border-primary/20">
+            <span>⭐</span>
+            <span>Elite Trainer Reward</span>
           </div>
         </div>
       </motion.div>
