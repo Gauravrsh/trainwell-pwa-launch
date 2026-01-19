@@ -183,6 +183,49 @@ export default function Refer() {
         <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-4">
           Reward Matrix
         </h3>
+        {/* Elite Trainer Reward - Featured Card */}
+        <div className="relative mb-4 p-4 rounded-2xl bg-gradient-to-br from-primary/15 via-primary/10 to-primary/5 border-2 border-primary/40 overflow-hidden">
+          {/* Decorative elements */}
+          <div className="absolute top-0 right-0 w-24 h-24 bg-primary/10 rounded-full blur-2xl -translate-y-1/2 translate-x-1/2" />
+          <div className="absolute bottom-0 left-0 w-16 h-16 bg-primary/10 rounded-full blur-xl translate-y-1/2 -translate-x-1/2" />
+          
+          {/* Best Value Badge */}
+          <div className="absolute -top-px -right-px">
+            <div className="bg-primary text-primary-foreground text-[10px] font-bold uppercase tracking-wider px-3 py-1 rounded-bl-xl rounded-tr-xl">
+              Best Value
+            </div>
+          </div>
+          
+          <div className="relative flex items-center gap-4">
+            {/* Star icon */}
+            <div className="flex-shrink-0 w-14 h-14 rounded-2xl bg-primary/20 flex items-center justify-center">
+              <span className="text-2xl">⭐</span>
+            </div>
+            
+            {/* Content */}
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2 mb-1">
+                <h4 className="text-sm font-bold text-foreground">Elite Trainer Reward</h4>
+              </div>
+              <p className="text-xs text-muted-foreground mb-2">
+                Annual Plan → Annual Referral
+              </p>
+              <div className="flex items-baseline gap-1">
+                <span className="text-2xl font-bold text-primary">+90</span>
+                <span className="text-sm font-semibold text-primary">Days</span>
+              </div>
+            </div>
+          </div>
+          
+          {/* Bottom nudge */}
+          <div className="relative mt-3 pt-3 border-t border-primary/20">
+            <p className="text-xs text-primary/80 font-medium text-center">
+              🚀 6× more reward than standard referrals
+            </p>
+          </div>
+        </div>
+
+        {/* Standard Rewards Table */}
         <div className="rounded-2xl overflow-hidden border border-border">
           {/* Table Header */}
           <div className="grid grid-cols-3 bg-secondary/80 text-xs font-semibold text-muted-foreground text-center">
@@ -207,17 +250,6 @@ export default function Refer() {
               <div className="px-3 py-3 border-r border-border text-foreground">Monthly</div>
               <div className="px-3 py-3 text-primary font-semibold">+30 Days</div>
             </div>
-            {/* Elite Trainer Reward Row */}
-            <div className="grid grid-cols-3 text-sm text-center bg-primary/5 border-l-2 border-l-primary">
-              <div className="px-3 py-3 border-r border-border text-foreground font-medium">Annual</div>
-              <div className="px-3 py-3 border-r border-border text-foreground font-medium">Annual</div>
-              <div className="px-3 py-3 text-primary font-bold">+90 Days</div>
-            </div>
-          </div>
-          {/* Elite Label */}
-          <div className="bg-primary/10 px-3 py-2.5 text-xs text-primary font-medium flex items-center gap-1.5 border-t border-primary/20">
-            <span>⭐</span>
-            <span>Elite Trainer Reward</span>
           </div>
         </div>
       </motion.div>
