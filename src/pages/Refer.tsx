@@ -185,33 +185,33 @@ export default function Refer() {
         </h3>
         <div className="rounded-2xl overflow-hidden border border-border">
           {/* Table Header */}
-          <div className="grid grid-cols-3 bg-secondary/80 text-xs font-semibold text-muted-foreground">
+          <div className="grid grid-cols-3 bg-secondary/80 text-xs font-semibold text-muted-foreground text-center">
             <div className="px-3 py-2.5 border-r border-border">Your Plan</div>
             <div className="px-3 py-2.5 border-r border-border">Their Plan</div>
-            <div className="px-3 py-2.5 text-right">Reward</div>
+            <div className="px-3 py-2.5">Your Reward</div>
           </div>
           {/* Table Body */}
           <div className="divide-y divide-border bg-card">
-            <div className="grid grid-cols-3 text-sm">
+            <div className="grid grid-cols-3 text-sm text-center">
               <div className="px-3 py-3 border-r border-border text-foreground">Monthly</div>
               <div className="px-3 py-3 border-r border-border text-foreground">Monthly</div>
-              <div className="px-3 py-3 text-right text-primary font-semibold">+15 Days</div>
+              <div className="px-3 py-3 text-primary font-semibold">+15 Days</div>
             </div>
-            <div className="grid grid-cols-3 text-sm">
+            <div className="grid grid-cols-3 text-sm text-center">
               <div className="px-3 py-3 border-r border-border text-foreground">Monthly</div>
               <div className="px-3 py-3 border-r border-border text-foreground">Annual</div>
-              <div className="px-3 py-3 text-right text-primary font-semibold">+30 Days</div>
+              <div className="px-3 py-3 text-primary font-semibold">+30 Days</div>
             </div>
-            <div className="grid grid-cols-3 text-sm">
+            <div className="grid grid-cols-3 text-sm text-center">
               <div className="px-3 py-3 border-r border-border text-foreground">Annual</div>
               <div className="px-3 py-3 border-r border-border text-foreground">Monthly</div>
-              <div className="px-3 py-3 text-right text-primary font-semibold">+30 Days</div>
+              <div className="px-3 py-3 text-primary font-semibold">+30 Days</div>
             </div>
             {/* Elite Trainer Reward Row */}
-            <div className="grid grid-cols-3 text-sm bg-primary/5 border-l-2 border-l-primary">
+            <div className="grid grid-cols-3 text-sm text-center bg-primary/5 border-l-2 border-l-primary">
               <div className="px-3 py-3 border-r border-border text-foreground font-medium">Annual</div>
               <div className="px-3 py-3 border-r border-border text-foreground font-medium">Annual</div>
-              <div className="px-3 py-3 text-right text-primary font-bold">+90 Days</div>
+              <div className="px-3 py-3 text-primary font-bold">+90 Days</div>
             </div>
           </div>
           {/* Elite Label */}
