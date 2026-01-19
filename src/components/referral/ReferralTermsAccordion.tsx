@@ -32,6 +32,29 @@ export function ReferralTermsAccordion() {
               Benefits are determined by the Referrer's current plan status and the Referee's 
               chosen plan at the time of successful payment.
             </p>
+            {/* Elite Trainer Reward - Featured */}
+            <div className="relative mb-3 p-3 rounded-xl bg-gradient-to-br from-primary/15 via-primary/10 to-primary/5 border border-primary/30 overflow-hidden">
+              <div className="absolute -top-px -right-px">
+                <div className="bg-primary text-primary-foreground text-[8px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-bl-lg rounded-tr-lg">
+                  Best Value
+                </div>
+              </div>
+              <div className="flex items-center gap-3">
+                <div className="flex-shrink-0 w-10 h-10 rounded-xl bg-primary/20 flex items-center justify-center">
+                  <span className="text-lg">⭐</span>
+                </div>
+                <div className="flex-1">
+                  <p className="text-xs font-bold text-foreground">Elite Trainer Reward</p>
+                  <p className="text-[10px] text-muted-foreground">Annual → Annual</p>
+                </div>
+                <div className="text-right">
+                  <span className="text-lg font-bold text-primary">+90</span>
+                  <span className="text-xs font-semibold text-primary ml-0.5">Days</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Standard Rewards Table */}
             <div className="rounded-xl overflow-hidden border border-border">
               {/* Table Header */}
               <div className="grid grid-cols-3 bg-secondary/80 text-xs font-semibold text-muted-foreground text-center">
@@ -56,17 +79,6 @@ export function ReferralTermsAccordion() {
                   <div className="px-3 py-2.5 border-r border-border text-foreground">Monthly</div>
                   <div className="px-3 py-2.5 text-primary font-semibold">+30 Days</div>
                 </div>
-                {/* Elite Trainer Reward Row */}
-                <div className="grid grid-cols-3 text-xs text-center bg-primary/5 border-l-2 border-l-primary">
-                  <div className="px-3 py-2.5 border-r border-border text-foreground font-medium">Annual</div>
-                  <div className="px-3 py-2.5 border-r border-border text-foreground font-medium">Annual</div>
-                  <div className="px-3 py-2.5 text-primary font-bold">+90 Days</div>
-                </div>
-              </div>
-              {/* Elite Label */}
-              <div className="bg-primary/10 px-3 py-2 text-xs text-primary font-medium flex items-center gap-1.5 border-t border-primary/20">
-                <span>⭐</span>
-                <span>Elite Trainer Reward — Annual subscribers referring Annual plans</span>
               </div>
             </div>
           </div>
