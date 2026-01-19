@@ -15,6 +15,7 @@ import Calendar from "./pages/Calendar";
 import Plans from "./pages/Plans";
 import Refer from "./pages/Refer";
 import Profile from "./pages/Profile";
+import Terms from "./pages/Terms";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -183,6 +184,14 @@ const AppRoutes = () => (
       element={
         <ProtectedRoute>
           <Profile />
+        </ProtectedRoute>
+      }
+    />
+    <Route
+      path="/terms"
+      element={
+        <ProtectedRoute>
+          <Terms />
         </ProtectedRoute>
       }
     />

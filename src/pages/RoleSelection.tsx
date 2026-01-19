@@ -38,6 +38,22 @@ const RoleSelection = () => {
       
       if (idError) throw idError;
 
+      // Check for trainer referral code (for trainer signups)
+      const referralTrainerCode = localStorage.getItem('referralTrainerCode');
+      let referredByTrainerId: string | null = null;
+
+      if (role === 'trainer' && referralTrainerCode) {
+        // Look up the referrer trainer by their unique_id
+        const { data: referrerData } = await supabase
+          .rpc('lookup_trainer_by_unique_id', { p_unique_id: referralTrainerCode });
+        
+        if (referrerData && referrerData.length > 0) {
+          referredByTrainerId = referrerData[0].id;
+        }
+        // Clear the referral code after use
+        localStorage.removeItem('referralTrainerCode');
+      }
+
       // Check if profile exists
       const { data: existingProfile } = await supabase
         .from('profiles')
@@ -47,26 +63,62 @@ const RoleSelection = () => {
 
       if (existingProfile) {
         // Update existing profile
+        const updatePayload = referredByTrainerId
+          ? { 
+              role,
+              unique_id: newId,
+              referred_by_trainer_id: referredByTrainerId
+            }
+          : { 
+              role,
+              unique_id: newId 
+            };
+        
         const { error: updateError } = await supabase
           .from('profiles')
-          .update({ 
-            role,
-            unique_id: newId 
-          })
+          .update(updatePayload)
           .eq('user_id', user.id);
 
         if (updateError) throw updateError;
       } else {
         // Insert new profile
+        const insertPayload = referredByTrainerId 
+          ? { 
+              user_id: user.id,
+              role,
+              unique_id: newId,
+              referred_by_trainer_id: referredByTrainerId
+            }
+          : { 
+              user_id: user.id,
+              role,
+              unique_id: newId 
+            };
+        
         const { error: insertError } = await supabase
           .from('profiles')
-          .insert({ 
-            user_id: user.id,
-            role,
-            unique_id: newId 
-          });
+          .insert(insertPayload);
 
         if (insertError) throw insertError;
+      }
+
+      // If this is a referred trainer, create the referral record
+      if (role === 'trainer' && referredByTrainerId) {
+        const { data: newProfile } = await supabase
+          .from('profiles')
+          .select('id')
+          .eq('user_id', user.id)
+          .single();
+
+        if (newProfile) {
+          await supabase
+            .from('trainer_referrals')
+            .insert({
+              referrer_id: referredByTrainerId,
+              referee_id: newProfile.id,
+              status: 'pending',
+            });
+        }
       }
 
       // Store role in localStorage temporarily for profile setup page
