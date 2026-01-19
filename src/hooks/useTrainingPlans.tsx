@@ -93,7 +93,6 @@ export function useTrainingPlans() {
         end_date: planData.endDate,
         total_sessions: planData.totalSessions,
         total_amount: planData.totalAmount,
-        amount_due: planData.billingModel === 'prepaid' ? planData.totalAmount : 0,
         amount_paid: 0,
         notes: planData.notes || null,
         status: 'draft',
