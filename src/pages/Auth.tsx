@@ -26,12 +26,20 @@ export default function Auth() {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
 
-  // Capture trainer invite param and store in localStorage
+  // Capture trainer invite param (for clients) and referral param (for trainers)
   useEffect(() => {
     const trainerCode = searchParams.get('trainer');
+    const referralCode = searchParams.get('ref');
+    
     if (trainerCode) {
       localStorage.setItem('inviteTrainerCode', trainerCode);
-      // If coming from invite, default to signup mode
+      // If coming from client invite, default to signup mode
+      setMode('signup');
+    }
+    
+    if (referralCode) {
+      localStorage.setItem('referralTrainerCode', referralCode);
+      // If coming from trainer referral, default to signup mode
       setMode('signup');
     }
   }, [searchParams]);

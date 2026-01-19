@@ -343,7 +343,9 @@ export type Database = {
           full_name: string | null
           height_cm: number | null
           id: string
+          last_activity_date: string | null
           profile_complete: boolean | null
+          referred_by_trainer_id: string | null
           role: Database["public"]["Enums"]["user_role"]
           trainer_id: string | null
           unique_id: string
@@ -358,7 +360,9 @@ export type Database = {
           full_name?: string | null
           height_cm?: number | null
           id?: string
+          last_activity_date?: string | null
           profile_complete?: boolean | null
+          referred_by_trainer_id?: string | null
           role?: Database["public"]["Enums"]["user_role"]
           trainer_id?: string | null
           unique_id: string
@@ -373,7 +377,9 @@ export type Database = {
           full_name?: string | null
           height_cm?: number | null
           id?: string
+          last_activity_date?: string | null
           profile_complete?: boolean | null
+          referred_by_trainer_id?: string | null
           role?: Database["public"]["Enums"]["user_role"]
           trainer_id?: string | null
           unique_id?: string
@@ -382,6 +388,13 @@ export type Database = {
           weight_kg?: number | null
         }
         Relationships: [
+          {
+            foreignKeyName: "profiles_referred_by_trainer_id_fkey"
+            columns: ["referred_by_trainer_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "profiles_trainer_id_fkey"
             columns: ["trainer_id"]
@@ -494,6 +507,123 @@ export type Database = {
           },
         ]
       }
+      trainer_referrals: {
+        Row: {
+          created_at: string
+          id: string
+          referee_id: string
+          referee_plan_at_reward:
+            | Database["public"]["Enums"]["platform_plan_type"]
+            | null
+          referrer_id: string
+          referrer_plan_at_reward:
+            | Database["public"]["Enums"]["platform_plan_type"]
+            | null
+          reward_days: number | null
+          rewarded_at: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          referee_id: string
+          referee_plan_at_reward?:
+            | Database["public"]["Enums"]["platform_plan_type"]
+            | null
+          referrer_id: string
+          referrer_plan_at_reward?:
+            | Database["public"]["Enums"]["platform_plan_type"]
+            | null
+          reward_days?: number | null
+          rewarded_at?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          referee_id?: string
+          referee_plan_at_reward?:
+            | Database["public"]["Enums"]["platform_plan_type"]
+            | null
+          referrer_id?: string
+          referrer_plan_at_reward?:
+            | Database["public"]["Enums"]["platform_plan_type"]
+            | null
+          reward_days?: number | null
+          rewarded_at?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "trainer_referrals_referee_id_fkey"
+            columns: ["referee_id"]
+            isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "trainer_referrals_referrer_id_fkey"
+            columns: ["referrer_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      trainer_validity_extensions: {
+        Row: {
+          created_at: string
+          days_credited: number
+          days_deducted: number
+          days_remaining: number
+          id: string
+          referral_id: string | null
+          source: string
+          trainer_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          days_credited?: number
+          days_deducted?: number
+          days_remaining?: number
+          id?: string
+          referral_id?: string | null
+          source: string
+          trainer_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          days_credited?: number
+          days_deducted?: number
+          days_remaining?: number
+          id?: string
+          referral_id?: string | null
+          source?: string
+          trainer_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "trainer_validity_extensions_referral_id_fkey"
+            columns: ["referral_id"]
+            isOneToOne: false
+            referencedRelation: "trainer_referrals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "trainer_validity_extensions_trainer_id_fkey"
+            columns: ["trainer_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       workouts: {
         Row: {
           client_id: string
@@ -534,6 +664,17 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      apply_referral_reward: {
+        Args: { p_referral_id: string }
+        Returns: boolean
+      }
+      calculate_referral_reward: {
+        Args: {
+          p_referee_plan: Database["public"]["Enums"]["platform_plan_type"]
+          p_referrer_plan: Database["public"]["Enums"]["platform_plan_type"]
+        }
+        Returns: number
+      }
       generate_unique_id: {
         Args: { p_role: Database["public"]["Enums"]["user_role"] }
         Returns: string
@@ -561,6 +702,16 @@ export type Database = {
         }[]
       }
       get_trainer_profile_id: { Args: { _user_id: string }; Returns: string }
+      get_trainer_referral_stats: {
+        Args: { p_trainer_id: string }
+        Returns: {
+          completed_referrals: number
+          days_remaining: number
+          pending_referrals: number
+          total_days_earned: number
+          total_referrals: number
+        }[]
+      }
       get_trainer_subscription_status: {
         Args: { _trainer_profile_id: string }
         Returns: {
@@ -595,6 +746,10 @@ export type Database = {
           role: Database["public"]["Enums"]["user_role"]
           unique_id: string
         }[]
+      }
+      update_trainer_activity: {
+        Args: { p_trainer_id: string }
+        Returns: undefined
       }
     }
     Enums: {

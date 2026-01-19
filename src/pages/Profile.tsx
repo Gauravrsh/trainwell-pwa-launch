@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion';
-import { User, Settings, Bell, Shield, HelpCircle, LogOut, ChevronRight } from 'lucide-react';
+import { User, Settings, Bell, Shield, HelpCircle, LogOut, ChevronRight, FileText } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useProfile } from '@/hooks/useProfile';
 import { useNavigate } from 'react-router-dom';
@@ -9,6 +9,7 @@ const menuItems = [
   { icon: Settings, label: 'Settings', href: '#' },
   { icon: Bell, label: 'Notifications', href: '#' },
   { icon: Shield, label: 'Privacy', href: '#' },
+  { icon: FileText, label: 'Terms & Conditions', href: '/terms' },
   { icon: HelpCircle, label: 'Help & Support', href: '#' },
 ];
 
@@ -95,10 +96,12 @@ export default function Profile() {
       >
         {menuItems.map((item) => {
           const Icon = item.icon;
+          const isClickable = item.href !== '#';
           return (
             <motion.button
               key={item.label}
               whileTap={{ scale: 0.98 }}
+              onClick={() => isClickable && navigate(item.href)}
               className="w-full flex items-center justify-between px-4 py-4 border-b border-border last:border-b-0"
             >
               <div className="flex items-center gap-3">
