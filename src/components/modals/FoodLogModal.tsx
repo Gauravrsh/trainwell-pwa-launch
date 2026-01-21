@@ -393,7 +393,7 @@ export const FoodLogModal = ({ open, onOpenChange, onSave }: FoodLogModalProps) 
               placeholder="e.g., 2 eggs, 1 slice of toast with butter, glass of orange juice..."
               value={foodText}
               onChange={(e) => setFoodText(e.target.value)}
-              className="mt-1 min-h-[100px]"
+              className="mt-1 min-h-[100px] bg-secondary/50 ring-offset-card"
             />
           </div>
 
