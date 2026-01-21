@@ -11,7 +11,7 @@ const RoleSelection = () => {
   const [loading, setLoading] = useState(false);
   const [selectedRole, setSelectedRole] = useState<'trainer' | 'client' | null>(null);
   const [autoProcessing, setAutoProcessing] = useState(false);
-  const { user } = useAuth();
+  const { user, signOut } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -128,6 +128,23 @@ const RoleSelection = () => {
       navigate('/profile-setup');
     } catch (error: unknown) {
       logError('RoleSelection.handleRoleSelect', error);
+      
+      // Check if this is a foreign key error (user doesn't exist in auth.users)
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      const errorCode = (error as { code?: string })?.code;
+      
+      if (errorCode === '23503' || errorMessage.includes('foreign key constraint')) {
+        // User was deleted - sign them out
+        toast({
+          title: "Session Expired",
+          description: "Please sign in again to continue.",
+          variant: "destructive",
+        });
+        await signOut();
+        navigate('/auth');
+        return;
+      }
+      
       toast({
         title: "Error",
         description: sanitizeErrorMessage(error),
