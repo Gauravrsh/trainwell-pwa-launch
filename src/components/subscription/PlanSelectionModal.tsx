@@ -166,8 +166,8 @@ export function PlanSelectionModal({
           ))}
 
           {/* Razorpay Payment Button Container */}
-          <div className="w-full py-2">
-            <div ref={paymentContainerRef} className="w-full flex justify-center items-center" />
+          <div className="w-full py-2 flex flex-col items-center">
+            <div ref={paymentContainerRef} className="flex justify-center items-center [&_form]:flex [&_form]:justify-center [&_form]:w-full [&_.razorpay-payment-button]:mx-auto" />
             <p className="text-xs text-center text-muted-foreground mt-3">
               Secure payment via Razorpay
             </p>
