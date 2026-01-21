@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
-import { Check, Crown, Sparkles, X } from 'lucide-react';
+import { Check, Crown, Sparkles } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -92,17 +92,9 @@ export function PlanSelectionModal({
     <Dialog open={open} onOpenChange={(isOpen) => !isOpen && onClose()}>
       <DialogContent className="max-w-md p-0 overflow-hidden">
         <DialogHeader className="p-6 pb-0">
-          <div className="flex items-center justify-between">
-            <DialogTitle className="text-xl font-bold">
-              {isRenewal ? 'Renew Your Plan' : 'Choose Your Plan'}
-            </DialogTitle>
-            <button
-              onClick={onClose}
-              className="w-8 h-8 rounded-full bg-muted flex items-center justify-center"
-            >
-              <X className="w-4 h-4" />
-            </button>
-          </div>
+          <DialogTitle className="text-xl font-bold">
+            {isRenewal ? 'Renew Your Plan' : 'Choose Your Plan'}
+          </DialogTitle>
           <p className="text-sm text-muted-foreground mt-1">
             {isRenewal 
               ? 'Select a plan to continue your subscription' 
