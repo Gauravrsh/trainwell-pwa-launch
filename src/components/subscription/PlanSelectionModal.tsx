@@ -1,6 +1,6 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { motion } from 'framer-motion';
-import { Check, Crown, Sparkles } from 'lucide-react';
+import { Check, Crown, Sparkles, ChevronDown } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -57,9 +57,21 @@ export function PlanSelectionModal({
   currentPlan,
 }: PlanSelectionModalProps) {
   const [selectedPlan, setSelectedPlan] = useState<'monthly' | 'annual'>('annual');
+  const [showScrollHint, setShowScrollHint] = useState(false);
   const paymentContainerRef = useRef<HTMLDivElement>(null);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
 
   const selectedPlanData = plans.find(p => p.id === selectedPlan);
+
+  // Check if scroll is needed
+  const checkScrollHint = useCallback(() => {
+    const container = scrollContainerRef.current;
+    if (container) {
+      const hasMoreContent = container.scrollHeight > container.clientHeight;
+      const isAtBottom = container.scrollTop + container.clientHeight >= container.scrollHeight - 10;
+      setShowScrollHint(hasMoreContent && !isAtBottom);
+    }
+  }, []);
 
   // Render Razorpay button when plan changes or modal opens
   useEffect(() => {
@@ -77,6 +89,11 @@ export function PlanSelectionModal({
       script.setAttribute('data-payment_button_id', selectedPlanData.razorpayButtonId);
       script.async = true;
       
+      // Check scroll hint after button loads
+      script.onload = () => {
+        setTimeout(checkScrollHint, 100);
+      };
+      
       form.appendChild(script);
       paymentContainerRef.current.appendChild(form);
     }
@@ -86,12 +103,21 @@ export function PlanSelectionModal({
         paymentContainerRef.current.innerHTML = '';
       }
     };
-  }, [open, selectedPlan, selectedPlanData?.razorpayButtonId]);
+  }, [open, selectedPlan, selectedPlanData?.razorpayButtonId, checkScrollHint]);
+
+  // Check scroll hint on open and resize
+  useEffect(() => {
+    if (open) {
+      setTimeout(checkScrollHint, 100);
+      window.addEventListener('resize', checkScrollHint);
+      return () => window.removeEventListener('resize', checkScrollHint);
+    }
+  }, [open, checkScrollHint]);
 
   return (
     <Dialog open={open} onOpenChange={(isOpen) => !isOpen && onClose()}>
-      <DialogContent className="max-w-md p-0 overflow-hidden">
-        <DialogHeader className="p-6 pb-0">
+      <DialogContent className="max-w-md p-0 overflow-hidden max-h-[90vh] flex flex-col">
+        <DialogHeader className="p-6 pb-0 flex-shrink-0">
           <DialogTitle className="text-xl font-bold">
             {isRenewal ? 'Renew Your Plan' : 'Choose Your Plan'}
           </DialogTitle>
@@ -102,7 +128,12 @@ export function PlanSelectionModal({
           </p>
         </DialogHeader>
 
-        <div className="p-6 space-y-4">
+        {/* Scrollable Content */}
+        <div 
+          ref={scrollContainerRef}
+          onScroll={checkScrollHint}
+          className="flex-1 overflow-y-auto overscroll-contain p-6 space-y-4"
+        >
           {plans.map((plan) => (
             <motion.button
               key={plan.id}
@@ -164,14 +195,32 @@ export function PlanSelectionModal({
               Secure payment via Razorpay
             </p>
           </div>
+
+          {/* Legal Footer */}
+          <div className="bg-muted/50 rounded-lg px-4 py-3">
+            <p className="text-sm text-muted-foreground text-center leading-relaxed">
+              <span className="font-medium">IMP:</span> TrainWell is a health and wellness brand owned and managed by SG Enviro Social Services. All Rights Reserved. TnC Apply.
+            </p>
+          </div>
         </div>
 
-        {/* Legal Footer Strip */}
-        <div className="bg-muted/50 border-t border-border px-4 py-3">
-          <p className="text-sm text-muted-foreground text-center leading-relaxed">
-            <span className="font-medium">IMP:</span> TrainWell is a health and wellness brand owned and managed by SG Enviro Social Services. All Rights Reserved. TnC Apply.
-          </p>
-        </div>
+        {/* Scroll Hint Indicator */}
+        {showScrollHint && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="absolute bottom-0 left-0 right-0 flex justify-center pb-2 pointer-events-none bg-gradient-to-t from-background/90 to-transparent pt-6"
+          >
+            <motion.div
+              animate={{ y: [0, 4, 0] }}
+              transition={{ repeat: Infinity, duration: 1.2, ease: "easeInOut" }}
+              className="flex flex-col items-center text-muted-foreground"
+            >
+              <span className="text-xs mb-1">Scroll for more</span>
+              <ChevronDown className="w-5 h-5" />
+            </motion.div>
+          </motion.div>
+        )}
       </DialogContent>
     </Dialog>
   );
