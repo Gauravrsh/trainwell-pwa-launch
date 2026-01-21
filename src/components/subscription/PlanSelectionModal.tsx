@@ -41,6 +41,7 @@ const plans = [
     period: '/year',
     description: 'Pay for 12 months at ₹499/month',
     badge: 'BEST VALUE',
+    razorpayButtonId: 'pl_S6ccDIYhIw1AaB',
     features: [
       'Everything in Monthly',
       'Priority support',
@@ -160,8 +161,8 @@ export function PlanSelectionModal({
             </motion.button>
           ))}
 
-          {/* Razorpay Payment Button for Monthly Plan */}
-          {selectedPlan === 'monthly' && selectedPlanData?.razorpayButtonId ? (
+          {/* Razorpay Payment Button */}
+          {selectedPlanData?.razorpayButtonId ? (
             <div className="w-full">
               <form className="w-full">
                 <script 
@@ -189,7 +190,7 @@ export function PlanSelectionModal({
               </Button>
 
               <p className="text-xs text-center text-muted-foreground">
-                Annual payment gateway integration coming soon.
+                Payment gateway integration coming soon.
               </p>
             </>
           )}
