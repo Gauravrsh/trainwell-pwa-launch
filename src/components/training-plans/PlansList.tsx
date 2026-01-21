@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Plus, FileText, Filter } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { cn } from '@/lib/utils';
 import { PlanCard } from './PlanCard';
 import { CreatePlanModal } from './CreatePlanModal';
 import { useTrainingPlans, type CreatePlanData } from '@/hooks/useTrainingPlans';
@@ -100,7 +101,7 @@ export function PlansList() {
         </motion.div>
       </div>
 
-      {/* Stats Summary */}
+      {/* Stats Summary - Clickable */}
       <div className="px-4 mb-6">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -109,28 +110,82 @@ export function PlansList() {
           className="grid grid-cols-4 gap-2"
         >
           {[
-            { label: 'Active', count: activePlans.length, color: 'text-success' },
-            { label: 'Draft', count: draftPlans.length, color: 'text-muted-foreground' },
-            { label: 'Paused', count: pausedPlans.length, color: 'text-warning' },
-            { label: 'Done', count: completedPlans.length, color: 'text-primary' },
+            { label: 'Active', count: activePlans.length, color: 'text-success', tab: 'active' },
+            { label: 'Draft', count: draftPlans.length, color: 'text-muted-foreground', tab: 'draft' },
+            { label: 'Paused', count: pausedPlans.length, color: 'text-warning', tab: 'paused' },
+            { label: 'Done', count: completedPlans.length, color: 'text-primary', tab: 'completed' },
           ].map(stat => (
-            <div key={stat.label} className="bg-card rounded-xl p-3 text-center border border-border">
+            <motion.button
+              key={stat.label}
+              onClick={() => setActiveTab(stat.tab)}
+              whileTap={{ scale: 0.95 }}
+              className={cn(
+                'bg-card rounded-xl p-3 text-center border transition-all',
+                activeTab === stat.tab 
+                  ? 'border-primary ring-2 ring-primary/20' 
+                  : 'border-border hover:border-primary/30'
+              )}
+            >
               <p className={`text-xl font-bold ${stat.color}`}>{stat.count}</p>
               <p className="text-xs text-muted-foreground">{stat.label}</p>
-            </div>
+            </motion.button>
           ))}
         </motion.div>
       </div>
 
-      {/* Tabs */}
+      {/* Plans List */}
       <div className="px-4">
-        <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="w-full grid grid-cols-4 mb-4">
-            <TabsTrigger value="active" className="text-xs">Active</TabsTrigger>
-            <TabsTrigger value="draft" className="text-xs">Drafts</TabsTrigger>
-            <TabsTrigger value="paused" className="text-xs">Paused</TabsTrigger>
-            <TabsTrigger value="completed" className="text-xs">Done</TabsTrigger>
-          </TabsList>
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={activeTab}
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -20 }}
+            transition={{ duration: 0.2 }}
+          >
+            {currentPlans.length > 0 ? (
+              <div className="space-y-4">
+                {currentPlans.map(plan => (
+                  <PlanCard
+                    key={plan.id}
+                    plan={plan}
+                    onActivate={activatePlan}
+                    onPause={pausePlan}
+                    onResume={resumePlan}
+                    onCancel={cancelPlan}
+                    onComplete={completePlan}
+                    onDelete={deletePlan}
+                  />
+                ))}
+              </div>
+            ) : (
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                className="text-center py-16"
+              >
+                <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center mx-auto mb-4">
+                  <FileText className="w-8 h-8 text-muted-foreground" />
+                </div>
+                <h3 className="text-lg font-semibold text-foreground mb-2">
+                  No {activeTab} plans
+                </h3>
+                <p className="text-sm text-muted-foreground mb-6">
+                  {activeTab === 'active' 
+                    ? 'Create a new plan to get started'
+                    : `No plans in ${activeTab} status`}
+                </p>
+                {activeTab === 'active' && (
+                  <Button onClick={() => setShowCreateModal(true)} className="gap-2">
+                    <Plus className="w-4 h-4" />
+                    Create Plan
+                  </Button>
+                )}
+              </motion.div>
+            )}
+          </motion.div>
+        </AnimatePresence>
+      </div>
 
           <AnimatePresence mode="wait">
             <motion.div
@@ -182,8 +237,6 @@ export function PlansList() {
               )}
             </motion.div>
           </AnimatePresence>
-        </Tabs>
-      </div>
 
       {/* Create Modal */}
       <CreatePlanModal
