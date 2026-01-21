@@ -165,7 +165,7 @@ export function useTrainerSubscription() {
   const selectPlan = async (planType: 'monthly' | 'annual') => {
     if (!profile) throw new Error('Profile not found');
 
-    const amount = planType === 'monthly' ? 500 : 4990;
+    const amount = planType === 'monthly' ? 499 : 5988;
     const durationDays = planType === 'monthly' ? 30 : 365;
 
     const startDate = new Date();
@@ -199,7 +199,7 @@ export function useTrainerSubscription() {
   const renewPlan = async (planType: 'monthly' | 'annual') => {
     if (!subscription) throw new Error('No existing subscription');
 
-    const amount = planType === 'monthly' ? 500 : 4990;
+    const amount = planType === 'monthly' ? 499 : 5988;
     const durationDays = planType === 'monthly' ? 30 : 365;
 
     // If active, extend from current end date; if expired, start fresh
