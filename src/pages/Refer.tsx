@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Gift, Copy, Share2, Users, Calendar, Loader2, UserPlus } from 'lucide-react';
+import { Gift, Share2, Users, Calendar, Loader2, UserPlus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { useTrainerReferral } from '@/hooks/useTrainerReferral';
@@ -198,25 +198,6 @@ export default function Refer() {
             exit={{ opacity: 0, x: -20 }}
             transition={{ duration: 0.2 }}
           >
-            {/* Trainer Referral Card */}
-            <div className="bg-card rounded-3xl p-6 mb-6 border border-border">
-              <p className="text-sm text-muted-foreground mb-3">Your referral code</p>
-              <div className="flex items-center gap-3">
-                <div className="flex-1 bg-secondary rounded-xl px-4 py-3">
-                  <span className="text-xl font-bold text-foreground tracking-wider">
-                    {referralCode || '------'}
-                  </span>
-                </div>
-                <motion.button
-                  whileTap={{ scale: 0.9 }}
-                  onClick={handleCopyTrainer}
-                  disabled={!referralCode}
-                  className="w-12 h-12 rounded-xl bg-secondary flex items-center justify-center disabled:opacity-50"
-                >
-                  <Copy className="w-5 h-5 text-foreground" />
-                </motion.button>
-              </div>
-            </div>
 
             {/* Stats */}
             <div className="mb-6 grid grid-cols-2 gap-4">
@@ -228,7 +209,7 @@ export default function Refer() {
               <div className="bg-card rounded-2xl p-4 border border-border">
                 <Gift className="w-6 h-6 text-primary mb-2" />
                 <p className="text-2xl font-bold text-foreground">{stats.completedReferrals}</p>
-                <p className="text-sm text-muted-foreground">Rewards Unlocked</p>
+                <p className="text-sm text-muted-foreground">Validity Extension Days Earned</p>
               </div>
             </div>
 

@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { format, addDays, subDays, startOfDay, isSameDay, isAfter, isBefore } from 'date-fns';
+import { format, addDays, subDays, startOfDay, isSameDay, isAfter, isBefore, differenceInDays } from 'date-fns';
 import { ChevronLeft, ChevronRight, Plus, Dumbbell, Check, Clock, X, AlertCircle, Utensils, UserPlus, Share2 } from 'lucide-react';
 import { useProfile } from '@/hooks/useProfile';
 import { supabase } from '@/integrations/supabase/client';
@@ -136,10 +136,14 @@ const Calendar = () => {
       });
     }
     
-    // Future (next 30 days after current cycle)
-    for (let i = 1; i <= 30; i++) {
+    // Future - only immediate next month (days remaining in next month after current cycle ends)
+    const nextMonthStart = addDays(currentCycleEnd, 1);
+    const nextMonthEnd = new Date(nextMonthStart.getFullYear(), nextMonthStart.getMonth() + 1, 0);
+    const daysInNextMonth = differenceInDays(nextMonthEnd, nextMonthStart) + 1;
+    
+    for (let i = 0; i < daysInNextMonth; i++) {
       dates.push({
-        date: addDays(currentCycleEnd, i),
+        date: addDays(nextMonthStart, i),
         section: 'future'
       });
     }
