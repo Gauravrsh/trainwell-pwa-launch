@@ -149,23 +149,12 @@ export default function Refer() {
             exit={{ opacity: 0, x: 20 }}
             transition={{ duration: 0.2 }}
           >
-            {/* Client Invite Card */}
-            <div className="bg-card rounded-3xl p-6 mb-6 border border-border">
-              <p className="text-sm text-muted-foreground mb-3">Your invite code</p>
-              <div className="flex items-center gap-3">
-                <div className="flex-1 bg-secondary rounded-xl px-4 py-3">
-                  <span className="text-xl font-bold text-foreground tracking-wider">
-                    {referralCode || '------'}
-                  </span>
-                </div>
-                <motion.button
-                  whileTap={{ scale: 0.9 }}
-                  onClick={handleCopyClient}
-                  disabled={!referralCode}
-                  className="w-12 h-12 rounded-xl bg-secondary flex items-center justify-center disabled:opacity-50"
-                >
-                  <Copy className="w-5 h-5 text-foreground" />
-                </motion.button>
+            {/* Client Stats */}
+            <div className="mb-6">
+              <div className="bg-card rounded-2xl p-4 border border-border">
+                <Users className="w-6 h-6 text-primary mb-2" />
+                <p className="text-2xl font-bold text-foreground">--</p>
+                <p className="text-sm text-muted-foreground">Clients Invited</p>
               </div>
             </div>
 
@@ -178,15 +167,6 @@ export default function Refer() {
               <Share2 className="w-5 h-5 mr-2" />
               Share Client Invite
             </Button>
-
-            {/* Client Stats */}
-            <div className="mt-8">
-              <div className="bg-card rounded-2xl p-4 border border-border">
-                <Users className="w-6 h-6 text-primary mb-2" />
-                <p className="text-2xl font-bold text-foreground">--</p>
-                <p className="text-sm text-muted-foreground">Clients Invited</p>
-              </div>
-            </div>
 
             {/* How Client Invite Works */}
             <div className="mt-8">
