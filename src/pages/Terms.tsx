@@ -144,6 +144,13 @@ export default function Terms() {
             </AccordionTrigger>
             <AccordionContent className="text-sm text-muted-foreground space-y-4 pb-6">
               <div>
+                <h4 className="font-semibold text-foreground mb-2">Subscription Plans</h4>
+                <ul className="list-disc list-inside space-y-1 ml-2">
+                  <li><span className="font-medium text-foreground">Monthly Plan:</span> ₹499 per month</li>
+                  <li><span className="font-medium text-foreground">Annual Plan:</span> ₹5,988 per year (equivalent to ₹499/month)</li>
+                </ul>
+              </div>
+              <div>
                 <h4 className="font-semibold text-foreground mb-2">Free Trial</h4>
                 <p>
                   New trainers receive a 14-day free trial with access to manage up to 3 clients. 
