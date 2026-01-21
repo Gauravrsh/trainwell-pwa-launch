@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { Check, Crown, Sparkles, X } from 'lucide-react';
 import {
@@ -7,7 +7,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
 
 interface PlanSelectionModalProps {
   open: boolean;
@@ -39,7 +38,7 @@ const plans = [
     price: 5988,
     originalPrice: 5988,
     period: '/year',
-    description: 'Pay for 12 months at ₹499/month',
+    description: 'Pay for 12 months, get 14 months access',
     badge: 'BEST VALUE',
     razorpayButtonId: 'pl_S6ccDIYhIw1AaB',
     features: [
@@ -58,31 +57,36 @@ export function PlanSelectionModal({
   currentPlan,
 }: PlanSelectionModalProps) {
   const [selectedPlan, setSelectedPlan] = useState<'monthly' | 'annual'>('annual');
-  const [isLoading, setIsLoading] = useState(false);
-
-  // Load Razorpay script when modal opens
-  useEffect(() => {
-    if (open) {
-      const existingScript = document.querySelector('script[src="https://checkout.razorpay.com/v1/payment-button.js"]');
-      if (!existingScript) {
-        const script = document.createElement('script');
-        script.src = 'https://checkout.razorpay.com/v1/payment-button.js';
-        script.async = true;
-        document.body.appendChild(script);
-      }
-    }
-  }, [open]);
-
-  const handleConfirm = async () => {
-    try {
-      setIsLoading(true);
-      await onSelectPlan(selectedPlan);
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  const paymentContainerRef = useRef<HTMLDivElement>(null);
 
   const selectedPlanData = plans.find(p => p.id === selectedPlan);
+
+  // Render Razorpay button when plan changes or modal opens
+  useEffect(() => {
+    if (open && selectedPlanData?.razorpayButtonId && paymentContainerRef.current) {
+      // Clear previous button
+      paymentContainerRef.current.innerHTML = '';
+      
+      // Create form element
+      const form = document.createElement('form');
+      form.style.width = '100%';
+      
+      // Create and append script
+      const script = document.createElement('script');
+      script.src = 'https://checkout.razorpay.com/v1/payment-button.js';
+      script.setAttribute('data-payment_button_id', selectedPlanData.razorpayButtonId);
+      script.async = true;
+      
+      form.appendChild(script);
+      paymentContainerRef.current.appendChild(form);
+    }
+    
+    return () => {
+      if (paymentContainerRef.current) {
+        paymentContainerRef.current.innerHTML = '';
+      }
+    };
+  }, [open, selectedPlan, selectedPlanData?.razorpayButtonId]);
 
   return (
     <Dialog open={open} onOpenChange={(isOpen) => !isOpen && onClose()}>
@@ -161,39 +165,13 @@ export function PlanSelectionModal({
             </motion.button>
           ))}
 
-          {/* Razorpay Payment Button */}
-          {selectedPlanData?.razorpayButtonId ? (
-            <div className="w-full">
-              <form className="w-full">
-                <script 
-                  src="https://checkout.razorpay.com/v1/payment-button.js" 
-                  data-payment_button_id={selectedPlanData.razorpayButtonId}
-                  async
-                />
-              </form>
-              <p className="text-xs text-center text-muted-foreground mt-2">
-                Secure payment via Razorpay
-              </p>
-            </div>
-          ) : (
-            <>
-              <Button
-                onClick={handleConfirm}
-                disabled={isLoading}
-                className="w-full bg-primary text-primary-foreground py-6 text-base font-semibold"
-              >
-                {isLoading 
-                  ? 'Processing...' 
-                  : isRenewal 
-                  ? 'Renew Now' 
-                  : 'Subscribe Now'}
-              </Button>
-
-              <p className="text-xs text-center text-muted-foreground">
-                Payment gateway integration coming soon.
-              </p>
-            </>
-          )}
+          {/* Razorpay Payment Button Container */}
+          <div className="w-full">
+            <div ref={paymentContainerRef} className="w-full flex justify-center" />
+            <p className="text-xs text-center text-muted-foreground mt-2">
+              Secure payment via Razorpay
+            </p>
+          </div>
         </div>
       </DialogContent>
     </Dialog>
