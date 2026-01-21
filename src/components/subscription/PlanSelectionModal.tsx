@@ -16,6 +16,12 @@ interface PlanSelectionModalProps {
   currentPlan?: string;
 }
 
+// Whitelist of valid Razorpay button IDs - SECURITY: Never use user-controllable values
+const VALID_RAZORPAY_BUTTON_IDS = new Set([
+  'pl_S6cIGsJyU7Owle', // Monthly plan
+  'pl_S6ccDIYhIw1AaB', // Annual plan
+]);
+
 const plans = [
   {
     id: 'monthly',
@@ -49,6 +55,13 @@ const plans = [
   },
 ];
 
+// Safe DOM clearing function - avoids innerHTML for security
+const clearContainer = (element: HTMLElement): void => {
+  while (element.firstChild) {
+    element.removeChild(element.firstChild);
+  }
+};
+
 export function PlanSelectionModal({
   open,
   onClose,
@@ -75,9 +88,17 @@ export function PlanSelectionModal({
 
   // Render Razorpay button when plan changes or modal opens
   useEffect(() => {
-    if (open && selectedPlanData?.razorpayButtonId && paymentContainerRef.current) {
-      // Clear previous button
-      paymentContainerRef.current.innerHTML = '';
+    const buttonId = selectedPlanData?.razorpayButtonId;
+    
+    if (open && buttonId && paymentContainerRef.current) {
+      // SECURITY: Validate button ID against whitelist before loading external script
+      if (!VALID_RAZORPAY_BUTTON_IDS.has(buttonId)) {
+        console.error('Invalid Razorpay button ID - rejected for security');
+        return;
+      }
+      
+      // Use safe DOM clearing instead of innerHTML
+      clearContainer(paymentContainerRef.current);
       
       // Create form element
       const form = document.createElement('form');
@@ -86,7 +107,7 @@ export function PlanSelectionModal({
       // Create and append script
       const script = document.createElement('script');
       script.src = 'https://checkout.razorpay.com/v1/payment-button.js';
-      script.setAttribute('data-payment_button_id', selectedPlanData.razorpayButtonId);
+      script.setAttribute('data-payment_button_id', buttonId);
       script.async = true;
       
       // Check scroll hint after button loads
@@ -100,7 +121,8 @@ export function PlanSelectionModal({
     
     return () => {
       if (paymentContainerRef.current) {
-        paymentContainerRef.current.innerHTML = '';
+        // Use safe DOM clearing instead of innerHTML
+        clearContainer(paymentContainerRef.current);
       }
     };
   }, [open, selectedPlan, selectedPlanData?.razorpayButtonId, checkScrollHint]);
