@@ -161,9 +161,9 @@ export function CreatePlanModal({
             <Label>Service Type</Label>
             <div className="grid grid-cols-3 gap-2">
               {[
-                { value: 'workout', label: 'Workout', icon: Dumbbell },
-                { value: 'nutrition', label: 'Nutrition', icon: Utensils },
-                { value: 'both', label: 'Both', icon: Dumbbell },
+                { value: 'workout', label: 'Workout', icon: Dumbbell, isBoth: false },
+                { value: 'nutrition', label: 'Nutrition', icon: Utensils, isBoth: false },
+                { value: 'both', label: 'Both', icon: null, isBoth: true },
               ].map(option => (
                 <motion.button
                   key={option.value}
@@ -177,7 +177,14 @@ export function CreatePlanModal({
                       : 'border-border bg-card hover:border-primary/50'
                   )}
                 >
-                  <option.icon className="w-5 h-5" />
+                  {option.isBoth ? (
+                    <div className="flex items-center gap-1.5">
+                      <Dumbbell className="w-5 h-5" />
+                      <Utensils className="w-5 h-5" />
+                    </div>
+                  ) : (
+                    <option.icon className="w-5 h-5" />
+                  )}
                   <span className="text-xs font-medium">{option.label}</span>
                 </motion.button>
               ))}
