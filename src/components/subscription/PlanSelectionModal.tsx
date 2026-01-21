@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Check, Crown, Sparkles, X } from 'lucide-react';
 import {
@@ -21,9 +21,10 @@ const plans = [
   {
     id: 'monthly',
     name: 'Monthly',
-    price: 500,
+    price: 499,
     period: '/month',
     description: 'Pay as you go',
+    razorpayButtonId: 'pl_S6cIGsJyU7Owle',
     features: [
       'Unlimited clients',
       'Workout & nutrition planning',
@@ -35,14 +36,13 @@ const plans = [
   {
     id: 'annual',
     name: 'Annual',
-    price: 4990,
-    originalPrice: 6000,
+    price: 5988,
+    originalPrice: 5988,
     period: '/year',
-    description: 'Pay for 10 months, get 2 free!',
+    description: 'Pay for 12 months at ₹499/month',
     badge: 'BEST VALUE',
     features: [
       'Everything in Monthly',
-      '2 months FREE',
       'Priority support',
       'Early access to new features',
     ],
@@ -59,6 +59,19 @@ export function PlanSelectionModal({
   const [selectedPlan, setSelectedPlan] = useState<'monthly' | 'annual'>('annual');
   const [isLoading, setIsLoading] = useState(false);
 
+  // Load Razorpay script when modal opens
+  useEffect(() => {
+    if (open) {
+      const existingScript = document.querySelector('script[src="https://checkout.razorpay.com/v1/payment-button.js"]');
+      if (!existingScript) {
+        const script = document.createElement('script');
+        script.src = 'https://checkout.razorpay.com/v1/payment-button.js';
+        script.async = true;
+        document.body.appendChild(script);
+      }
+    }
+  }, [open]);
+
   const handleConfirm = async () => {
     try {
       setIsLoading(true);
@@ -67,6 +80,8 @@ export function PlanSelectionModal({
       setIsLoading(false);
     }
   };
+
+  const selectedPlanData = plans.find(p => p.id === selectedPlan);
 
   return (
     <Dialog open={open} onOpenChange={(isOpen) => !isOpen && onClose()}>
@@ -130,11 +145,6 @@ export function PlanSelectionModal({
               <div className="mb-2">
                 <span className="text-2xl font-bold text-foreground">₹{plan.price.toLocaleString()}</span>
                 <span className="text-muted-foreground">{plan.period}</span>
-                {plan.originalPrice && (
-                  <span className="ml-2 text-sm text-muted-foreground line-through">
-                    ₹{plan.originalPrice.toLocaleString()}
-                  </span>
-                )}
               </div>
 
               <p className="text-sm text-muted-foreground mb-3">{plan.description}</p>
@@ -150,21 +160,39 @@ export function PlanSelectionModal({
             </motion.button>
           ))}
 
-          <Button
-            onClick={handleConfirm}
-            disabled={isLoading}
-            className="w-full bg-primary text-primary-foreground py-6 text-base font-semibold"
-          >
-            {isLoading 
-              ? 'Processing...' 
-              : isRenewal 
-              ? 'Renew Now' 
-              : 'Subscribe Now'}
-          </Button>
+          {/* Razorpay Payment Button for Monthly Plan */}
+          {selectedPlan === 'monthly' && selectedPlanData?.razorpayButtonId ? (
+            <div className="w-full">
+              <form className="w-full">
+                <script 
+                  src="https://checkout.razorpay.com/v1/payment-button.js" 
+                  data-payment_button_id={selectedPlanData.razorpayButtonId}
+                  async
+                />
+              </form>
+              <p className="text-xs text-center text-muted-foreground mt-2">
+                Secure payment via Razorpay
+              </p>
+            </div>
+          ) : (
+            <>
+              <Button
+                onClick={handleConfirm}
+                disabled={isLoading}
+                className="w-full bg-primary text-primary-foreground py-6 text-base font-semibold"
+              >
+                {isLoading 
+                  ? 'Processing...' 
+                  : isRenewal 
+                  ? 'Renew Now' 
+                  : 'Subscribe Now'}
+              </Button>
 
-          <p className="text-xs text-center text-muted-foreground">
-            Payment gateway integration coming soon. Your subscription will be activated immediately.
-          </p>
+              <p className="text-xs text-center text-muted-foreground">
+                Annual payment gateway integration coming soon.
+              </p>
+            </>
+          )}
         </div>
       </DialogContent>
     </Dialog>
