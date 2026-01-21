@@ -187,57 +187,6 @@ export function PlansList() {
         </AnimatePresence>
       </div>
 
-          <AnimatePresence mode="wait">
-            <motion.div
-              key={activeTab}
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -20 }}
-              transition={{ duration: 0.2 }}
-            >
-              {currentPlans.length > 0 ? (
-                <div className="space-y-4">
-                  {currentPlans.map(plan => (
-                    <PlanCard
-                      key={plan.id}
-                      plan={plan}
-                      onActivate={activatePlan}
-                      onPause={pausePlan}
-                      onResume={resumePlan}
-                      onCancel={cancelPlan}
-                      onComplete={completePlan}
-                      onDelete={deletePlan}
-                    />
-                  ))}
-                </div>
-              ) : (
-                <motion.div
-                  initial={{ opacity: 0, scale: 0.95 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  className="text-center py-16"
-                >
-                  <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center mx-auto mb-4">
-                    <FileText className="w-8 h-8 text-muted-foreground" />
-                  </div>
-                  <h3 className="text-lg font-semibold text-foreground mb-2">
-                    No {activeTab} plans
-                  </h3>
-                  <p className="text-sm text-muted-foreground mb-6">
-                    {activeTab === 'active' 
-                      ? 'Create a new plan to get started'
-                      : `No plans in ${activeTab} status`}
-                  </p>
-                  {activeTab === 'active' && (
-                    <Button onClick={() => setShowCreateModal(true)} className="gap-2">
-                      <Plus className="w-4 h-4" />
-                      Create Plan
-                    </Button>
-                  )}
-                </motion.div>
-              )}
-            </motion.div>
-          </AnimatePresence>
-
       {/* Create Modal */}
       <CreatePlanModal
         open={showCreateModal}

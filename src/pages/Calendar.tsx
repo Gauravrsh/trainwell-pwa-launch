@@ -136,10 +136,17 @@ const Calendar = () => {
       });
     }
     
-    // Future - only immediate next month (days remaining in next month after current cycle ends)
-    const nextMonthStart = addDays(currentCycleEnd, 1);
-    const nextMonthEnd = new Date(nextMonthStart.getFullYear(), nextMonthStart.getMonth() + 1, 0);
-    const daysInNextMonth = differenceInDays(nextMonthEnd, nextMonthStart) + 1;
+    // Future - only the immediate next calendar month (e.g., if current is Jan, show Feb)
+    const currentMonth = today.getMonth();
+    const currentYear = today.getFullYear();
+    const nextMonth = currentMonth + 1;
+    const nextMonthYear = nextMonth > 11 ? currentYear + 1 : currentYear;
+    const nextMonthNormalized = nextMonth > 11 ? 0 : nextMonth;
+    
+    // Get all days in the next calendar month
+    const nextMonthStart = new Date(nextMonthYear, nextMonthNormalized, 1);
+    const nextMonthEnd = new Date(nextMonthYear, nextMonthNormalized + 1, 0);
+    const daysInNextMonth = nextMonthEnd.getDate();
     
     for (let i = 0; i < daysInNextMonth; i++) {
       dates.push({
@@ -149,7 +156,7 @@ const Calendar = () => {
     }
     
     return dates;
-  }, [previousCycleStart, currentCycleStart, currentCycleEnd]);
+  }, [previousCycleStart, currentCycleStart, today]);
 
   const getWorkoutForDate = (date: Date, workoutList: Workout[] = workouts) => {
     return workoutList.find(w => isSameDay(new Date(w.date), date));

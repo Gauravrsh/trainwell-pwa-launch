@@ -6,6 +6,8 @@ import { useToast } from '@/hooks/use-toast';
 import { useTrainerReferral } from '@/hooks/useTrainerReferral';
 import { useProfile } from '@/hooks/useProfile';
 import { ReferralTermsAccordion } from '@/components/referral/ReferralTermsAccordion';
+import { supabase } from '@/integrations/supabase/client';
+import { useQuery } from '@tanstack/react-query';
 
 type TabType = 'client' | 'trainer';
 
@@ -17,6 +19,18 @@ export default function Refer() {
   
   const referralCode = getReferralCode();
   const referralLink = getReferralLink();
+
+  // Fetch the count of clients linked to this trainer
+  const { data: clientsCount = 0 } = useQuery({
+    queryKey: ['trainer-clients-count', profile?.id],
+    queryFn: async () => {
+      if (!profile) return 0;
+      const { data, error } = await supabase.rpc('get_trainer_clients');
+      if (error) throw error;
+      return (data || []).length;
+    },
+    enabled: !!profile,
+  });
 
   // For client invites, we use the same trainer code
   const clientInviteLink = profile?.unique_id 
@@ -153,7 +167,7 @@ export default function Refer() {
             <div className="mb-6">
               <div className="bg-card rounded-2xl p-4 border border-border">
                 <Users className="w-6 h-6 text-primary mb-2" />
-                <p className="text-2xl font-bold text-foreground">--</p>
+                <p className="text-2xl font-bold text-foreground">{clientsCount}</p>
                 <p className="text-sm text-muted-foreground">Clients Invited</p>
               </div>
             </div>
