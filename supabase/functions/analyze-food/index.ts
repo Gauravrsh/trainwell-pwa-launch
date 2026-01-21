@@ -126,29 +126,35 @@ serve(async (req) => {
   }
 
   try {
-    // JWT is now verified at the platform level via verify_jwt = true in config.toml
-    // Get auth header to pass to Supabase client for user context
+    // Manual JWT validation (required since verify_jwt = false for Lovable Cloud compatibility)
     const authHeader = req.headers.get('Authorization');
-    
-    // Create Supabase client with the user's auth token
-    const supabase = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_ANON_KEY') ?? '',
-      { global: { headers: { Authorization: authHeader ?? '' } } }
-    );
-
-    // Get user ID from the authenticated request
-    const { data: { user }, error: userError } = await supabase.auth.getUser();
-    
-    if (userError || !user) {
-      console.error('Failed to get user:', userError?.message);
+    if (!authHeader?.startsWith('Bearer ')) {
       return new Response(
         JSON.stringify({ error: 'Unauthorized' }),
         { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    const userId = user.id;
+    // Create Supabase client with the user's auth token
+    const supabase = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_ANON_KEY') ?? '',
+      { global: { headers: { Authorization: authHeader } } }
+    );
+
+    // Verify the JWT using getClaims for fast, reliable validation
+    const token = authHeader.replace('Bearer ', '');
+    const { data: claimsData, error: claimsError } = await supabase.auth.getClaims(token);
+
+    if (claimsError || !claimsData?.claims) {
+      console.error('JWT validation failed:', claimsError?.message);
+      return new Response(
+        JSON.stringify({ error: 'Unauthorized' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    const userId = claimsData.claims.sub as string;
     console.log('Authenticated user:', userId);
 
     const { foodText, imageBase64 } = await req.json();
