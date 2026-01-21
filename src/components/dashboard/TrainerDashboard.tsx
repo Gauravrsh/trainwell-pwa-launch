@@ -8,6 +8,10 @@ import { format } from 'date-fns';
 import { Button } from '@/components/ui/button';
 import { PaymentRequestModal } from '@/components/modals/PaymentRequestModal';
 import { toast } from 'sonner';
+import { useSubscriptionAccess } from '@/hooks/useSubscriptionAccess';
+import { SubscriptionEnforcementBanner } from '@/components/subscription/SubscriptionEnforcementBanner';
+import { PlanSelectionModal } from '@/components/subscription/PlanSelectionModal';
+import { useTrainerSubscription } from '@/hooks/useTrainerSubscription';
 
 interface ClientWithStatus {
   id: string;
@@ -21,6 +25,15 @@ export const TrainerDashboard = () => {
   const { profile, paymentInfo } = useProfile();
   const [selectedClient, setSelectedClient] = useState<ClientWithStatus | null>(null);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [showPlanModal, setShowPlanModal] = useState(false);
+  
+  const { isReadOnly, reason } = useSubscriptionAccess();
+  const { renewPlan, status } = useTrainerSubscription();
+
+  const handleSelectPlan = async (planType: 'monthly' | 'annual') => {
+    await renewPlan(planType);
+    setShowPlanModal(false);
+  };
 
   const today = format(new Date(), 'yyyy-MM-dd');
 
@@ -105,6 +118,16 @@ export const TrainerDashboard = () => {
           </h1>
         </motion.div>
       </div>
+
+      {/* Subscription Enforcement Banner */}
+      {isReadOnly && (
+        <div className="px-4 mb-4">
+          <SubscriptionEnforcementBanner
+            reason={reason}
+            onSelectPlan={() => setShowPlanModal(true)}
+          />
+        </div>
+      )}
 
       {/* Stats Cards */}
       <div className="px-4 mb-6">
@@ -228,6 +251,7 @@ export const TrainerDashboard = () => {
                       variant="outline"
                       className="flex-1 border-primary/50 text-primary hover:bg-primary/10"
                       onClick={() => handleRequestPayment(client)}
+                      disabled={isReadOnly}
                     >
                       <IndianRupee className="w-3.5 h-3.5 mr-1.5" />
                       Request Payment
@@ -257,6 +281,7 @@ export const TrainerDashboard = () => {
               onClick={handleInviteClient}
               size="lg"
               className="gap-2"
+              disabled={isReadOnly}
             >
               <Share2 className="w-5 h-5" />
               Invite Client via WhatsApp
@@ -278,6 +303,15 @@ export const TrainerDashboard = () => {
           trainerVpa={paymentInfo?.vpa_address || ''}
         />
       )}
+
+      {/* Plan Selection Modal */}
+      <PlanSelectionModal
+        open={showPlanModal}
+        onClose={() => setShowPlanModal(false)}
+        onSelectPlan={handleSelectPlan}
+        isRenewal={status.hasSubscription}
+        currentPlan={status.subscription?.plan_type}
+      />
     </div>
   );
 };

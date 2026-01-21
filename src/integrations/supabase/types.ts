@@ -404,6 +404,36 @@ export type Database = {
           },
         ]
       }
+      push_subscriptions: {
+        Row: {
+          auth_key: string
+          created_at: string | null
+          endpoint: string
+          id: string
+          p256dh_key: string
+          profile_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          auth_key: string
+          created_at?: string | null
+          endpoint: string
+          id?: string
+          p256dh_key: string
+          profile_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          auth_key?: string
+          created_at?: string | null
+          endpoint?: string
+          id?: string
+          p256dh_key?: string
+          profile_id?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       subscription_cycles: {
         Row: {
           client_id: string
@@ -441,6 +471,54 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      trainer_notifications: {
+        Row: {
+          body: string
+          created_at: string | null
+          cta_action: string | null
+          cta_text: string | null
+          day_offset: number
+          id: string
+          is_dismissed: boolean | null
+          is_read: boolean | null
+          notification_type: string
+          scheduled_for: string
+          title: string
+          trainer_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          body: string
+          created_at?: string | null
+          cta_action?: string | null
+          cta_text?: string | null
+          day_offset: number
+          id?: string
+          is_dismissed?: boolean | null
+          is_read?: boolean | null
+          notification_type?: string
+          scheduled_for: string
+          title: string
+          trainer_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          body?: string
+          created_at?: string | null
+          cta_action?: string | null
+          cta_text?: string | null
+          day_offset?: number
+          id?: string
+          is_dismissed?: boolean | null
+          is_read?: boolean | null
+          notification_type?: string
+          scheduled_for?: string
+          title?: string
+          trainer_id?: string
+          updated_at?: string | null
+        }
+        Relationships: []
       }
       trainer_platform_subscriptions: {
         Row: {

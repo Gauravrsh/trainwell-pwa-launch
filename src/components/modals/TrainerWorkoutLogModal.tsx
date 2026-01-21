@@ -7,6 +7,8 @@ import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { gymExercises } from '@/data/gymExercises';
 import { format, isBefore, startOfDay } from 'date-fns';
+import { useSubscriptionAccess } from '@/hooks/useSubscriptionAccess';
+import { SubscriptionEnforcementBanner } from '@/components/subscription/SubscriptionEnforcementBanner';
 
 interface Set {
   id: string;
@@ -30,6 +32,7 @@ interface TrainerWorkoutLogModalProps {
   date?: Date;
   existingExercises?: { name: string; sets: { weight: number; reps: number }[] }[];
   clientHasLogged?: boolean;
+  onOpenPlanSelection?: () => void;
 }
 
 export const TrainerWorkoutLogModal = ({
@@ -39,14 +42,17 @@ export const TrainerWorkoutLogModal = ({
   date,
   existingExercises = [],
   clientHasLogged = false,
+  onOpenPlanSelection,
 }: TrainerWorkoutLogModalProps) => {
   const [exerciseBlocks, setExerciseBlocks] = useState<ExerciseBlock[]>([]);
   const [customExercises, setCustomExercises] = useState<string[]>([]);
   const inputRefs = useRef<Record<string, HTMLInputElement | null>>({});
 
+  const { isReadOnly: subscriptionReadOnly, reason: subscriptionReason } = useSubscriptionAccess();
+
   const today = startOfDay(new Date());
   const isPastDate = date ? isBefore(startOfDay(date), today) : false;
-  const isReadOnly = isPastDate || clientHasLogged;
+  const isReadOnly = isPastDate || clientHasLogged || subscriptionReadOnly;
 
   const generateId = useCallback(() => Math.random().toString(36).substring(2, 9), []);
 
@@ -249,14 +255,27 @@ export const TrainerWorkoutLogModal = ({
           </DialogTitle>
           {isReadOnly && (
             <p className="text-sm text-muted-foreground mt-1">
-              {clientHasLogged
-                ? 'Client has logged their workout. View only.'
-                : 'Past dates cannot be edited.'}
+              {subscriptionReadOnly
+                ? 'Your subscription has expired. View only.'
+                : clientHasLogged
+                  ? 'Client has logged their workout. View only.'
+                  : 'Past dates cannot be edited.'}
             </p>
           )}
         </DialogHeader>
 
         <div className="dialog-scroll-area px-6 py-4">
+          {/* Subscription Enforcement Banner */}
+          {subscriptionReadOnly && (
+            <div className="mb-4">
+              <SubscriptionEnforcementBanner
+                reason={subscriptionReason}
+                onSelectPlan={onOpenPlanSelection}
+                compact
+              />
+            </div>
+          )}
+          
           <div className="space-y-4">
             {exerciseBlocks.map((block, blockIndex) => {
               const filteredExercises = getFilteredExercises(block.searchTerm);
