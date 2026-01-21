@@ -168,7 +168,7 @@ export function PlanSelectionModal({
 
         {/* Legal Footer Strip */}
         <div className="bg-muted/50 border-t border-border px-4 py-3">
-          <p className="text-[10px] text-muted-foreground text-center leading-relaxed">
+          <p className="text-sm text-muted-foreground text-center leading-relaxed">
             <span className="font-medium">IMP:</span> TrainWell is a health and wellness brand owned and managed by SG Enviro Social Services. All Rights Reserved. TnC Apply.
           </p>
         </div>
