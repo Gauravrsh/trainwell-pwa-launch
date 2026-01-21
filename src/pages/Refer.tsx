@@ -218,18 +218,8 @@ export default function Refer() {
               </div>
             </div>
 
-            {/* Share Button */}
-            <Button
-              onClick={handleShareTrainer}
-              disabled={!referralLink}
-              className="w-full h-14 text-lg font-semibold bg-primary text-primary-foreground hover:bg-primary/90 rounded-2xl"
-            >
-              <Share2 className="w-5 h-5 mr-2" />
-              Share Referral Link
-            </Button>
-
             {/* Stats */}
-            <div className="mt-8 grid grid-cols-2 gap-4">
+            <div className="mb-6 grid grid-cols-2 gap-4">
               <div className="bg-card rounded-2xl p-4 border border-border">
                 <Users className="w-6 h-6 text-primary mb-2" />
                 <p className="text-2xl font-bold text-foreground">{stats.totalReferrals}</p>
@@ -241,6 +231,16 @@ export default function Refer() {
                 <p className="text-sm text-muted-foreground">Rewards Unlocked</p>
               </div>
             </div>
+
+            {/* Share Button */}
+            <Button
+              onClick={handleShareTrainer}
+              disabled={!referralLink}
+              className="w-full h-14 text-lg font-semibold bg-primary text-primary-foreground hover:bg-primary/90 rounded-2xl"
+            >
+              <Share2 className="w-5 h-5 mr-2" />
+              Share Referral Link
+            </Button>
 
             {/* Reward Summary */}
             {stats.totalDaysEarned > 0 && (
