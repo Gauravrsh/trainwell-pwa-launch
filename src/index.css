@@ -43,7 +43,7 @@
 
     /* Success/Warning states */
     --success: 142 76% 36%;
-    --success-foreground: 0 0% 98%;
+    --success-foreground: 142 76% 36%;
     --warning: 38 92% 50%;
     --warning-foreground: 0 0% 4%;
 

@@ -1,6 +1,6 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Camera, Utensils, Loader2, Check, AlertCircle } from 'lucide-react';
+import { X, Camera, Utensils, Loader2, Check, AlertCircle, Plus } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -9,6 +9,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { logError } from '@/lib/errorUtils';
+import { FoodSessionSummary } from './FoodSessionSummary';
+import { ScrollHint } from './ScrollHint';
 
 type MealType = 'breakfast' | 'lunch' | 'dinner' | 'snack';
 
@@ -31,6 +33,14 @@ interface FoodAnalysis {
   };
 }
 
+interface SessionMeal {
+  mealType: MealType;
+  calories: number;
+  protein: number;
+  carbs: number;
+  fat: number;
+}
+
 interface FoodLogModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -44,6 +54,13 @@ interface FoodLogModalProps {
   }) => void;
 }
 
+const mealTypeOrder: MealType[] = ['breakfast', 'lunch', 'dinner', 'snack'];
+
+const getNextMealType = (current: MealType): MealType => {
+  const currentIndex = mealTypeOrder.indexOf(current);
+  return mealTypeOrder[(currentIndex + 1) % mealTypeOrder.length];
+};
+
 export const FoodLogModal = ({ open, onOpenChange, onSave }: FoodLogModalProps) => {
   const [mealType, setMealType] = useState<MealType>('breakfast');
   const [foodText, setFoodText] = useState('');
@@ -51,8 +68,56 @@ export const FoodLogModal = ({ open, onOpenChange, onSave }: FoodLogModalProps) 
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [analysis, setAnalysis] = useState<FoodAnalysis | null>(null);
   const [showCamera, setShowCamera] = useState(false);
+  const [sessionMeals, setSessionMeals] = useState<SessionMeal[]>([]);
+  const [showScrollHint, setShowScrollHint] = useState(false);
+  
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
+  const analysisResultsRef = useRef<HTMLDivElement>(null);
+  const scrollAreaRef = useRef<HTMLDivElement>(null);
+
+  // Check if analysis results are visible
+  const checkScrollVisibility = useCallback(() => {
+    if (!analysis || !analysisResultsRef.current || !scrollAreaRef.current) {
+      setShowScrollHint(false);
+      return;
+    }
+
+    const scrollArea = scrollAreaRef.current;
+    const resultsTop = analysisResultsRef.current.offsetTop;
+    const scrollBottom = scrollArea.scrollTop + scrollArea.clientHeight;
+    
+    // Show hint if results are below the visible area
+    setShowScrollHint(resultsTop > scrollBottom + 20);
+  }, [analysis]);
+
+  // Auto-scroll to results after analysis
+  useEffect(() => {
+    if (analysis && analysisResultsRef.current) {
+      // Check if user prefers reduced motion
+      const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      
+      setTimeout(() => {
+        analysisResultsRef.current?.scrollIntoView({ 
+          behavior: prefersReducedMotion ? 'auto' : 'smooth', 
+          block: 'start' 
+        });
+        setShowScrollHint(false);
+      }, 100);
+    }
+  }, [analysis]);
+
+  // Monitor scroll visibility
+  useEffect(() => {
+    const scrollArea = scrollAreaRef.current;
+    if (!scrollArea) return;
+
+    const handleScroll = () => checkScrollVisibility();
+    scrollArea.addEventListener('scroll', handleScroll);
+    checkScrollVisibility();
+
+    return () => scrollArea.removeEventListener('scroll', handleScroll);
+  }, [checkScrollVisibility]);
 
   const startCamera = async () => {
     try {
@@ -103,7 +168,6 @@ export const FoodLogModal = ({ open, onOpenChange, onSave }: FoodLogModalProps) 
     try {
       let imageBase64 = null;
       if (capturedImage) {
-        // Extract base64 from data URL
         imageBase64 = capturedImage.split(',')[1];
       }
 
@@ -117,7 +181,7 @@ export const FoodLogModal = ({ open, onOpenChange, onSave }: FoodLogModalProps) 
       if (error) throw error;
 
       setAnalysis(data as FoodAnalysis);
-      toast.success('Food analyzed successfully!');
+      toast.success('Food analyzed! See nutritional breakdown below');
     } catch (error) {
       logError('FoodLogModal.analyzeFood', error);
       toast.error('Failed to analyze food. Please try again.');
@@ -126,12 +190,20 @@ export const FoodLogModal = ({ open, onOpenChange, onSave }: FoodLogModalProps) 
     }
   };
 
-  const handleSave = () => {
+  const resetForm = () => {
+    setFoodText('');
+    setCapturedImage(null);
+    setAnalysis(null);
+    setShowScrollHint(false);
+  };
+
+  const handleSaveAndContinue = () => {
     if (!analysis) {
       toast.error('Please analyze the food first');
       return;
     }
 
+    // Save to parent
     onSave({
       mealType,
       rawText: foodText,
@@ -141,22 +213,62 @@ export const FoodLogModal = ({ open, onOpenChange, onSave }: FoodLogModalProps) 
       fat: analysis.totals.fat
     });
 
-    // Reset state
-    setFoodText('');
-    setCapturedImage(null);
-    setAnalysis(null);
-    setMealType('breakfast');
-    onOpenChange(false);
+    // Track in session
+    const newMeal: SessionMeal = {
+      mealType,
+      calories: analysis.totals.calories,
+      protein: analysis.totals.protein,
+      carbs: analysis.totals.carbs,
+      fat: analysis.totals.fat
+    };
+    setSessionMeals(prev => [...prev, newMeal]);
+
+    // Auto-advance meal type
+    const nextMeal = getNextMealType(mealType);
+    setMealType(nextMeal);
+
+    // Reset form for next meal
+    resetForm();
+
+    const mealName = mealType.charAt(0).toUpperCase() + mealType.slice(1);
+    toast.success(`${mealName} logged! Ready for ${nextMeal}`);
+  };
+
+  const handleDone = () => {
+    // If there's an analyzed meal pending, save it first
+    if (analysis) {
+      onSave({
+        mealType,
+        rawText: foodText,
+        calories: analysis.totals.calories,
+        protein: analysis.totals.protein,
+        carbs: analysis.totals.carbs,
+        fat: analysis.totals.fat
+      });
+      
+      const totalMeals = sessionMeals.length + 1;
+      toast.success(`${totalMeals} meal${totalMeals > 1 ? 's' : ''} logged successfully!`);
+    } else if (sessionMeals.length > 0) {
+      toast.success(`${sessionMeals.length} meal${sessionMeals.length > 1 ? 's' : ''} logged successfully!`);
+    }
+
+    // Reset all state and close
+    handleClose(false);
   };
 
   const handleClose = (open: boolean) => {
     if (!open) {
       stopCamera();
-      setFoodText('');
-      setCapturedImage(null);
-      setAnalysis(null);
+      resetForm();
+      setMealType('breakfast');
+      setSessionMeals([]);
     }
     onOpenChange(open);
+  };
+
+  const scrollToResults = () => {
+    analysisResultsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    setShowScrollHint(false);
   };
 
   return (
@@ -169,7 +281,17 @@ export const FoodLogModal = ({ open, onOpenChange, onSave }: FoodLogModalProps) 
           </DialogTitle>
         </DialogHeader>
 
-        <div className="dialog-scroll-area space-y-4 p-6">
+        <div 
+          ref={scrollAreaRef}
+          className="dialog-scroll-area relative space-y-4 p-6"
+        >
+          {/* Session Summary - shows meals logged in this session */}
+          <AnimatePresence>
+            {sessionMeals.length > 0 && (
+              <FoodSessionSummary meals={sessionMeals} />
+            )}
+          </AnimatePresence>
+
           {/* Meal Type Selector */}
           <div>
             <Label className="text-xs text-muted-foreground">Meal Type</Label>
@@ -275,27 +397,36 @@ export const FoodLogModal = ({ open, onOpenChange, onSave }: FoodLogModalProps) 
             />
           </div>
 
-          {/* Analyze Button */}
-          <Button
-            variant="outline"
-            className="w-full"
-            onClick={analyzeFood}
-            disabled={isAnalyzing || (!foodText.trim() && !capturedImage)}
-          >
-            {isAnalyzing ? (
-              <>
-                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                Analyzing...
-              </>
-            ) : (
-              'Analyze Food'
-            )}
-          </Button>
+          {/* Analyze Button - changes state after analysis */}
+          {analysis ? (
+            <div className="flex items-center justify-center gap-2 py-3 px-4 rounded-xl bg-success/10 border border-success/30">
+              <Check className="w-5 h-5 text-success" />
+              <span className="text-sm font-medium text-success">Analysis Complete</span>
+              <span className="text-xs text-muted-foreground">— scroll for details</span>
+            </div>
+          ) : (
+            <Button
+              variant="outline"
+              className="w-full"
+              onClick={analyzeFood}
+              disabled={isAnalyzing || (!foodText.trim() && !capturedImage)}
+            >
+              {isAnalyzing ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Analyzing...
+                </>
+              ) : (
+                'Analyze Food'
+              )}
+            </Button>
+          )}
 
           {/* Analysis Results */}
           <AnimatePresence>
             {analysis && (
               <motion.div
+                ref={analysisResultsRef}
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -10 }}
@@ -351,16 +482,32 @@ export const FoodLogModal = ({ open, onOpenChange, onSave }: FoodLogModalProps) 
               </motion.div>
             )}
           </AnimatePresence>
+
+          {/* Gradient fade indicator for more content */}
+          {!analysis && (foodText.trim() || capturedImage) && (
+            <div className="pointer-events-none absolute bottom-0 left-0 right-0 h-8 bg-gradient-to-t from-background to-transparent" />
+          )}
         </div>
 
-        {/* Save Button */}
-        <div className="dialog-footer p-6 pt-4 border-t border-border">
+        {/* Scroll hint overlay */}
+        <ScrollHint visible={showScrollHint} onClick={scrollToResults} />
+
+        {/* Footer with dual actions */}
+        <div className="dialog-footer p-6 pt-4 border-t border-border space-y-3">
           <Button 
             className="w-full h-12 rounded-xl"
-            onClick={handleSave}
+            onClick={handleSaveAndContinue}
             disabled={!analysis}
           >
-            Save Food Log
+            <Plus className="w-4 h-4 mr-2" />
+            Save & Add Another Meal
+          </Button>
+          <Button 
+            variant="secondary"
+            className="w-full h-10 rounded-xl"
+            onClick={handleDone}
+          >
+            {analysis || sessionMeals.length > 0 ? 'Done' : 'Cancel'}
           </Button>
         </div>
       </DialogContent>
