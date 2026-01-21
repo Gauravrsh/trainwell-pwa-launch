@@ -10,7 +10,10 @@ import { useTrainingPlans, type CreatePlanData } from '@/hooks/useTrainingPlans'
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery } from '@tanstack/react-query';
 import { useProfile } from '@/hooks/useProfile';
-
+import { useSubscriptionAccess } from '@/hooks/useSubscriptionAccess';
+import { SubscriptionEnforcementBanner } from '@/components/subscription/SubscriptionEnforcementBanner';
+import { PlanSelectionModal } from '@/components/subscription/PlanSelectionModal';
+import { useTrainerSubscription } from '@/hooks/useTrainerSubscription';
 interface Client {
   id: string;
   unique_id: string;
@@ -20,7 +23,17 @@ interface Client {
 export function PlansList() {
   const { profile, isTrainer } = useProfile();
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [showPlanModal, setShowPlanModal] = useState(false);
   const [activeTab, setActiveTab] = useState('active');
+
+  // Subscription access for trainers
+  const { isReadOnly, reason } = useSubscriptionAccess();
+  const { renewPlan, status } = useTrainerSubscription();
+
+  const handleSelectPlan = async (planType: 'monthly' | 'annual') => {
+    await renewPlan(planType);
+    setShowPlanModal(false);
+  };
 
   const {
     plans,
@@ -94,12 +107,22 @@ export function PlansList() {
               Manage Plans
             </h1>
           </div>
-          <Button onClick={() => setShowCreateModal(true)} size="sm" className="gap-2">
+          <Button onClick={() => setShowCreateModal(true)} size="sm" className="gap-2" disabled={isReadOnly}>
             <Plus className="w-4 h-4" />
             New Plan
           </Button>
         </motion.div>
       </div>
+
+      {/* Subscription Enforcement Banner */}
+      {isReadOnly && (
+        <div className="px-4 mb-4">
+          <SubscriptionEnforcementBanner
+            reason={reason}
+            onSelectPlan={() => setShowPlanModal(true)}
+          />
+        </div>
+      )}
 
       {/* Stats Summary - Clickable */}
       <div className="px-4 mb-6">
@@ -194,6 +217,15 @@ export function PlansList() {
         clients={clients}
         onSubmit={handleCreatePlan}
         isSubmitting={isCreating}
+      />
+
+      {/* Plan Selection Modal */}
+      <PlanSelectionModal
+        open={showPlanModal}
+        onClose={() => setShowPlanModal(false)}
+        onSelectPlan={handleSelectPlan}
+        isRenewal={status.hasSubscription}
+        currentPlan={status.subscription?.plan_type}
       />
     </div>
   );

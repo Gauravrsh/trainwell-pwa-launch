@@ -13,6 +13,10 @@ import { FoodLogModal } from '@/components/modals/FoodLogModal';
 import { ClientFilter } from '@/components/calendar/ClientFilter';
 import { toast } from 'sonner';
 import { logError } from '@/lib/errorUtils';
+import { useSubscriptionAccess } from '@/hooks/useSubscriptionAccess';
+import { SubscriptionEnforcementBanner } from '@/components/subscription/SubscriptionEnforcementBanner';
+import { PlanSelectionModal } from '@/components/subscription/PlanSelectionModal';
+import { useTrainerSubscription } from '@/hooks/useTrainerSubscription';
 
 interface Workout {
   id: string;
@@ -52,6 +56,16 @@ const Calendar = () => {
   const [existingExercises, setExistingExercises] = useState<{ name: string; sets: { weight: number; reps: number }[] }[]>([]);
   const [clientHasLogged, setClientHasLogged] = useState(false);
   const [clientTrainerExercises, setClientTrainerExercises] = useState<{ name: string; sets: { weight: number; reps: number }[] }[]>([]);
+  const [showPlanModal, setShowPlanModal] = useState(false);
+
+  // Subscription access for trainers
+  const { isReadOnly: subscriptionReadOnly, reason: subscriptionReason } = useSubscriptionAccess();
+  const { renewPlan, status } = useTrainerSubscription();
+
+  const handleSelectPlan = async (planType: 'monthly' | 'annual') => {
+    await renewPlan(planType);
+    setShowPlanModal(false);
+  };
 
   // Calculate cycle dates - cycle starts from when client joined trainer or account creation
   const cycleStartDate = useMemo(() => {
@@ -619,6 +633,16 @@ const Calendar = () => {
         )}
       </div>
 
+      {/* Subscription Enforcement Banner for Trainers */}
+      {isTrainer && subscriptionReadOnly && (
+        <div className="px-4 py-2">
+          <SubscriptionEnforcementBanner
+            reason={subscriptionReason}
+            onSelectPlan={() => setShowPlanModal(true)}
+          />
+        </div>
+      )}
+
       {/* Calendar Sections */}
       <div className="px-4 py-4 space-y-6">
         {/* No client selected message for trainers */}
@@ -944,6 +968,7 @@ const Calendar = () => {
         date={selectedDate || undefined}
         existingExercises={existingExercises}
         clientHasLogged={clientHasLogged}
+        onOpenPlanSelection={() => setShowPlanModal(true)}
       />
 
       {/* Food Log Modal */}
@@ -951,6 +976,15 @@ const Calendar = () => {
         open={showFoodModal}
         onOpenChange={setShowFoodModal}
         onSave={handleFoodSave}
+      />
+
+      {/* Plan Selection Modal for subscription renewal */}
+      <PlanSelectionModal
+        open={showPlanModal}
+        onClose={() => setShowPlanModal(false)}
+        onSelectPlan={handleSelectPlan}
+        isRenewal={status.hasSubscription}
+        currentPlan={status.subscription?.plan_type}
       />
     </div>
   );
