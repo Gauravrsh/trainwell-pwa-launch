@@ -10,25 +10,25 @@
   "categories": ["fitness", "health", "lifestyle"],
   "icons": [
     {
-      "src": "/icons/icon-192.png",
+      "src": "/icons/icon-192.png?v=20260122",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "/icons/icon-512-standard.png",
+      "src": "/icons/icon-512-standard.png?v=20260122",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "/icons/icon-maskable-192.png",
+      "src": "/icons/icon-maskable-192.png?v=20260122",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "maskable"
     },
     {
-      "src": "/icons/icon-maskable-512.png",
+      "src": "/icons/icon-maskable-512.png?v=20260122",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "maskable"
