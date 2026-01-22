@@ -48,6 +48,22 @@ const RoleSelection = () => {
       
       if (idError) throw idError;
 
+      // Check for trainer invite code (for client signups via invite link)
+      const inviteTrainerCode = localStorage.getItem('inviteTrainerCode');
+      let trainerId: string | null = null;
+
+      if (role === 'client' && inviteTrainerCode) {
+        // Look up the trainer by their unique_id to get trainer_id
+        const { data: trainerData } = await supabase
+          .rpc('lookup_trainer_by_unique_id', { p_unique_id: inviteTrainerCode });
+        
+        if (trainerData && trainerData.length > 0) {
+          trainerId = trainerData[0].id;
+        }
+        // Clear the invite code after use
+        localStorage.removeItem('inviteTrainerCode');
+      }
+
       // Check for trainer referral code (for trainer signups)
       const referralTrainerCode = localStorage.getItem('referralTrainerCode');
       let referredByTrainerId: string | null = null;
@@ -69,6 +85,7 @@ const RoleSelection = () => {
         user_id: user.id,
         role,
         unique_id: newId,
+        ...(trainerId && { trainer_id: trainerId }), // Link client to trainer
         ...(referredByTrainerId && { referred_by_trainer_id: referredByTrainerId })
       };
 
@@ -273,15 +290,27 @@ const RoleSelection = () => {
           </motion.button>
         </div>
 
-        {/* Referral Notice */}
-        {localStorage.getItem('ref') && (
+        {/* Invite Notice for clients */}
+        {localStorage.getItem('inviteTrainerCode') && (
           <motion.p
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 0.4 }}
             className="text-center text-sm text-muted-foreground mt-6"
           >
-            🔗 You have a trainer referral code. Select "I'm a Client" to connect.
+            🔗 You have a trainer invite. Select "I'm a Client" to connect with your trainer.
+          </motion.p>
+        )}
+        
+        {/* Referral Notice for trainers */}
+        {localStorage.getItem('referralTrainerCode') && (
+          <motion.p
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.4 }}
+            className="text-center text-sm text-muted-foreground mt-6"
+          >
+            🔗 You have a referral code. Select "I'm a Trainer" to get started.
           </motion.p>
         )}
       </motion.div>
