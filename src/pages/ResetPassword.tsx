@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
 import { z } from 'zod';
+import logoTrainwell from '@/assets/logo-trainwell.png';
 
 const passwordSchema = z.string().min(6, 'Password must be at least 6 characters');
 
@@ -111,12 +112,9 @@ export default function ResetPassword() {
             initial={{ scale: 0.8 }}
             animate={{ scale: 1 }}
             transition={{ type: 'spring', stiffness: 200 }}
-            className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-primary/10 mb-6"
+            className="w-16 h-16 rounded-2xl overflow-hidden shadow-lg mb-6"
           >
-            <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
-              <path d="M8 16L12 12L16 16L20 12L24 16" stroke="currentColor" className="text-primary" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"/>
-              <path d="M8 20L12 16L16 20L20 16L24 20" stroke="currentColor" className="text-primary" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" opacity="0.5"/>
-            </svg>
+            <img src={logoTrainwell} alt="TrainWell Logo" className="w-full h-full object-cover" />
           </motion.div>
           <h1 className="text-3xl font-bold text-foreground mb-2">TrainWell</h1>
           <p className="text-muted-foreground">Set your new password</p>
