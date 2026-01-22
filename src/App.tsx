@@ -1,3 +1,4 @@
+import { useState, useEffect } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -6,6 +7,8 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "@/hooks/useAuth";
 import { useProfile } from "@/hooks/useProfile";
 import { AppLayout } from "@/components/layout/AppLayout";
+import { AnimatePresence } from "framer-motion";
+import SplashScreen from "@/components/SplashScreen";
 import Auth from "./pages/Auth";
 import ResetPassword from "./pages/ResetPassword";
 import RoleSelection from "./pages/RoleSelection";
@@ -25,11 +28,7 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   const { profile, loading: profileLoading, needsRoleSelection, needsProfileSetup } = useProfile();
 
   if (authLoading || profileLoading) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-      </div>
-    );
+    return null; // Let splash screen handle loading state
   }
 
   if (!user) {
@@ -54,11 +53,7 @@ const RoleSelectionRoute = ({ children }: { children: React.ReactNode }) => {
   const { profile, loading: profileLoading } = useProfile();
 
   if (authLoading || profileLoading) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-      </div>
-    );
+    return null; // Let splash screen handle loading state
   }
 
   if (!user) {
@@ -78,11 +73,7 @@ const ProfileSetupRoute = () => {
   const { profile, loading: profileLoading } = useProfile();
 
   if (authLoading || profileLoading) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-      </div>
-    );
+    return null; // Let splash screen handle loading state
   }
 
   if (!user) {
@@ -107,11 +98,7 @@ const AuthRoute = ({ children }: { children: React.ReactNode }) => {
   const { user, loading } = useAuth();
 
   if (loading) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-      </div>
-    );
+    return null; // Let splash screen handle loading state
   }
 
   if (user) {
@@ -199,6 +186,37 @@ const AppRoutes = () => (
   </Routes>
 );
 
+const AppContent = () => {
+  const { loading: authLoading } = useAuth();
+  const { loading: profileLoading } = useProfile();
+  const [showSplash, setShowSplash] = useState(true);
+  const [minTimeElapsed, setMinTimeElapsed] = useState(false);
+
+  // Show splash for at least 2 seconds
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setMinTimeElapsed(true);
+    }, 2000);
+    return () => clearTimeout(timer);
+  }, []);
+
+  // Hide splash when loading is done AND minimum time has elapsed
+  useEffect(() => {
+    if (!authLoading && !profileLoading && minTimeElapsed) {
+      setShowSplash(false);
+    }
+  }, [authLoading, profileLoading, minTimeElapsed]);
+
+  return (
+    <>
+      <AnimatePresence mode="wait">
+        {showSplash && <SplashScreen key="splash" />}
+      </AnimatePresence>
+      {!showSplash && <AppRoutes />}
+    </>
+  );
+};
+
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
@@ -206,7 +224,7 @@ const App = () => (
       <Sonner />
       <BrowserRouter>
         <AuthProvider>
-          <AppRoutes />
+          <AppContent />
         </AuthProvider>
       </BrowserRouter>
     </TooltipProvider>
