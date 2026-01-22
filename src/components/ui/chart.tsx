@@ -60,7 +60,13 @@ ChartContainer.displayName = "Chart";
 
 // Validates color values to prevent CSS injection
 const isValidColor = (color: string): boolean => {
-  // Allow hex colors, hsl/hsla, rgb/rgba, and CSS color names
+  // First, reject any strings containing dangerous CSS characters
+  const dangerousChars = /[;{}'"<>\\]/;
+  if (dangerousChars.test(color)) {
+    return false;
+  }
+  
+  // Allow hex colors, hsl/hsla, rgb/rgba, CSS variables, and named colors
   const hexPattern = /^#([0-9A-Fa-f]{3}|[0-9A-Fa-f]{6}|[0-9A-Fa-f]{8})$/;
   const hslPattern = /^hsla?\(\s*\d+(\.\d+)?(deg|rad|turn)?\s*,?\s*\d+(\.\d+)?%?\s*,?\s*\d+(\.\d+)?%?\s*(,?\s*[\d.]+%?)?\s*\)$/i;
   const rgbPattern = /^rgba?\(\s*\d+(\.\d+)?\s*,?\s*\d+(\.\d+)?\s*,?\s*\d+(\.\d+)?\s*(,?\s*[\d.]+%?)?\s*\)$/i;
