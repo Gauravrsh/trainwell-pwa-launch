@@ -48,6 +48,7 @@ const plans = [
     badge: 'BEST VALUE',
     razorpayButtonId: 'pl_S6ccDIYhIw1AaB',
     features: [
+      'Get 3 months extra validity every time you refer a trainer on annual plan',
       'Everything in Monthly',
       'Priority support',
       'Early access to new features',
