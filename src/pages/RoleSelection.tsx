@@ -63,53 +63,19 @@ const RoleSelection = () => {
         localStorage.removeItem('referralTrainerCode');
       }
 
-      // Check if profile exists
-      const { data: existingProfile } = await supabase
+      // Use upsert to safely create or update profile (prevents duplicates)
+      const profilePayload = {
+        user_id: user.id,
+        role,
+        unique_id: newId,
+        ...(referredByTrainerId && { referred_by_trainer_id: referredByTrainerId })
+      };
+
+      const { error: upsertError } = await supabase
         .from('profiles')
-        .select('id')
-        .eq('user_id', user.id)
-        .maybeSingle();
+        .upsert(profilePayload, { onConflict: 'user_id' });
 
-      if (existingProfile) {
-        // Update existing profile
-        const updatePayload = referredByTrainerId
-          ? { 
-              role,
-              unique_id: newId,
-              referred_by_trainer_id: referredByTrainerId
-            }
-          : { 
-              role,
-              unique_id: newId 
-            };
-        
-        const { error: updateError } = await supabase
-          .from('profiles')
-          .update(updatePayload)
-          .eq('user_id', user.id);
-
-        if (updateError) throw updateError;
-      } else {
-        // Insert new profile
-        const insertPayload = referredByTrainerId 
-          ? { 
-              user_id: user.id,
-              role,
-              unique_id: newId,
-              referred_by_trainer_id: referredByTrainerId
-            }
-          : { 
-              user_id: user.id,
-              role,
-              unique_id: newId 
-            };
-        
-        const { error: insertError } = await supabase
-          .from('profiles')
-          .insert(insertPayload);
-
-        if (insertError) throw insertError;
-      }
+      if (upsertError) throw upsertError;
 
       // If this is a referred trainer, create the referral record
       if (role === 'trainer' && referredByTrainerId) {
