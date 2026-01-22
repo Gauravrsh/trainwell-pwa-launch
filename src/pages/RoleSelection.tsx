@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Dumbbell, Users, Loader2 } from 'lucide-react';
@@ -11,6 +11,7 @@ const RoleSelection = () => {
   const [loading, setLoading] = useState(false);
   const [selectedRole, setSelectedRole] = useState<'trainer' | 'client' | null>(null);
   const [autoProcessing, setAutoProcessing] = useState(false);
+  const autoProcessedRef = useRef(false); // Prevent multiple auto-processing attempts
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -18,14 +19,22 @@ const RoleSelection = () => {
   // Check if user came from trainer invite - auto-assign client role
   useEffect(() => {
     const inviteTrainerCode = localStorage.getItem('inviteTrainerCode');
-    if (inviteTrainerCode && user && !loading && !autoProcessing) {
+    // Only auto-process once, use ref to prevent re-runs
+    if (inviteTrainerCode && user && !autoProcessedRef.current) {
+      autoProcessedRef.current = true;
       setAutoProcessing(true);
-      // Auto-select client role for invited users
-      handleRoleSelect('client');
     }
   }, [user]);
 
-  const handleRoleSelect = async (role: 'trainer' | 'client') => {
+  // Trigger auto role selection when autoProcessing is set
+  useEffect(() => {
+    if (autoProcessing && user && !loading) {
+      handleRoleSelectInternal('client');
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoProcessing]);
+
+  const handleRoleSelectInternal = async (role: 'trainer' | 'client') => {
     if (!user || loading) return;
     
     setLoading(true);
@@ -145,6 +154,9 @@ const RoleSelection = () => {
         return;
       }
       
+      // Clear invite code on error to prevent getting stuck
+      localStorage.removeItem('inviteTrainerCode');
+      
       toast({
         title: "Error",
         description: sanitizeErrorMessage(error),
@@ -155,6 +167,11 @@ const RoleSelection = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  // Wrapper for manual button clicks
+  const handleRoleSelect = (role: 'trainer' | 'client') => {
+    handleRoleSelectInternal(role);
   };
 
   // Show loading state when auto-processing invited client
