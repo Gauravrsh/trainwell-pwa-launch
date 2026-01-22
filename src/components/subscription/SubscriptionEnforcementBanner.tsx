@@ -27,7 +27,7 @@ export function SubscriptionEnforcementBanner({
   const description = isExpired
     ? 'Your subscription has expired. Renew to continue managing your clients and logging data.'
     : isNoSubscription
-      ? 'Start your free trial or select a plan to begin managing clients.'
+      ? 'Start your free trial by visiting Profile section, or select a plan to begin managing clients.'
       : 'You are currently in read-only mode. Select a plan to unlock full access.';
 
   if (compact) {
