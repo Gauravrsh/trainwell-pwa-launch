@@ -3,7 +3,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { AuthProvider, useAuth } from "@/hooks/useAuth";
 import { useProfile } from "@/hooks/useProfile";
 import { AppLayout } from "@/components/layout/AppLayout";
@@ -95,11 +95,7 @@ const ProfileSetupRoute = () => {
 };
 
 const AuthRoute = ({ children }: { children: React.ReactNode }) => {
-  const { user, loading } = useAuth();
-
-  if (loading) {
-    return null; // Let splash screen handle loading state
-  }
+  const { user } = useAuth();
 
   if (user) {
     return <Navigate to="/" replace />;
@@ -189,8 +185,14 @@ const AppRoutes = () => (
 const AppContent = () => {
   const { loading: authLoading } = useAuth();
   const { loading: profileLoading } = useProfile();
+  const location = useLocation();
   const [showSplash, setShowSplash] = useState(true);
   const [minTimeElapsed, setMinTimeElapsed] = useState(false);
+
+  // Never block invite/signup flows behind the splash if auth initialization is slow.
+  const isPublicRoute =
+    location.pathname.startsWith("/auth") ||
+    location.pathname.startsWith("/reset-password");
 
   // Show splash for at least 2 seconds
   useEffect(() => {
@@ -202,10 +204,10 @@ const AppContent = () => {
 
   // Hide splash when loading is done AND minimum time has elapsed
   useEffect(() => {
-    if (!authLoading && !profileLoading && minTimeElapsed) {
+    if (minTimeElapsed && (isPublicRoute || (!authLoading && !profileLoading))) {
       setShowSplash(false);
     }
-  }, [authLoading, profileLoading, minTimeElapsed]);
+  }, [authLoading, profileLoading, minTimeElapsed, isPublicRoute]);
 
   return (
     <>
