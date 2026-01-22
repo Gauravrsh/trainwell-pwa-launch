@@ -257,7 +257,6 @@ export default function Refer() {
               </h3>
               <div className="space-y-3">
                 {[
-                  'Get 3 months extra validity every time you refer a trainer on annual plan',
                   'Share your referral link with fellow trainers',
                   'They sign up and subscribe to a paid plan',
                   'You earn 15-90 days validity based on plans',
