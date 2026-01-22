@@ -172,7 +172,7 @@ export default function Auth() {
             initial={{ scale: 0.8 }}
             animate={{ scale: 1 }}
             transition={{ type: 'spring', stiffness: 200 }}
-            className="w-16 h-16 rounded-2xl overflow-hidden shadow-lg mb-6"
+            className="w-16 h-16 rounded-2xl overflow-hidden shadow-lg mb-6 mx-auto"
           >
             <img src={logoTrainwell} alt="TrainWell Logo" className="w-full h-full object-cover" />
           </motion.div>
