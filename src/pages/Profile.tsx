@@ -59,30 +59,32 @@ export default function Profile() {
         </p>
       </motion.div>
 
-      {/* Stats */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.1 }}
-        className="grid grid-cols-3 gap-3 mb-8"
-      >
-        {[
-          { label: 'Workouts', value: '0' },
-          { label: 'Streak', value: '0' },
-          { label: 'Level', value: '1' },
-        ].map((stat, index) => (
-          <motion.div
-            key={stat.label}
-            initial={{ opacity: 0, scale: 0.9 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ delay: 0.1 + index * 0.05 }}
-            className="bg-card rounded-2xl p-4 text-center border border-border"
-          >
-            <p className="text-2xl font-bold text-foreground">{stat.value}</p>
-            <p className="text-xs text-muted-foreground">{stat.label}</p>
-          </motion.div>
-        ))}
-      </motion.div>
+      {/* Stats - Only show for trainers */}
+      {!isClient && (
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.1 }}
+          className="grid grid-cols-3 gap-3 mb-8"
+        >
+          {[
+            { label: 'Workouts', value: '0' },
+            { label: 'Streak', value: '0' },
+            { label: 'Level', value: '1' },
+          ].map((stat, index) => (
+            <motion.div
+              key={stat.label}
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ delay: 0.1 + index * 0.05 }}
+              className="bg-card rounded-2xl p-4 text-center border border-border"
+            >
+              <p className="text-2xl font-bold text-foreground">{stat.value}</p>
+              <p className="text-xs text-muted-foreground">{stat.label}</p>
+            </motion.div>
+          ))}
+        </motion.div>
+      )}
 
       {/* Body Metrics Section - Clients only */}
       {isClient && (

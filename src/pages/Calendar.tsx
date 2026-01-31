@@ -1,7 +1,7 @@
 import { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { format, addDays, subDays, startOfDay, isSameDay, isAfter, isBefore, differenceInDays, getDaysInMonth, startOfMonth } from 'date-fns';
-import { ChevronLeft, ChevronRight, Plus, Dumbbell, Check, Clock, X, AlertCircle, Utensils, UserPlus, Share2 } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Plus, Dumbbell, Check, Clock, X, AlertCircle, Utensils, UserPlus, Share2, Eye } from 'lucide-react';
 import { useProfile } from '@/hooks/useProfile';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -184,7 +184,8 @@ const Calendar = () => {
     switch (status) {
       case 'completed':
         return {
-          icon: <Check className="w-3.5 h-3.5" />,
+          // Responsive icon size: smaller on mobile, larger on desktop
+          icon: <Check className="w-2.5 h-2.5 sm:w-3.5 sm:h-3.5" />,
           bg: 'bg-success',
           text: 'text-success-foreground',
           ring: 'ring-success/50',
@@ -192,7 +193,7 @@ const Calendar = () => {
         };
       case 'skipped':
         return {
-          icon: <X className="w-3.5 h-3.5" />,
+          icon: <X className="w-2.5 h-2.5 sm:w-3.5 sm:h-3.5" />,
           bg: 'bg-destructive',
           text: 'text-destructive-foreground',
           ring: 'ring-destructive/50',
@@ -200,7 +201,7 @@ const Calendar = () => {
         };
       case 'pending':
         return {
-          icon: <Dumbbell className="w-3 h-3" />,
+          icon: <Dumbbell className="w-2 h-2 sm:w-3 sm:h-3" />,
           bg: 'bg-primary/80',
           text: 'text-primary-foreground',
           ring: 'ring-primary/30',
@@ -209,6 +210,13 @@ const Calendar = () => {
       default:
         return null;
     }
+  };
+
+  // Check if a date is within the editable window (T-7 days)
+  const isDateEditable = (date: Date): boolean => {
+    const daysDiff = differenceInDays(today, date);
+    // Editable if: today or in the past up to 7 days, or future dates
+    return daysDiff <= 7 && daysDiff >= 0 || isAfter(date, today);
   };
 
   const handleDateClick = async (date: Date) => {
@@ -787,9 +795,9 @@ const Calendar = () => {
                           {format(date, 'd')}
                         </span>
                         
-                        {/* Workout Status Indicator */}
+                        {/* Workout Status Indicator - Responsive dot size */}
                         {hasWorkout && statusStyles && !isToday && (
-                          <div className={`absolute bottom-1 rounded-full p-0.5 ${statusStyles.bg} ${statusStyles.text}`}>
+                          <div className={`absolute bottom-0.5 sm:bottom-1 rounded-full p-0.5 sm:p-1 ${statusStyles.bg} ${statusStyles.text}`}>
                             {statusStyles.icon}
                           </div>
                         )}
@@ -851,9 +859,23 @@ const Calendar = () => {
             
             {(() => {
               const workout = selectedDate ? getWorkoutForDate(selectedDate) : null;
+              const canEdit = selectedDate ? isDateEditable(selectedDate) : false;
               
               return (
                 <div className="space-y-4">
+                  {/* View-Only Notice for old dates */}
+                  {!canEdit && (
+                    <div className="p-4 rounded-xl bg-muted border border-border">
+                      <div className="flex items-center gap-2 mb-2">
+                        <Eye className="w-5 h-5 text-muted-foreground" />
+                        <span className="font-semibold text-foreground">View Only</span>
+                      </div>
+                      <p className="text-sm text-muted-foreground">
+                        Logging is only available for the last 7 days. This date is view-only.
+                      </p>
+                    </div>
+                  )}
+
                   {/* Workout Status Card */}
                   {workout && (
                     <div className="p-4 rounded-xl bg-primary/10 border border-primary/30">
@@ -870,44 +892,71 @@ const Calendar = () => {
                         </span>
                       </div>
                       <p className="text-sm text-muted-foreground">
-                        Log your progress for this workout
+                        {canEdit ? 'Log your progress for this workout' : 'View your workout details'}
                       </p>
                     </div>
                   )}
 
-                  {/* Action Buttons */}
-                  <div className="grid grid-cols-2 gap-3">
-                    <motion.button
-                      whileTap={{ scale: 0.95 }}
-                      onClick={() => setShowWorkoutModal(true)}
-                      className="flex flex-col items-center gap-3 p-6 rounded-2xl bg-card border-2 border-border hover:border-primary/50 transition-colors"
-                    >
-                      <div className="w-14 h-14 rounded-full bg-primary/20 flex items-center justify-center">
-                        <Dumbbell className="w-7 h-7 text-primary" />
-                      </div>
-                      <div className="text-center">
-                        <p className="font-semibold text-foreground">Log Workout</p>
-                        <p className="text-xs text-muted-foreground">Track exercises</p>
-                      </div>
-                    </motion.button>
+                  {/* Action Buttons - Edit mode */}
+                  {canEdit && (
+                    <div className="grid grid-cols-2 gap-3">
+                      <motion.button
+                        whileTap={{ scale: 0.95 }}
+                        onClick={() => setShowWorkoutModal(true)}
+                        className="flex flex-col items-center gap-3 p-6 rounded-2xl bg-card border-2 border-border hover:border-primary/50 transition-colors"
+                      >
+                        <div className="w-14 h-14 rounded-full bg-primary/20 flex items-center justify-center">
+                          <Dumbbell className="w-7 h-7 text-primary" />
+                        </div>
+                        <div className="text-center">
+                          <p className="font-semibold text-foreground">Log Workout</p>
+                          <p className="text-xs text-muted-foreground">Track exercises</p>
+                        </div>
+                      </motion.button>
 
-                    <motion.button
-                      whileTap={{ scale: 0.95 }}
-                      onClick={() => setShowFoodModal(true)}
-                      className="flex flex-col items-center gap-3 p-6 rounded-2xl bg-card border-2 border-border hover:border-primary/50 transition-colors"
-                    >
-                      <div className="w-14 h-14 rounded-full bg-success/20 flex items-center justify-center">
-                        <Utensils className="w-7 h-7 text-success" />
-                      </div>
-                      <div className="text-center">
-                        <p className="font-semibold text-foreground">Log Food</p>
-                        <p className="text-xs text-muted-foreground">Track nutrition</p>
-                      </div>
-                    </motion.button>
-                  </div>
+                      <motion.button
+                        whileTap={{ scale: 0.95 }}
+                        onClick={() => setShowFoodModal(true)}
+                        className="flex flex-col items-center gap-3 p-6 rounded-2xl bg-card border-2 border-border hover:border-primary/50 transition-colors"
+                      >
+                        <div className="w-14 h-14 rounded-full bg-success/20 flex items-center justify-center">
+                          <Utensils className="w-7 h-7 text-success" />
+                        </div>
+                        <div className="text-center">
+                          <p className="font-semibold text-foreground">Log Food</p>
+                          <p className="text-xs text-muted-foreground">Track nutrition</p>
+                        </div>
+                      </motion.button>
+                    </div>
+                  )}
 
-                  {/* Quick Status Update */}
-                  {workout && workout.status === 'pending' && (
+                  {/* View-Only Buttons */}
+                  {!canEdit && (
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="flex flex-col items-center gap-3 p-6 rounded-2xl bg-muted/50 border-2 border-border opacity-60">
+                        <div className="w-14 h-14 rounded-full bg-muted flex items-center justify-center">
+                          <Dumbbell className="w-7 h-7 text-muted-foreground" />
+                        </div>
+                        <div className="text-center">
+                          <p className="font-semibold text-muted-foreground">Workout</p>
+                          <p className="text-xs text-muted-foreground">{workout ? workout.status : 'No data'}</p>
+                        </div>
+                      </div>
+
+                      <div className="flex flex-col items-center gap-3 p-6 rounded-2xl bg-muted/50 border-2 border-border opacity-60">
+                        <div className="w-14 h-14 rounded-full bg-muted flex items-center justify-center">
+                          <Utensils className="w-7 h-7 text-muted-foreground" />
+                        </div>
+                        <div className="text-center">
+                          <p className="font-semibold text-muted-foreground">Food</p>
+                          <p className="text-xs text-muted-foreground">View only</p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Quick Status Update - Only show for editable dates */}
+                  {canEdit && workout && workout.status === 'pending' && (
                     <div className="pt-2">
                       <p className="text-xs text-muted-foreground mb-2">Quick status update:</p>
                       <div className="flex gap-2">
