@@ -1,235 +1,143 @@
 
-# Progress Tracking & Monitoring Module - Implementation Plan
 
-## Overview
-This plan implements a unified progress visualization module that tracks client **Action** (intake/burn consistency) and **Outcome** (weight trends). The implementation carefully preserves all existing functionality.
+# Dummy Data Generation Plan for Progress Module Testing
 
----
-
-## Current State Analysis
-
-### Existing Data Infrastructure
-| Data Point | Location | Notes |
-|------------|----------|-------|
-| Weight | `profiles.weight_kg` | Single static value, set during profile setup |
-| Calories Intake | `food_logs.calories` | Per meal, per day |
-| Protein/Carbs/Fat | `food_logs` | Available |
-| BMR | **Not tracked** | Needs to be added |
-| Active Calories | **Not tracked** | Needs to be added to `workouts` table |
-| Weight History | **Not tracked** | Needs new `weight_logs` table |
-
-### Existing Patterns Observed
-- **Hooks pattern**: Custom hooks like `useProfile`, `useTrainerSubscription` manage data fetching
-- **RLS approach**: All tables use RPC functions like `get_user_profile_id()`, `is_trainer_of_client()` for row-level security
-- **Navigation**: `BottomNav.tsx` uses role-based filtering (`trainerOnly` flag)
-- **Modals**: Consistent pattern with `DialogContent`, `DialogHeader`, scroll areas
-- **Charts**: `recharts` already installed and wrapped via `src/components/ui/chart.tsx`
+## Client Profile
+| Field | Value |
+|-------|-------|
+| Email | gauravrsh123@gmail.com |
+| Profile ID | cd088554-c0db-4d77-a698-535f4ccf151a |
+| Current BMR | null (will set to 1850) |
 
 ---
 
-## Risk Mitigation Strategy
+## Data Generation Parameters
 
-### 1. Database Changes (Low Risk)
-| Change | Risk Assessment | Mitigation |
-|--------|----------------|------------|
-| Add `bmr` column to `profiles` | **Low** - nullable column, no breaking change | Default to NULL, existing profiles unaffected |
-| Add `calories_burnt` to `workouts` | **Low** - nullable column | Default to NULL, existing workout logic unchanged |
-| Create `weight_logs` table | **None** - new table | New table with FK to profiles |
+### Date Range
+- **Period:** 30 days (2026-01-01 to 2026-01-31)
+- **Missed Days:** 2-3 scattered days (no food or workout logs)
 
-### 2. Frontend Changes (Medium Risk)
-| Change | Risk Assessment | Mitigation |
-|--------|----------------|------------|
-| Add `/progress` route | **Low** - new route | No existing route conflicts |
-| Add Progress nav item | **Low** - additive | Insert between existing items, role filtering preserved |
-| Update `Profile.tsx` | **Medium** - existing component | Add BMR field and weight log button in a new section, no modifications to existing layout |
-| Update workout modals | **Medium** - existing components | Add optional `calories_burnt` field at the end of forms, does not change existing fields |
+### Weight Trend
+| Parameter | Value |
+|-----------|-------|
+| Starting Weight | 90.00 kg (Jan 1) |
+| Ending Weight | 87.00 kg (Jan 31) |
+| Average Daily Decline | ~0.10 kg |
+| Logging Frequency | Daily (30 entries) |
+| Pattern | Generally declining with minor daily fluctuations (+/- 0.2 kg) |
+
+### Calorie Expenditure
+| Component | Range |
+|-----------|-------|
+| BMR | 1850 cal (fixed) |
+| Active Burn | 600-800 cal/day |
+| **Total Expenditure** | **2450-2650 cal/day** |
+
+### Calorie Intake (Adjusted to hit deficit target)
+| Meal | Calorie Range |
+|------|---------------|
+| Breakfast | 500-600 cal |
+| Lunch | 600-700 cal |
+| Dinner | 650-750 cal |
+| Snack | 200-250 cal |
+| **Daily Total** | **1950-2300 cal** |
+
+### Net Deficit Target
+| Target | Range |
+|--------|-------|
+| Most days | 300-500 cal deficit |
+| Some days | 500-800 cal deficit (occasional) |
 
 ---
 
-## Database Schema Changes
+## Data Cleanup (Before Insert)
 
-### Migration 1: Add `bmr` column to `profiles`
+1. Delete existing food_logs for this client
+2. Delete existing workouts for this client  
+3. Delete existing weight_logs for this client
+4. Update profile BMR to 1850
+
+---
+
+## Sample Data Distribution
+
+### 30-Day Pattern Overview
+
+```text
+Day 01-05:  Weight 90.0 → 89.5 kg | Normal logging
+Day 06:     MISSED (no food/workout logs) | Weight still logged
+Day 07-14:  Weight 89.4 → 88.8 kg | Normal logging
+Day 15:     MISSED (no food/workout logs) | Weight still logged  
+Day 16-23:  Weight 88.7 → 87.9 kg | Normal logging
+Day 24:     MISSED (no food/workout logs) | Weight still logged
+Day 25-31:  Weight 87.8 → 87.0 kg | Normal logging
+```
+
+### Weight Progression (with realistic variation)
+
+| Day | Target Weight | Notes |
+|-----|--------------|-------|
+| 1 | 90.00 kg | Starting weight |
+| 5 | 89.50 kg | |
+| 10 | 89.00 kg | |
+| 15 | 88.50 kg | |
+| 20 | 88.00 kg | |
+| 25 | 87.50 kg | |
+| 31 | 87.00 kg | Ending weight |
+
+---
+
+## Technical Implementation
+
+### 1. Update Profile BMR
 ```sql
-ALTER TABLE profiles 
-ADD COLUMN bmr INTEGER CHECK (bmr > 0 AND bmr <= 10000);
-
--- Add bmr_updated_at for staleness tracking
-ALTER TABLE profiles 
-ADD COLUMN bmr_updated_at TIMESTAMPTZ DEFAULT now();
+UPDATE profiles 
+SET bmr = 1850, bmr_updated_at = NOW() 
+WHERE id = 'cd088554-c0db-4d77-a698-535f4ccf151a';
 ```
 
-### Migration 2: Add `calories_burnt` to `workouts`
+### 2. Clear Existing Data
 ```sql
-ALTER TABLE workouts 
-ADD COLUMN calories_burnt INTEGER CHECK (calories_burnt >= 0 AND calories_burnt <= 50000);
+DELETE FROM food_logs WHERE client_id = 'cd088554-c0db-4d77-a698-535f4ccf151a';
+DELETE FROM workouts WHERE client_id = 'cd088554-c0db-4d77-a698-535f4ccf151a';
+DELETE FROM weight_logs WHERE client_id = 'cd088554-c0db-4d77-a698-535f4ccf151a';
 ```
 
-### Migration 3: Create `weight_logs` table
-```sql
-CREATE TABLE weight_logs (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  client_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
-  weight_kg NUMERIC(5,2) NOT NULL CHECK (weight_kg > 0 AND weight_kg <= 500),
-  logged_date DATE NOT NULL DEFAULT CURRENT_DATE,
-  created_at TIMESTAMPTZ DEFAULT now(),
-  UNIQUE (client_id, logged_date)
-);
+### 3. Insert Weight Logs (30 entries)
+Daily weight entries with ~0.10 kg decline per day + minor fluctuations
 
--- RLS Policies
-ALTER TABLE weight_logs ENABLE ROW LEVEL SECURITY;
+### 4. Insert Food Logs (27 days x 4 meals = 108 entries)
+Skip 3 missed days (days 6, 15, 24)
 
--- Clients can manage their own weight logs
-CREATE POLICY "Clients can view own weight logs" ON weight_logs
-  FOR SELECT USING (client_id = get_user_profile_id(auth.uid()));
-
-CREATE POLICY "Clients can insert own weight logs" ON weight_logs
-  FOR INSERT WITH CHECK (client_id = get_user_profile_id(auth.uid()));
-
-CREATE POLICY "Clients can update own weight logs" ON weight_logs
-  FOR UPDATE USING (client_id = get_user_profile_id(auth.uid()));
-
-CREATE POLICY "Clients can delete own weight logs" ON weight_logs
-  FOR DELETE USING (client_id = get_user_profile_id(auth.uid()));
-
--- Trainers can view their clients' weight logs
-CREATE POLICY "Trainers can view client weight logs" ON weight_logs
-  FOR SELECT USING (is_trainer_of_client(auth.uid(), client_id));
-```
+### 5. Insert Workouts (27 entries)
+Skip 3 missed days, with calories_burnt 600-800
 
 ---
 
-## Frontend Implementation
+## Weight Decimal Fix (Side Remark)
 
-### Phase 1: New Files (No Risk)
+The `weight_logs.weight_kg` column is already `numeric` type which supports decimals. The `profiles.weight_kg` is also `numeric`. No database changes needed.
 
-#### 1. `src/pages/Progress.tsx`
-Main progress dashboard with:
-- Date range filter (default 30, max 730 days)
-- Client selector dropdown (trainer view only)
-- Two synchronized charts (Action and Outcome)
-- Uses existing patterns from `Calendar.tsx` and `TrainerDashboard.tsx`
-
-#### 2. `src/components/progress/ActionChart.tsx`
-- ComposedChart with stacked bars (Intake, Total Expenditure)
-- Line overlay for Net Deficit trend
-- Red bars with "Missed" label for days without logs
-
-#### 3. `src/components/progress/OutcomeChart.tsx`
-- ComposedChart with weight trend line (connects dots, no drops to 0)
-- Net Deficit line mirrored from Action chart
-- Surplus/deficit zones clearly marked
-
-#### 4. `src/components/progress/DateRangeFilter.tsx`
-- Numeric input with validation
-- Defaults to 30, caps at 730
-- Shared state for synchronized chart updates
-
-#### 5. `src/hooks/useProgressData.tsx`
-```typescript
-interface DailyProgress {
-  date: string;
-  intake: number | null;      // sum of food_logs.calories
-  burnt: number | null;       // workouts.calories_burnt
-  bmr: number;                // from profile
-  totalExpenditure: number;   // bmr + burnt
-  netDeficit: number;         // totalExpenditure - intake
-  weight: number | null;      // from weight_logs
-  isMissed: boolean;          // no intake AND no burnt
-}
-```
-
-#### 6. `src/components/modals/WeightLogModal.tsx`
-- Simple modal with weight input (20-500 kg range)
-- Date selector (defaults to today)
-- Saves to `weight_logs` table
+However, I'll verify the frontend inputs allow decimal values (2 decimal places) for weight entry.
 
 ---
 
-### Phase 2: Minimal Updates to Existing Files
+## Expected Results After Data Generation
 
-#### 1. `src/App.tsx` (Add route only)
-```typescript
-// Add new import
-import Progress from './pages/Progress';
+### Action Chart (Intake vs Expenditure)
+- 27 days of stacked bars (intake + expenditure)
+- 3 red "Missed" bars on days 6, 15, 24
+- Net deficit line hovering in 300-800 range
+- Most deficit points clustered around 300-500
 
-// Add route inside ProtectedRoute block
-<Route path="/progress" element={<ProtectedRoute><Progress /></ProtectedRoute>} />
-```
+### Outcome Chart (Weight Trend)
+- Continuous declining line from 90 → 87 kg
+- Minor daily fluctuations for realism
+- Net deficit area shaded below the weight line
 
-#### 2. `src/components/layout/BottomNav.tsx` (Add nav item)
-```typescript
-// Add TrendingUp import
-import { Home, Gift, User, ClipboardList, TrendingUp } from 'lucide-react';
+### Quick Stats
+- Avg Deficit: ~400-500 cal
+- Days Logged: 27
+- Days Missed: 3
+- Weight Change: -3.0 kg
 
-// Add Progress nav item (visible to both roles)
-const navItems: NavItem[] = [
-  { to: '/', icon: Home, label: 'Home' },
-  { to: '/progress', icon: TrendingUp, label: 'Progress' },  // NEW
-  { to: '/plans', icon: ClipboardList, label: 'Plans', trainerOnly: true },
-  { to: '/refer', icon: Gift, label: 'Refer' },
-  { to: '/profile', icon: User, label: 'Profile' },
-];
-```
-
-#### 3. `src/pages/Profile.tsx` (Add new section, preserve existing)
-- Add "Body Metrics" section between stats and subscription
-- Include editable BMR field with staleness warning (>90 days)
-- Add "Log Weight" button opening WeightLogModal
-- Display current weight from latest weight_log or profile.weight_kg
-
-#### 4. `src/components/modals/ClientWorkoutLogModal.tsx` (Add optional field)
-- Add "Calories Burnt (optional)" numeric field at the bottom of the form
-- Does not change existing exercise logging behavior
-- Value passed through to `workouts.calories_burnt` on save
-
-#### 5. `src/hooks/useProfile.tsx` (Extend interface)
-- Add `bmr` and `bmr_updated_at` to Profile interface
-- No changes to existing logic
-
----
-
-## Edge Case Handling
-
-| Scenario | Implementation |
-|----------|---------------|
-| Missed Data | Red bar with "Missed" label when both `intake` and `burnt` are null |
-| Stale BMR (>90 days) | Yellow banner: "Consider updating your BMR for better accuracy" |
-| Invalid Filter Input | Reset to 30 if non-numeric or 0; cap at 730 if exceeded |
-| Incomplete Weight Data | Line connects existing entries only; no interpolation or drops to 0 |
-| Negative Deficit (Surplus) | Deficit line dips below 0-axis with "Surplus" zone styling |
-| No BMR Set | Use default estimate based on weight/height/age or show prompt to set |
-
----
-
-## File Changes Summary
-
-| File | Type | Description |
-|------|------|-------------|
-| `src/pages/Progress.tsx` | **Create** | Main progress dashboard |
-| `src/components/progress/ActionChart.tsx` | **Create** | Intake/burn visualization |
-| `src/components/progress/OutcomeChart.tsx` | **Create** | Weight trend visualization |
-| `src/components/progress/DateRangeFilter.tsx` | **Create** | Shared date range input |
-| `src/components/progress/ClientSelector.tsx` | **Create** | Trainer's client dropdown |
-| `src/components/progress/index.ts` | **Create** | Barrel exports |
-| `src/components/modals/WeightLogModal.tsx` | **Create** | Weight logging modal |
-| `src/hooks/useProgressData.tsx` | **Create** | Progress data fetching hook |
-| `src/App.tsx` | **Update** | Add `/progress` route (1 line) |
-| `src/components/layout/BottomNav.tsx` | **Update** | Add Progress nav item (2 lines) |
-| `src/pages/Profile.tsx` | **Update** | Add Body Metrics section |
-| `src/components/modals/ClientWorkoutLogModal.tsx` | **Update** | Add optional calories burnt field |
-| `src/hooks/useProfile.tsx` | **Update** | Add bmr fields to interface |
-| Database migration | **Create** | Add columns and weight_logs table |
-
----
-
-## Implementation Order
-
-1. **Database migrations** - Add columns and create weight_logs table
-2. **New hooks** - Create `useProgressData.tsx`
-3. **New components** - Create progress components and WeightLogModal
-4. **New page** - Create `Progress.tsx`
-5. **Navigation updates** - Update BottomNav and App.tsx routes
-6. **Profile updates** - Add BMR field and weight logging to Profile.tsx
-7. **Workout modal update** - Add optional calories burnt field
-
-This order ensures all dependencies are in place before connecting them.
