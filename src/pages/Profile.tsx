@@ -1,9 +1,17 @@
+import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { User, Settings, Bell, Shield, HelpCircle, LogOut, ChevronRight, FileText } from 'lucide-react';
+import { User, Settings, Bell, Shield, HelpCircle, LogOut, ChevronRight, FileText, Scale, AlertTriangle } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useProfile } from '@/hooks/useProfile';
 import { useNavigate } from 'react-router-dom';
 import { SubscriptionSection } from '@/components/subscription/SubscriptionSection';
+import { WeightLogModal } from '@/components/modals/WeightLogModal';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/hooks/use-toast';
+import { differenceInDays, format } from 'date-fns';
 
 const menuItems = [
   { icon: Settings, label: 'Settings', href: '#' },
@@ -15,12 +23,59 @@ const menuItems = [
 
 export default function Profile() {
   const { user, signOut } = useAuth();
-  const { profile } = useProfile();
+  const { profile, refetchProfile, isClient } = useProfile();
   const navigate = useNavigate();
+  const { toast } = useToast();
+  
+  const [weightModalOpen, setWeightModalOpen] = useState(false);
+  const [bmrInput, setBmrInput] = useState(profile?.bmr?.toString() || '');
+  const [savingBmr, setSavingBmr] = useState(false);
+
+  // Check if BMR is stale
+  const bmrUpdatedAt = profile?.bmr_updated_at ? new Date(profile.bmr_updated_at) : null;
+  const isBmrStale = bmrUpdatedAt ? differenceInDays(new Date(), bmrUpdatedAt) > 90 : false;
 
   const handleSignOut = async () => {
     await signOut();
     navigate('/auth');
+  };
+
+  const handleSaveBmr = async () => {
+    if (!profile?.id) return;
+    
+    const bmrValue = parseInt(bmrInput, 10);
+    if (isNaN(bmrValue) || bmrValue < 500 || bmrValue > 10000) {
+      toast({
+        title: 'Invalid BMR',
+        description: 'Please enter a BMR between 500 and 10,000 kcal',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    setSavingBmr(true);
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .update({ bmr: bmrValue, bmr_updated_at: new Date().toISOString() })
+        .eq('id', profile.id);
+
+      if (error) throw error;
+
+      toast({
+        title: 'BMR updated',
+        description: `Your BMR has been set to ${bmrValue} kcal/day`,
+      });
+      refetchProfile();
+    } catch (err) {
+      toast({
+        title: 'Error',
+        description: 'Failed to update BMR',
+        variant: 'destructive',
+      });
+    } finally {
+      setSavingBmr(false);
+    }
   };
 
   return (
@@ -72,16 +127,87 @@ export default function Profile() {
         ))}
       </motion.div>
 
+      {/* Body Metrics Section - Clients only */}
+      {isClient && (
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.15 }}
+          className="mb-6"
+        >
+          <h2 className="text-lg font-semibold text-foreground mb-3">Body Metrics</h2>
+          <div className="bg-card rounded-2xl border border-border p-4 space-y-4">
+            {/* Current Weight */}
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-muted-foreground">Current Weight</p>
+                <p className="text-xl font-bold text-foreground">
+                  {profile?.weight_kg ? `${profile.weight_kg} kg` : '—'}
+                </p>
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setWeightModalOpen(true)}
+                className="gap-2"
+              >
+                <Scale className="w-4 h-4" />
+                Log Weight
+              </Button>
+            </div>
+
+            {/* BMR */}
+            <div className="pt-3 border-t border-border">
+              <div className="flex items-center justify-between mb-2">
+                <Label htmlFor="bmr" className="text-sm text-muted-foreground">
+                  BMR (Basal Metabolic Rate)
+                </Label>
+                {isBmrStale && (
+                  <div className="flex items-center gap-1 text-amber-500 text-xs">
+                    <AlertTriangle className="w-3 h-3" />
+                    Update recommended
+                  </div>
+                )}
+              </div>
+              <div className="flex gap-2">
+                <Input
+                  id="bmr"
+                  type="number"
+                  min={500}
+                  max={10000}
+                  placeholder="e.g. 1800"
+                  value={bmrInput}
+                  onChange={(e) => setBmrInput(e.target.value)}
+                  className="flex-1"
+                />
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={handleSaveBmr}
+                  disabled={savingBmr || !bmrInput}
+                >
+                  {savingBmr ? 'Saving...' : 'Save'}
+                </Button>
+              </div>
+              {bmrUpdatedAt && (
+                <p className="text-xs text-muted-foreground mt-1">
+                  Last updated: {format(bmrUpdatedAt, 'MMM d, yyyy')}
+                </p>
+              )}
+            </div>
+          </div>
+        </motion.div>
+      )}
+
       {/* Subscription Section */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.15 }}
+        transition={{ delay: 0.18 }}
         className="mb-6"
       >
         <SubscriptionSection 
           onNavigateToClientPlans={() => {
-            // TODO: Navigate to client plans management page
             console.log('Navigate to client plans');
           }}
         />
@@ -91,7 +217,7 @@ export default function Profile() {
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.2 }}
+        transition={{ delay: 0.22 }}
         className="bg-card rounded-2xl border border-border overflow-hidden mb-6"
       >
         {menuItems.map((item) => {
@@ -118,7 +244,7 @@ export default function Profile() {
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.3 }}
+        transition={{ delay: 0.32 }}
       >
         <button
           onClick={handleSignOut}
@@ -128,6 +254,13 @@ export default function Profile() {
           Sign Out
         </button>
       </motion.div>
+
+      {/* Weight Log Modal */}
+      <WeightLogModal
+        open={weightModalOpen}
+        onOpenChange={setWeightModalOpen}
+        onSuccess={refetchProfile}
+      />
     </div>
   );
 }

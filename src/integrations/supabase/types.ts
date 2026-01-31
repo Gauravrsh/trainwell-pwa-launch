@@ -337,6 +337,8 @@ export type Database = {
       }
       profiles: {
         Row: {
+          bmr: number | null
+          bmr_updated_at: string | null
           city: string | null
           created_at: string | null
           date_of_birth: string | null
@@ -354,6 +356,8 @@ export type Database = {
           weight_kg: number | null
         }
         Insert: {
+          bmr?: number | null
+          bmr_updated_at?: string | null
           city?: string | null
           created_at?: string | null
           date_of_birth?: string | null
@@ -371,6 +375,8 @@ export type Database = {
           weight_kg?: number | null
         }
         Update: {
+          bmr?: number | null
+          bmr_updated_at?: string | null
           city?: string | null
           created_at?: string | null
           date_of_birth?: string | null
@@ -702,8 +708,41 @@ export type Database = {
           },
         ]
       }
+      weight_logs: {
+        Row: {
+          client_id: string
+          created_at: string | null
+          id: string
+          logged_date: string
+          weight_kg: number
+        }
+        Insert: {
+          client_id: string
+          created_at?: string | null
+          id?: string
+          logged_date?: string
+          weight_kg: number
+        }
+        Update: {
+          client_id?: string
+          created_at?: string | null
+          id?: string
+          logged_date?: string
+          weight_kg?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "weight_logs_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       workouts: {
         Row: {
+          calories_burnt: number | null
           client_id: string
           created_at: string | null
           date: string
@@ -712,6 +751,7 @@ export type Database = {
           updated_at: string | null
         }
         Insert: {
+          calories_burnt?: number | null
           client_id: string
           created_at?: string | null
           date: string
@@ -720,6 +760,7 @@ export type Database = {
           updated_at?: string | null
         }
         Update: {
+          calories_burnt?: number | null
           client_id?: string
           created_at?: string | null
           date?: string

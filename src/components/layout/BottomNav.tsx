@@ -1,5 +1,5 @@
 import { NavLink, useLocation } from 'react-router-dom';
-import { Home, Gift, User, ClipboardList } from 'lucide-react';
+import { Home, Gift, User, ClipboardList, TrendingUp } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import { useProfile } from '@/hooks/useProfile';
@@ -13,6 +13,7 @@ interface NavItem {
 
 const navItems: NavItem[] = [
   { to: '/', icon: Home, label: 'Home' },
+  { to: '/progress', icon: TrendingUp, label: 'Progress' },
   { to: '/plans', icon: ClipboardList, label: 'Plans', trainerOnly: true },
   { to: '/refer', icon: Gift, label: 'Refer' },
   { to: '/profile', icon: User, label: 'Profile' },
