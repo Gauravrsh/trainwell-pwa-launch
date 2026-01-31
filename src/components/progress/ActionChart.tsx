@@ -43,13 +43,13 @@ export const ActionChart = ({ data }: ActionChartProps) => {
           <p className="text-destructive text-sm font-medium">Missed</p>
         ) : (
           <div className="space-y-1 text-sm">
-            <p className="text-orange-500">
+            <p className="text-orange-400">
               Intake: {dayData?.intake ?? 0} kcal
             </p>
-            <p className="text-emerald-500">
+            <p className="text-emerald-400">
               Expenditure: {dayData?.totalExpenditure} kcal (BMR: {dayData?.bmr})
             </p>
-            <p className={dayData?.netDeficit >= 0 ? 'text-primary' : 'text-amber-500'}>
+            <p className={dayData?.netDeficit >= 0 ? 'text-lime-400' : 'text-amber-500'}>
               Net: {dayData?.netDeficit >= 0 ? 'Deficit' : 'Surplus'} {Math.abs(dayData?.netDeficit)} kcal
             </p>
           </div>
@@ -133,14 +133,14 @@ export const ActionChart = ({ data }: ActionChartProps) => {
             yAxisId="left"
             dataKey="intakeValue"
             name="Intake"
-            fill="hsl(var(--chart-2))"
+            fill="hsl(25, 95%, 60%)"
             radius={[4, 4, 0, 0]}
             maxBarSize={30}
           >
             {chartData.map((entry, index) => (
               <Cell
                 key={`cell-${index}`}
-                fill={entry.isMissed ? 'hsl(var(--destructive))' : 'hsl(var(--chart-2))'}
+                fill={entry.isMissed ? 'hsl(0, 72%, 51%)' : 'hsl(25, 95%, 60%)'}
               />
             ))}
           </Bar>
@@ -150,7 +150,7 @@ export const ActionChart = ({ data }: ActionChartProps) => {
             yAxisId="left"
             dataKey="expenditureValue"
             name="Total Expenditure"
-            fill="hsl(var(--chart-1))"
+            fill="hsl(142, 76%, 50%)"
             radius={[4, 4, 0, 0]}
             maxBarSize={30}
             label={<MissedLabel />}
@@ -162,10 +162,10 @@ export const ActionChart = ({ data }: ActionChartProps) => {
             type="monotone"
             dataKey="deficitValue"
             name="Net Deficit"
-            stroke="hsl(var(--primary))"
+            stroke="hsl(75, 100%, 50%)"
             strokeWidth={2}
-            dot={{ fill: 'hsl(var(--primary))', strokeWidth: 0, r: 3 }}
-            activeDot={{ r: 5, fill: 'hsl(var(--primary))' }}
+            dot={{ fill: 'hsl(75, 100%, 50%)', strokeWidth: 0, r: 3 }}
+            activeDot={{ r: 5, fill: 'hsl(75, 100%, 50%)' }}
             connectNulls
           />
         </ComposedChart>
