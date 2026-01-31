@@ -17,6 +17,8 @@ interface Profile {
   profile_complete: boolean;
   created_at: string;
   updated_at: string;
+  bmr: number | null;
+  bmr_updated_at: string | null;
 }
 
 interface PaymentInfo {

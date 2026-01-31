@@ -27,7 +27,7 @@ interface ExerciseBlock {
 interface ClientWorkoutLogModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onSave: (exercises: { name: string; sets: number; reps: number; weight: number }[]) => void;
+  onSave: (exercises: { name: string; sets: number; reps: number; weight: number }[], caloriesBurnt?: number) => void;
   date?: Date;
   trainerExercises?: { name: string; sets: { weight: number; reps: number }[] }[];
 }
@@ -41,6 +41,7 @@ export const ClientWorkoutLogModal = ({
 }: ClientWorkoutLogModalProps) => {
   const [exerciseBlocks, setExerciseBlocks] = useState<ExerciseBlock[]>([]);
   const [customExercises, setCustomExercises] = useState<string[]>([]);
+  const [caloriesBurnt, setCaloriesBurnt] = useState<string>('');
   const inputRefs = useRef<Record<string, HTMLInputElement | null>>({});
 
   const generateId = useCallback(() => Math.random().toString(36).substring(2, 9), []);
@@ -48,6 +49,7 @@ export const ClientWorkoutLogModal = ({
   // Initialize exercise blocks from trainer exercises
   useEffect(() => {
     if (open) {
+      setCaloriesBurnt('');
       if (trainerExercises.length > 0) {
         setExerciseBlocks(
           trainerExercises.map((ex, index) => ({
@@ -219,7 +221,8 @@ export const ClientWorkoutLogModal = ({
       );
 
     if (validExercises.length > 0) {
-      onSave(validExercises);
+      const calories = caloriesBurnt ? parseInt(caloriesBurnt, 10) : undefined;
+      onSave(validExercises, calories && !isNaN(calories) ? calories : undefined);
     }
   };
 
@@ -498,6 +501,32 @@ export const ClientWorkoutLogModal = ({
                   Add exercises to log your workout
                 </p>
               </div>
+            )}
+
+            {/* Calories Burnt - Optional */}
+            {exerciseBlocks.length > 0 && (
+              <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="pt-4 border-t border-border"
+              >
+                <label htmlFor="caloriesBurnt" className="text-sm text-muted-foreground block mb-2">
+                  Total Calories Burnt (optional)
+                </label>
+                <Input
+                  id="caloriesBurnt"
+                  type="number"
+                  min={0}
+                  max={50000}
+                  placeholder="e.g. 350"
+                  value={caloriesBurnt}
+                  onChange={(e) => setCaloriesBurnt(e.target.value)}
+                  className="w-full"
+                />
+                <p className="text-xs text-muted-foreground mt-1">
+                  Enter estimated calories from your fitness tracker or workout
+                </p>
+              </motion.div>
             )}
           </div>
         </div>
