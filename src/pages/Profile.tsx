@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { User, Settings, Bell, Shield, HelpCircle, LogOut, ChevronRight, FileText, Scale, AlertTriangle } from 'lucide-react';
+import { User, Settings, Bell, Shield, HelpCircle, LogOut, ChevronRight, FileText, Weight, AlertTriangle, Activity } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useProfile } from '@/hooks/useProfile';
 import { useNavigate } from 'react-router-dom';
@@ -8,7 +8,6 @@ import { SubscriptionSection } from '@/components/subscription/SubscriptionSecti
 import { WeightLogModal } from '@/components/modals/WeightLogModal';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { differenceInDays, format } from 'date-fns';
@@ -28,7 +27,14 @@ export default function Profile() {
   const { toast } = useToast();
   
   const [weightModalOpen, setWeightModalOpen] = useState(false);
-  const [bmrInput, setBmrInput] = useState(profile?.bmr?.toString() || '');
+  const [bmrInput, setBmrInput] = useState('');
+  
+  // Sync BMR input with profile when profile loads
+  useEffect(() => {
+    if (profile?.bmr) {
+      setBmrInput(profile.bmr.toString());
+    }
+  }, [profile?.bmr]);
   const [savingBmr, setSavingBmr] = useState(false);
 
   // Check if BMR is stale
@@ -136,62 +142,61 @@ export default function Profile() {
           className="mb-6"
         >
           <h2 className="text-lg font-semibold text-foreground mb-3">Body Metrics</h2>
-          <div className="bg-card rounded-2xl border border-border p-4 space-y-4">
-            {/* Current Weight */}
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-muted-foreground">Current Weight</p>
-                <p className="text-xl font-bold text-foreground">
-                  {profile?.weight_kg ? `${profile.weight_kg} kg` : '—'}
-                </p>
+          <div className="grid grid-cols-2 gap-3">
+            {/* Weight Card */}
+            <div className="bg-card rounded-2xl border border-border p-4 flex flex-col">
+              <div className="flex items-center gap-2 mb-2">
+                <Weight className="w-4 h-4 text-primary" />
+                <span className="text-sm text-muted-foreground">Weight</span>
               </div>
+              <p className="text-2xl font-bold text-foreground mb-3">
+                {profile?.weight_kg ? `${profile.weight_kg} kg` : '—'}
+              </p>
               <Button
                 variant="outline"
                 size="sm"
                 onClick={() => setWeightModalOpen(true)}
-                className="gap-2"
+                className="mt-auto w-full gap-2"
               >
-                <Scale className="w-4 h-4" />
+                <Weight className="w-4 h-4" />
                 Log Weight
               </Button>
             </div>
 
-            {/* BMR */}
-            <div className="pt-3 border-t border-border">
+            {/* BMR Card */}
+            <div className="bg-card rounded-2xl border border-border p-4 flex flex-col">
               <div className="flex items-center justify-between mb-2">
-                <Label htmlFor="bmr" className="text-sm text-muted-foreground">
-                  BMR (Basal Metabolic Rate)
-                </Label>
+                <div className="flex items-center gap-2">
+                  <Activity className="w-4 h-4 text-primary" />
+                  <span className="text-sm text-muted-foreground">BMR</span>
+                </div>
                 {isBmrStale && (
-                  <div className="flex items-center gap-1 text-amber-500 text-xs">
-                    <AlertTriangle className="w-3 h-3" />
-                    Update recommended
-                  </div>
+                  <AlertTriangle className="w-3 h-3 text-amber-500" />
                 )}
               </div>
-              <div className="flex gap-2">
-                <Input
-                  id="bmr"
-                  type="number"
-                  min={500}
-                  max={10000}
-                  placeholder="e.g. 1800"
-                  value={bmrInput}
-                  onChange={(e) => setBmrInput(e.target.value)}
-                  className="flex-1"
-                />
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  onClick={handleSaveBmr}
-                  disabled={savingBmr || !bmrInput}
-                >
-                  {savingBmr ? 'Saving...' : 'Save'}
-                </Button>
-              </div>
+              <Input
+                id="bmr"
+                type="number"
+                min={500}
+                max={10000}
+                placeholder="e.g. 1800"
+                value={bmrInput}
+                onChange={(e) => setBmrInput(e.target.value)}
+                className="mb-2 text-lg font-bold"
+              />
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleSaveBmr}
+                disabled={savingBmr || !bmrInput}
+                className="mt-auto w-full gap-2"
+              >
+                <Activity className="w-4 h-4" />
+                {savingBmr ? 'Saving...' : 'Log BMR'}
+              </Button>
               {bmrUpdatedAt && (
-                <p className="text-xs text-muted-foreground mt-1">
-                  Last updated: {format(bmrUpdatedAt, 'MMM d, yyyy')}
+                <p className="text-[10px] text-muted-foreground mt-1 text-center">
+                  Updated: {format(bmrUpdatedAt, 'MMM d')}
                 </p>
               )}
             </div>

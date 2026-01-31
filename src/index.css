@@ -41,6 +41,13 @@
 
     --radius: 0.75rem;
 
+    /* Chart colors - visible on dark background */
+    --chart-1: 142 76% 50%;   /* Emerald green - Expenditure */
+    --chart-2: 25 95% 60%;    /* Orange - Intake */
+    --chart-3: 75 100% 50%;   /* Lime - Primary/Deficit */
+    --chart-4: 200 98% 60%;   /* Sky blue - Weight */
+    --chart-5: 280 85% 65%;   /* Purple - supplementary */
+
     /* Success/Warning states */
     --success: 142 76% 36%;
     --success-foreground: 142 76% 36%;
@@ -89,6 +96,13 @@
     --border: 0 0% 18%;
     --input: 0 0% 15%;
     --ring: 75 100% 50%;
+
+    /* Chart colors - visible on dark background */
+    --chart-1: 142 76% 50%;   /* Emerald green - Expenditure */
+    --chart-2: 25 95% 60%;    /* Orange - Intake */
+    --chart-3: 75 100% 50%;   /* Lime - Primary/Deficit */
+    --chart-4: 200 98% 60%;   /* Sky blue - Weight */
+    --chart-5: 280 85% 65%;   /* Purple - supplementary */
 
     --sidebar-background: 0 0% 6%;
     --sidebar-foreground: 0 0% 98%;

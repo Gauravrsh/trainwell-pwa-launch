@@ -55,7 +55,7 @@ export const OutcomeChart = ({ data }: OutcomeChartProps) => {
         <p className="font-medium text-foreground mb-2">{label}</p>
         <div className="space-y-1 text-sm">
           {dayData?.weightValue !== null ? (
-            <p className="text-chart-4">
+            <p className="text-sky-400">
               Weight: {dayData.weightValue} kg
             </p>
           ) : (
@@ -63,7 +63,7 @@ export const OutcomeChart = ({ data }: OutcomeChartProps) => {
               No weight logged
             </p>
           )}
-          <p className={dayData?.netDeficit >= 0 ? 'text-primary' : 'text-amber-500'}>
+          <p className={dayData?.netDeficit >= 0 ? 'text-lime-400' : 'text-amber-500'}>
             Net: {dayData?.netDeficit >= 0 ? 'Deficit' : 'Surplus'} {Math.abs(dayData?.netDeficit || 0)} kcal
           </p>
         </div>
@@ -80,8 +80,8 @@ export const OutcomeChart = ({ data }: OutcomeChartProps) => {
         >
           <defs>
             <linearGradient id="deficitGradient" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.3} />
-              <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0} />
+              <stop offset="5%" stopColor="hsl(75, 100%, 50%)" stopOpacity={0.3} />
+              <stop offset="95%" stopColor="hsl(75, 100%, 50%)" stopOpacity={0} />
             </linearGradient>
           </defs>
           
@@ -138,7 +138,7 @@ export const OutcomeChart = ({ data }: OutcomeChartProps) => {
             type="monotone"
             dataKey="deficitValue"
             name="Net Deficit"
-            stroke="hsl(var(--primary))"
+            stroke="hsl(75, 100%, 50%)"
             strokeWidth={2}
             fill="url(#deficitGradient)"
             connectNulls
@@ -150,10 +150,10 @@ export const OutcomeChart = ({ data }: OutcomeChartProps) => {
             type="monotone"
             dataKey="weightValue"
             name="Weight"
-            stroke="hsl(var(--chart-4))"
+            stroke="hsl(200, 98%, 60%)"
             strokeWidth={3}
-            dot={{ fill: 'hsl(var(--chart-4))', strokeWidth: 0, r: 4 }}
-            activeDot={{ r: 6, fill: 'hsl(var(--chart-4))' }}
+            dot={{ fill: 'hsl(200, 98%, 60%)', strokeWidth: 0, r: 4 }}
+            activeDot={{ r: 6, fill: 'hsl(200, 98%, 60%)' }}
             connectNulls // This connects dots between existing entries
           />
         </ComposedChart>

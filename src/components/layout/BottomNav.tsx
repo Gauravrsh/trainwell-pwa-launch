@@ -15,7 +15,7 @@ const navItems: NavItem[] = [
   { to: '/', icon: Home, label: 'Home' },
   { to: '/progress', icon: TrendingUp, label: 'Progress' },
   { to: '/plans', icon: ClipboardList, label: 'Plans', trainerOnly: true },
-  { to: '/refer', icon: Gift, label: 'Refer' },
+  { to: '/refer', icon: Gift, label: 'Refer', trainerOnly: true },
   { to: '/profile', icon: User, label: 'Profile' },
 ];
 
