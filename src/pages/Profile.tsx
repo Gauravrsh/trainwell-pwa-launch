@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { User, Settings, Bell, Shield, HelpCircle, LogOut, ChevronRight, FileText, Weight, AlertTriangle, Activity } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
@@ -6,10 +6,8 @@ import { useProfile } from '@/hooks/useProfile';
 import { useNavigate } from 'react-router-dom';
 import { SubscriptionSection } from '@/components/subscription/SubscriptionSection';
 import { WeightLogModal } from '@/components/modals/WeightLogModal';
+import { BMRLogModal } from '@/components/modals/BMRLogModal';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { supabase } from '@/integrations/supabase/client';
-import { useToast } from '@/hooks/use-toast';
 import { differenceInDays, format } from 'date-fns';
 
 const menuItems = [
@@ -24,18 +22,9 @@ export default function Profile() {
   const { user, signOut } = useAuth();
   const { profile, refetchProfile, isClient } = useProfile();
   const navigate = useNavigate();
-  const { toast } = useToast();
   
   const [weightModalOpen, setWeightModalOpen] = useState(false);
-  const [bmrInput, setBmrInput] = useState('');
-  
-  // Sync BMR input with profile when profile loads
-  useEffect(() => {
-    if (profile?.bmr) {
-      setBmrInput(profile.bmr.toString());
-    }
-  }, [profile?.bmr]);
-  const [savingBmr, setSavingBmr] = useState(false);
+  const [bmrModalOpen, setBmrModalOpen] = useState(false);
 
   // Check if BMR is stale
   const bmrUpdatedAt = profile?.bmr_updated_at ? new Date(profile.bmr_updated_at) : null;
@@ -44,44 +33,6 @@ export default function Profile() {
   const handleSignOut = async () => {
     await signOut();
     navigate('/auth');
-  };
-
-  const handleSaveBmr = async () => {
-    if (!profile?.id) return;
-    
-    const bmrValue = parseInt(bmrInput, 10);
-    if (isNaN(bmrValue) || bmrValue < 500 || bmrValue > 10000) {
-      toast({
-        title: 'Invalid BMR',
-        description: 'Please enter a BMR between 500 and 10,000 kcal',
-        variant: 'destructive',
-      });
-      return;
-    }
-
-    setSavingBmr(true);
-    try {
-      const { error } = await supabase
-        .from('profiles')
-        .update({ bmr: bmrValue, bmr_updated_at: new Date().toISOString() })
-        .eq('id', profile.id);
-
-      if (error) throw error;
-
-      toast({
-        title: 'BMR updated',
-        description: `Your BMR has been set to ${bmrValue} kcal/day`,
-      });
-      refetchProfile();
-    } catch (err) {
-      toast({
-        title: 'Error',
-        description: 'Failed to update BMR',
-        variant: 'destructive',
-      });
-    } finally {
-      setSavingBmr(false);
-    }
   };
 
   return (
@@ -161,6 +112,11 @@ export default function Profile() {
                 <Weight className="w-4 h-4" />
                 Log Weight
               </Button>
+              {profile?.updated_at && profile?.weight_kg && (
+                <p className="text-[10px] text-muted-foreground mt-1 text-center">
+                  Updated: {format(new Date(profile.updated_at), 'MMM d')}
+                </p>
+              )}
             </div>
 
             {/* BMR Card */}
@@ -174,25 +130,17 @@ export default function Profile() {
                   <AlertTriangle className="w-3 h-3 text-amber-500" />
                 )}
               </div>
-              <Input
-                id="bmr"
-                type="number"
-                min={500}
-                max={10000}
-                placeholder="e.g. 1800"
-                value={bmrInput}
-                onChange={(e) => setBmrInput(e.target.value)}
-                className="mb-2 text-lg font-bold"
-              />
+              <p className="text-2xl font-bold text-foreground mb-3">
+                {profile?.bmr ? `${profile.bmr}` : '—'}
+              </p>
               <Button
                 variant="outline"
                 size="sm"
-                onClick={handleSaveBmr}
-                disabled={savingBmr || !bmrInput}
+                onClick={() => setBmrModalOpen(true)}
                 className="mt-auto w-full gap-2"
               >
                 <Activity className="w-4 h-4" />
-                {savingBmr ? 'Saving...' : 'Log BMR'}
+                Log BMR
               </Button>
               {bmrUpdatedAt && (
                 <p className="text-[10px] text-muted-foreground mt-1 text-center">
@@ -264,6 +212,13 @@ export default function Profile() {
       <WeightLogModal
         open={weightModalOpen}
         onOpenChange={setWeightModalOpen}
+        onSuccess={refetchProfile}
+      />
+
+      {/* BMR Log Modal */}
+      <BMRLogModal
+        open={bmrModalOpen}
+        onOpenChange={setBmrModalOpen}
         onSuccess={refetchProfile}
       />
     </div>

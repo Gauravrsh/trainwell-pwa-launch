@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { format, addDays, subDays, startOfDay, isSameDay, isAfter, isBefore, differenceInDays } from 'date-fns';
+import { format, addDays, subDays, startOfDay, isSameDay, isAfter, isBefore, differenceInDays, getDaysInMonth, startOfMonth } from 'date-fns';
 import { ChevronLeft, ChevronRight, Plus, Dumbbell, Check, Clock, X, AlertCircle, Utensils, UserPlus, Share2 } from 'lucide-react';
 import { useProfile } from '@/hooks/useProfile';
 import { supabase } from '@/integrations/supabase/client';
@@ -67,17 +67,21 @@ const Calendar = () => {
     setShowPlanModal(false);
   };
 
-  // Calculate cycle dates - cycle starts from when client joined trainer or account creation
-  const cycleStartDate = useMemo(() => {
-    const today = new Date();
-    return startOfDay(subDays(today, today.getDate() - 1));
-  }, []);
-
+  // Calculate cycle dates based on actual calendar months
   const today = useMemo(() => startOfDay(new Date()), []);
-  const currentCycleStart = cycleStartDate;
-  const currentCycleEnd = addDays(currentCycleStart, 29);
-  const previousCycleStart = subDays(currentCycleStart, 30);
-  const previousCycleEnd = subDays(currentCycleStart, 1);
+  
+  // Current month boundaries
+  const currentCycleStart = useMemo(() => startOfMonth(today), [today]);
+  const daysInCurrentMonth = useMemo(() => getDaysInMonth(currentCycleStart), [currentCycleStart]);
+  const currentCycleEnd = useMemo(() => addDays(currentCycleStart, daysInCurrentMonth - 1), [currentCycleStart, daysInCurrentMonth]);
+  
+  // Previous month boundaries
+  const previousCycleStart = useMemo(() => {
+    const prevMonth = subDays(currentCycleStart, 1);
+    return startOfMonth(prevMonth);
+  }, [currentCycleStart]);
+  const daysInPreviousMonth = useMemo(() => getDaysInMonth(previousCycleStart), [previousCycleStart]);
+  const previousCycleEnd = useMemo(() => subDays(currentCycleStart, 1), [currentCycleStart]);
 
   // Fetch workouts for the user (client view)
   const { data: workouts = [] } = useQuery({
@@ -134,16 +138,16 @@ const Calendar = () => {
   const allDates = useMemo(() => {
     const dates: { date: Date; section: 'past' | 'current' | 'future' }[] = [];
     
-    // Previous cycle (30 days)
-    for (let i = 0; i < 30; i++) {
+    // Previous month (dynamic days based on actual month)
+    for (let i = 0; i < daysInPreviousMonth; i++) {
       dates.push({
         date: addDays(previousCycleStart, i),
         section: 'past'
       });
     }
     
-    // Current cycle (30 days)
-    for (let i = 0; i < 30; i++) {
+    // Current month (dynamic days based on actual month)
+    for (let i = 0; i < daysInCurrentMonth; i++) {
       dates.push({
         date: addDays(currentCycleStart, i),
         section: 'current'
@@ -170,7 +174,7 @@ const Calendar = () => {
     }
     
     return dates;
-  }, [previousCycleStart, currentCycleStart, today]);
+  }, [previousCycleStart, currentCycleStart, today, daysInPreviousMonth, daysInCurrentMonth]);
 
   const getWorkoutForDate = (date: Date, workoutList: Workout[] = workouts) => {
     return workoutList.find(w => isSameDay(new Date(w.date), date));
