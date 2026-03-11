@@ -143,33 +143,15 @@ export function useTrainerSubscription() {
   const selectPlan = async (planType: 'monthly' | 'annual') => {
     if (!profile) throw new Error('Profile not found');
 
-    const amount = planType === 'monthly' ? 499 : 5988;
-    const durationDays = planType === 'monthly' ? 30 : 365;
-
-    const startDate = new Date();
-    const endDate = new Date();
-    endDate.setDate(endDate.getDate() + durationDays);
-
-    const graceEndDate = new Date(endDate);
-    graceEndDate.setDate(graceEndDate.getDate() + 3);
-
-    const { data, error: insertError } = await supabase
-      .from('trainer_platform_subscriptions')
-      .insert({
-        trainer_id: profile.id,
-        plan_type: planType,
-        status: 'active',
-        amount,
-        start_date: startDate.toISOString().split('T')[0],
-        end_date: endDate.toISOString().split('T')[0],
-        grace_end_date: graceEndDate.toISOString().split('T')[0],
-        is_trial_used: subscription?.is_trial_used || false,
-        payment_status: 'pending', // Will be updated after Razorpay integration
+    const { data, error: rpcError } = await supabase
+      .rpc('create_trainer_subscription', {
+        p_trainer_id: profile.id,
+        p_plan_type: planType,
+        p_is_trial_used: subscription?.is_trial_used || false,
       })
-      .select()
       .single();
 
-    if (insertError) throw insertError;
+    if (rpcError) throw rpcError;
     setSubscription(data as TrainerSubscription);
     return data;
   };
