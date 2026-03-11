@@ -825,6 +825,16 @@ export type Database = {
           isSetofReturn: true
         }
       }
+      create_trainer_subscription_webhook: {
+        Args: {
+          p_duration_days: number
+          p_plan_type: Database["public"]["Enums"]["platform_plan_type"]
+          p_razorpay_order_id: string
+          p_razorpay_payment_id: string
+          p_trainer_id: string
+        }
+        Returns: undefined
+      }
       generate_unique_id: {
         Args: { p_role: Database["public"]["Enums"]["user_role"] }
         Returns: string
@@ -927,6 +937,16 @@ export type Database = {
           isOneToOne: false
           isSetofReturn: true
         }
+      }
+      renew_trainer_subscription_webhook: {
+        Args: {
+          p_duration_days: number
+          p_plan_type: Database["public"]["Enums"]["platform_plan_type"]
+          p_razorpay_order_id: string
+          p_razorpay_payment_id: string
+          p_subscription_id: string
+        }
+        Returns: undefined
       }
       start_trainer_trial: {
         Args: { p_trainer_id: string }

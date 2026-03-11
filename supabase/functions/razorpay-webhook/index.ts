@@ -112,18 +112,10 @@ Deno.serve(async (req) => {
       });
 
       if (trainerProfileId) {
-        // Calculate subscription dates based on plan type
-        const startDate = new Date();
-        const endDate = new Date();
-        
-        if (planType === 'annual') {
-          endDate.setFullYear(endDate.getFullYear() + 1);
-        } else {
-          endDate.setMonth(endDate.getMonth() + 1);
-        }
+        const durationDays = planType === 'annual' ? 365 : 30;
 
-        // Update or create subscription with verified payment
-        const { data: existingSub, error: fetchError } = await supabase
+        // Check for existing subscription
+        const { data: existingSub } = await supabase
           .from('trainer_platform_subscriptions')
           .select('id')
           .eq('trainer_id', trainerProfileId)
@@ -132,69 +124,35 @@ Deno.serve(async (req) => {
           .single();
 
         if (existingSub) {
-          // Update existing subscription
-          const { error: updateError } = await supabase
-            .from('trainer_platform_subscriptions')
-            .update({
-              status: 'active',
-              payment_status: 'verified',
-              razorpay_payment_id: razorpayPaymentId,
-              razorpay_order_id: razorpayOrderId,
-              plan_type: planType || 'monthly',
-              start_date: startDate.toISOString().split('T')[0],
-              end_date: endDate.toISOString().split('T')[0],
-              grace_end_date: null,
-            })
-            .eq('id', existingSub.id);
+          // Update via server-side SQL date math
+          const { error: updateError } = await supabase.rpc('renew_trainer_subscription_webhook', {
+            p_subscription_id: existingSub.id,
+            p_plan_type: planType || 'monthly',
+            p_duration_days: durationDays,
+            p_razorpay_payment_id: razorpayPaymentId,
+            p_razorpay_order_id: razorpayOrderId,
+          });
 
           if (updateError) {
             console.error('Error updating subscription:', updateError);
             throw updateError;
           }
-          
           console.log('Subscription updated successfully:', existingSub.id);
         } else {
-          // Create new subscription
-          const { error: insertError } = await supabase
-            .from('trainer_platform_subscriptions')
-            .insert({
-              trainer_id: trainerProfileId,
-              plan_type: planType || 'monthly',
-              status: 'active',
-              payment_status: 'verified',
-              razorpay_payment_id: razorpayPaymentId,
-              razorpay_order_id: razorpayOrderId,
-              start_date: startDate.toISOString().split('T')[0],
-              end_date: endDate.toISOString().split('T')[0],
-            });
+          // Create via server-side SQL date math
+          const { error: insertError } = await supabase.rpc('create_trainer_subscription_webhook', {
+            p_trainer_id: trainerProfileId,
+            p_plan_type: planType || 'monthly',
+            p_duration_days: durationDays,
+            p_razorpay_payment_id: razorpayPaymentId,
+            p_razorpay_order_id: razorpayOrderId,
+          });
 
           if (insertError) {
             console.error('Error creating subscription:', insertError);
             throw insertError;
           }
-          
           console.log('New subscription created for trainer:', trainerProfileId);
-        }
-      } else {
-        console.warn('No trainer_profile_id in payment notes - manual reconciliation may be needed');
-      }
-    } else if (event === 'payment.failed') {
-      const razorpayPaymentId = paymentEntity?.id;
-      const notes = paymentEntity?.notes || {};
-      const trainerProfileId = notes.trainer_profile_id;
-
-      console.log('Payment failed:', { razorpayPaymentId, trainerProfileId });
-
-      if (trainerProfileId) {
-        // Mark payment as failed
-        const { error } = await supabase
-          .from('trainer_platform_subscriptions')
-          .update({ payment_status: 'failed' })
-          .eq('trainer_id', trainerProfileId)
-          .eq('payment_status', 'pending');
-
-        if (error) {
-          console.error('Error updating failed payment status:', error);
         }
       }
     }
