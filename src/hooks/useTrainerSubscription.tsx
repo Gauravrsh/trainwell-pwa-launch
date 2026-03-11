@@ -86,16 +86,15 @@ export function useTrainerSubscription() {
       };
     }
 
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    // Use UTC-based "today" to match server CURRENT_DATE
+    const now = new Date();
+    const today = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
     
-    const endDate = new Date(subscription.end_date);
-    endDate.setHours(0, 0, 0, 0);
+    const endDate = new Date(subscription.end_date + 'T00:00:00Z');
     
     const graceEndDate = subscription.grace_end_date 
-      ? new Date(subscription.grace_end_date) 
+      ? new Date(subscription.grace_end_date + 'T00:00:00Z') 
       : null;
-    if (graceEndDate) graceEndDate.setHours(0, 0, 0, 0);
 
     const daysRemaining = Math.ceil((endDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
     const isInGracePeriod = subscription.status === 'grace' || (daysRemaining < 0 && graceEndDate && today <= graceEndDate);
