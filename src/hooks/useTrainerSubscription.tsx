@@ -131,32 +131,11 @@ export function useTrainerSubscription() {
   const startTrial = async () => {
     if (!profile) throw new Error('Profile not found');
 
-    const startDate = new Date();
-    const endDate = new Date();
-    endDate.setDate(endDate.getDate() + 14); // 14-day trial
-
-    const graceEndDate = new Date(endDate);
-    graceEndDate.setDate(graceEndDate.getDate() + 3); // 3-day grace
-
-    const { data, error: insertError } = await supabase
-      .from('trainer_platform_subscriptions')
-      .insert({
-        trainer_id: profile.id,
-        plan_type: 'trial',
-        status: 'trial',
-        amount: 0,
-        start_date: startDate.toISOString().split('T')[0],
-        end_date: endDate.toISOString().split('T')[0],
-        grace_end_date: graceEndDate.toISOString().split('T')[0],
-        is_trial_used: true,
-        trial_clients_count: 0,
-        max_trial_clients: 3,
-        payment_status: 'not_required',
-      })
-      .select()
+    const { data, error: rpcError } = await supabase
+      .rpc('start_trainer_trial', { p_trainer_id: profile.id })
       .single();
 
-    if (insertError) throw insertError;
+    if (rpcError) throw rpcError;
     setSubscription(data as TrainerSubscription);
     return data;
   };
