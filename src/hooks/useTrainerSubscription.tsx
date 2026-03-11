@@ -86,16 +86,15 @@ export function useTrainerSubscription() {
       };
     }
 
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    // Use UTC-based "today" to match server CURRENT_DATE
+    const now = new Date();
+    const today = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
     
-    const endDate = new Date(subscription.end_date);
-    endDate.setHours(0, 0, 0, 0);
+    const endDate = new Date(subscription.end_date + 'T00:00:00Z');
     
     const graceEndDate = subscription.grace_end_date 
-      ? new Date(subscription.grace_end_date) 
+      ? new Date(subscription.grace_end_date + 'T00:00:00Z') 
       : null;
-    if (graceEndDate) graceEndDate.setHours(0, 0, 0, 0);
 
     const daysRemaining = Math.ceil((endDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
     const isInGracePeriod = subscription.status === 'grace' || (daysRemaining < 0 && graceEndDate && today <= graceEndDate);
@@ -132,32 +131,11 @@ export function useTrainerSubscription() {
   const startTrial = async () => {
     if (!profile) throw new Error('Profile not found');
 
-    const startDate = new Date();
-    const endDate = new Date();
-    endDate.setDate(endDate.getDate() + 14); // 14-day trial
-
-    const graceEndDate = new Date(endDate);
-    graceEndDate.setDate(graceEndDate.getDate() + 3); // 3-day grace
-
-    const { data, error: insertError } = await supabase
-      .from('trainer_platform_subscriptions')
-      .insert({
-        trainer_id: profile.id,
-        plan_type: 'trial',
-        status: 'trial',
-        amount: 0,
-        start_date: startDate.toISOString().split('T')[0],
-        end_date: endDate.toISOString().split('T')[0],
-        grace_end_date: graceEndDate.toISOString().split('T')[0],
-        is_trial_used: true,
-        trial_clients_count: 0,
-        max_trial_clients: 3,
-        payment_status: 'not_required',
-      })
-      .select()
+    const { data, error: rpcError } = await supabase
+      .rpc('start_trainer_trial', { p_trainer_id: profile.id })
       .single();
 
-    if (insertError) throw insertError;
+    if (rpcError) throw rpcError;
     setSubscription(data as TrainerSubscription);
     return data;
   };
@@ -165,33 +143,15 @@ export function useTrainerSubscription() {
   const selectPlan = async (planType: 'monthly' | 'annual') => {
     if (!profile) throw new Error('Profile not found');
 
-    const amount = planType === 'monthly' ? 499 : 5988;
-    const durationDays = planType === 'monthly' ? 30 : 365;
-
-    const startDate = new Date();
-    const endDate = new Date();
-    endDate.setDate(endDate.getDate() + durationDays);
-
-    const graceEndDate = new Date(endDate);
-    graceEndDate.setDate(graceEndDate.getDate() + 3);
-
-    const { data, error: insertError } = await supabase
-      .from('trainer_platform_subscriptions')
-      .insert({
-        trainer_id: profile.id,
-        plan_type: planType,
-        status: 'active',
-        amount,
-        start_date: startDate.toISOString().split('T')[0],
-        end_date: endDate.toISOString().split('T')[0],
-        grace_end_date: graceEndDate.toISOString().split('T')[0],
-        is_trial_used: subscription?.is_trial_used || false,
-        payment_status: 'pending', // Will be updated after Razorpay integration
+    const { data, error: rpcError } = await supabase
+      .rpc('create_trainer_subscription', {
+        p_trainer_id: profile.id,
+        p_plan_type: planType,
+        p_is_trial_used: subscription?.is_trial_used || false,
       })
-      .select()
       .single();
 
-    if (insertError) throw insertError;
+    if (rpcError) throw rpcError;
     setSubscription(data as TrainerSubscription);
     return data;
   };
@@ -199,37 +159,18 @@ export function useTrainerSubscription() {
   const renewPlan = async (planType: 'monthly' | 'annual') => {
     if (!subscription) throw new Error('No existing subscription');
 
-    const amount = planType === 'monthly' ? 499 : 5988;
-    const durationDays = planType === 'monthly' ? 30 : 365;
+    const currentStatus = getStatus();
+    const isActive = currentStatus.isActive && !currentStatus.isInGracePeriod;
 
-    // If active, extend from current end date; if expired, start fresh
-    const status = getStatus();
-    const startDate = status.isActive && !status.isInGracePeriod
-      ? new Date(subscription.end_date)
-      : new Date();
-    
-    const endDate = new Date(startDate);
-    endDate.setDate(endDate.getDate() + durationDays);
-
-    const graceEndDate = new Date(endDate);
-    graceEndDate.setDate(graceEndDate.getDate() + 3);
-
-    const { data, error: updateError } = await supabase
-      .from('trainer_platform_subscriptions')
-      .update({
-        plan_type: planType,
-        status: 'active',
-        amount,
-        start_date: startDate.toISOString().split('T')[0],
-        end_date: endDate.toISOString().split('T')[0],
-        grace_end_date: graceEndDate.toISOString().split('T')[0],
-        payment_status: 'pending',
+    const { data, error: rpcError } = await supabase
+      .rpc('renew_trainer_subscription', {
+        p_subscription_id: subscription.id,
+        p_plan_type: planType,
+        p_is_active: isActive,
       })
-      .eq('id', subscription.id)
-      .select()
       .single();
 
-    if (updateError) throw updateError;
+    if (rpcError) throw rpcError;
     setSubscription(data as TrainerSubscription);
     return data;
   };

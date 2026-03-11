@@ -1,42 +1,143 @@
 
 
-## Plan: Fix Timezone Consistency & Move Date Logic Server-Side
+# Dummy Data Generation Plan for Progress Module Testing
 
-### Problem
-All subscription date calculations (`startTrial`, `selectPlan`, `renewPlan`) use `new Date()` on the client (browser local time), while the database uses `CURRENT_DATE` (UTC). A user in IST at 11 PM could get a different date than the server, causing off-by-one issues on subscription start/end dates.
+## Client Profile
+| Field | Value |
+|-------|-------|
+| Email | gauravrsh123@gmail.com |
+| Profile ID | cd088554-c0db-4d77-a698-535f4ccf151a |
+| Current BMR | null (will set to 1850) |
 
-### Approach
+---
 
-**1. Create three server-side database functions** that encapsulate all date arithmetic using `CURRENT_DATE` (UTC):
+## Data Generation Parameters
 
-- `start_trainer_trial(p_trainer_id uuid)` — inserts a 14-day trial with 3-day grace, returns the row
-- `create_trainer_subscription(p_trainer_id uuid, p_plan_type platform_plan_type, p_is_trial_used boolean)` — inserts a paid plan with correct duration (30d / 365d) + 3-day grace
-- `renew_trainer_subscription(p_subscription_id uuid, p_plan_type platform_plan_type, p_is_active boolean)` — updates existing subscription, extending from `end_date` if active or from `CURRENT_DATE` if expired
+### Date Range
+- **Period:** 30 days (2026-01-01 to 2026-01-31)
+- **Missed Days:** 2-3 scattered days (no food or workout logs)
 
-All three use `SECURITY DEFINER` with auth checks so date math stays on the server.
+### Weight Trend
+| Parameter | Value |
+|-----------|-------|
+| Starting Weight | 90.00 kg (Jan 1) |
+| Ending Weight | 87.00 kg (Jan 31) |
+| Average Daily Decline | ~0.10 kg |
+| Logging Frequency | Daily (30 entries) |
+| Pattern | Generally declining with minor daily fluctuations (+/- 0.2 kg) |
 
-**2. Update `useTrainerSubscription.tsx`** to call these RPCs instead of computing dates locally:
+### Calorie Expenditure
+| Component | Range |
+|-----------|-------|
+| BMR | 1850 cal (fixed) |
+| Active Burn | 600-800 cal/day |
+| **Total Expenditure** | **2450-2650 cal/day** |
 
-- `startTrial()` → `supabase.rpc('start_trainer_trial', { p_trainer_id: profile.id })`
-- `selectPlan()` → `supabase.rpc('create_trainer_subscription', { ... })`
-- `renewPlan()` → `supabase.rpc('renew_trainer_subscription', { ... })`
+### Calorie Intake (Adjusted to hit deficit target)
+| Meal | Calorie Range |
+|------|---------------|
+| Breakfast | 500-600 cal |
+| Lunch | 600-700 cal |
+| Dinner | 650-750 cal |
+| Snack | 200-250 cal |
+| **Daily Total** | **1950-2300 cal** |
 
-Remove all client-side `new Date()` calls for subscription date generation.
+### Net Deficit Target
+| Target | Range |
+|--------|-------|
+| Most days | 300-500 cal deficit |
+| Some days | 500-800 cal deficit (occasional) |
 
-**3. Normalize `getStatus()` date comparison to UTC** — change `new Date()` to extract a UTC-based "today" so the client-side status check aligns with server-stored dates.
+---
 
-**4. Update Razorpay webhook** — replace `new Date()` date arithmetic with Postgres `CURRENT_DATE` by having the webhook use an SQL query for date computation instead of JavaScript dates.
+## Data Cleanup (Before Insert)
 
-### Files Changed
+1. Delete existing food_logs for this client
+2. Delete existing workouts for this client  
+3. Delete existing weight_logs for this client
+4. Update profile BMR to 1850
 
-| File | Change |
-|------|--------|
-| New migration SQL | Create 3 database functions |
-| `src/hooks/useTrainerSubscription.tsx` | Replace client date logic with RPC calls; normalize getStatus to UTC |
-| `supabase/functions/razorpay-webhook/index.ts` | Use SQL-based date computation instead of JS `new Date()` |
+---
 
-### What Is NOT Touched
-- Calendar UI, food logs, workout logs, training plans, profile setup — all unchanged
-- RLS policies — unchanged
-- No other hooks or components modified
+## Sample Data Distribution
+
+### 30-Day Pattern Overview
+
+```text
+Day 01-05:  Weight 90.0 → 89.5 kg | Normal logging
+Day 06:     MISSED (no food/workout logs) | Weight still logged
+Day 07-14:  Weight 89.4 → 88.8 kg | Normal logging
+Day 15:     MISSED (no food/workout logs) | Weight still logged  
+Day 16-23:  Weight 88.7 → 87.9 kg | Normal logging
+Day 24:     MISSED (no food/workout logs) | Weight still logged
+Day 25-31:  Weight 87.8 → 87.0 kg | Normal logging
+```
+
+### Weight Progression (with realistic variation)
+
+| Day | Target Weight | Notes |
+|-----|--------------|-------|
+| 1 | 90.00 kg | Starting weight |
+| 5 | 89.50 kg | |
+| 10 | 89.00 kg | |
+| 15 | 88.50 kg | |
+| 20 | 88.00 kg | |
+| 25 | 87.50 kg | |
+| 31 | 87.00 kg | Ending weight |
+
+---
+
+## Technical Implementation
+
+### 1. Update Profile BMR
+```sql
+UPDATE profiles 
+SET bmr = 1850, bmr_updated_at = NOW() 
+WHERE id = 'cd088554-c0db-4d77-a698-535f4ccf151a';
+```
+
+### 2. Clear Existing Data
+```sql
+DELETE FROM food_logs WHERE client_id = 'cd088554-c0db-4d77-a698-535f4ccf151a';
+DELETE FROM workouts WHERE client_id = 'cd088554-c0db-4d77-a698-535f4ccf151a';
+DELETE FROM weight_logs WHERE client_id = 'cd088554-c0db-4d77-a698-535f4ccf151a';
+```
+
+### 3. Insert Weight Logs (30 entries)
+Daily weight entries with ~0.10 kg decline per day + minor fluctuations
+
+### 4. Insert Food Logs (27 days x 4 meals = 108 entries)
+Skip 3 missed days (days 6, 15, 24)
+
+### 5. Insert Workouts (27 entries)
+Skip 3 missed days, with calories_burnt 600-800
+
+---
+
+## Weight Decimal Fix (Side Remark)
+
+The `weight_logs.weight_kg` column is already `numeric` type which supports decimals. The `profiles.weight_kg` is also `numeric`. No database changes needed.
+
+However, I'll verify the frontend inputs allow decimal values (2 decimal places) for weight entry.
+
+---
+
+## Expected Results After Data Generation
+
+### Action Chart (Intake vs Expenditure)
+- 27 days of stacked bars (intake + expenditure)
+- 3 red "Missed" bars on days 6, 15, 24
+- Net deficit line hovering in 300-800 range
+- Most deficit points clustered around 300-500
+
+### Outcome Chart (Weight Trend)
+- Continuous declining line from 90 → 87 kg
+- Minor daily fluctuations for realism
+- Net deficit area shaded below the weight line
+
+### Quick Stats
+- Avg Deficit: ~400-500 cal
+- Days Logged: 27
+- Days Missed: 3
+- Weight Change: -3.0 kg
 
