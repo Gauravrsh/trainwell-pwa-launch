@@ -159,37 +159,18 @@ export function useTrainerSubscription() {
   const renewPlan = async (planType: 'monthly' | 'annual') => {
     if (!subscription) throw new Error('No existing subscription');
 
-    const amount = planType === 'monthly' ? 499 : 5988;
-    const durationDays = planType === 'monthly' ? 30 : 365;
+    const currentStatus = getStatus();
+    const isActive = currentStatus.isActive && !currentStatus.isInGracePeriod;
 
-    // If active, extend from current end date; if expired, start fresh
-    const status = getStatus();
-    const startDate = status.isActive && !status.isInGracePeriod
-      ? new Date(subscription.end_date)
-      : new Date();
-    
-    const endDate = new Date(startDate);
-    endDate.setDate(endDate.getDate() + durationDays);
-
-    const graceEndDate = new Date(endDate);
-    graceEndDate.setDate(graceEndDate.getDate() + 3);
-
-    const { data, error: updateError } = await supabase
-      .from('trainer_platform_subscriptions')
-      .update({
-        plan_type: planType,
-        status: 'active',
-        amount,
-        start_date: startDate.toISOString().split('T')[0],
-        end_date: endDate.toISOString().split('T')[0],
-        grace_end_date: graceEndDate.toISOString().split('T')[0],
-        payment_status: 'pending',
+    const { data, error: rpcError } = await supabase
+      .rpc('renew_trainer_subscription', {
+        p_subscription_id: subscription.id,
+        p_plan_type: planType,
+        p_is_active: isActive,
       })
-      .eq('id', subscription.id)
-      .select()
       .single();
 
-    if (updateError) throw updateError;
+    if (rpcError) throw rpcError;
     setSubscription(data as TrainerSubscription);
     return data;
   };
