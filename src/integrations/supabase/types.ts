@@ -794,6 +794,37 @@ export type Database = {
         }
         Returns: number
       }
+      create_trainer_subscription: {
+        Args: {
+          p_is_trial_used: boolean
+          p_plan_type: Database["public"]["Enums"]["platform_plan_type"]
+          p_trainer_id: string
+        }
+        Returns: {
+          amount: number | null
+          created_at: string
+          end_date: string
+          grace_end_date: string | null
+          id: string
+          is_trial_used: boolean | null
+          max_trial_clients: number | null
+          payment_status: string | null
+          plan_type: Database["public"]["Enums"]["platform_plan_type"]
+          razorpay_order_id: string | null
+          razorpay_payment_id: string | null
+          start_date: string
+          status: Database["public"]["Enums"]["platform_subscription_status"]
+          trainer_id: string
+          trial_clients_count: number | null
+          updated_at: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "trainer_platform_subscriptions"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
       generate_unique_id: {
         Args: { p_role: Database["public"]["Enums"]["user_role"] }
         Returns: string
@@ -865,6 +896,64 @@ export type Database = {
           role: Database["public"]["Enums"]["user_role"]
           unique_id: string
         }[]
+      }
+      renew_trainer_subscription: {
+        Args: {
+          p_is_active: boolean
+          p_plan_type: Database["public"]["Enums"]["platform_plan_type"]
+          p_subscription_id: string
+        }
+        Returns: {
+          amount: number | null
+          created_at: string
+          end_date: string
+          grace_end_date: string | null
+          id: string
+          is_trial_used: boolean | null
+          max_trial_clients: number | null
+          payment_status: string | null
+          plan_type: Database["public"]["Enums"]["platform_plan_type"]
+          razorpay_order_id: string | null
+          razorpay_payment_id: string | null
+          start_date: string
+          status: Database["public"]["Enums"]["platform_subscription_status"]
+          trainer_id: string
+          trial_clients_count: number | null
+          updated_at: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "trainer_platform_subscriptions"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
+      start_trainer_trial: {
+        Args: { p_trainer_id: string }
+        Returns: {
+          amount: number | null
+          created_at: string
+          end_date: string
+          grace_end_date: string | null
+          id: string
+          is_trial_used: boolean | null
+          max_trial_clients: number | null
+          payment_status: string | null
+          plan_type: Database["public"]["Enums"]["platform_plan_type"]
+          razorpay_order_id: string | null
+          razorpay_payment_id: string | null
+          start_date: string
+          status: Database["public"]["Enums"]["platform_subscription_status"]
+          trainer_id: string
+          trial_clients_count: number | null
+          updated_at: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "trainer_platform_subscriptions"
+          isOneToOne: false
+          isSetofReturn: true
+        }
       }
       update_trainer_activity: {
         Args: { p_trainer_id: string }
