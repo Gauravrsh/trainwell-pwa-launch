@@ -99,12 +99,16 @@ export function useTrainerSubscription() {
     const daysRemaining = Math.ceil((endDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
     const isInGracePeriod = subscription.status === 'grace' || (daysRemaining < 0 && graceEndDate && today <= graceEndDate);
     
+    // pending_payment means plan selected but payment not yet confirmed by webhook
+    const isPendingPayment = subscription.status === 'pending_payment';
+    
     const isExpired = subscription.status === 'expired' || 
       (graceEndDate && today > graceEndDate) ||
       (daysRemaining < 0 && !graceEndDate);
 
+    // Only trial (free) and webhook-verified 'active' count as truly active
     const isActive = ['trial', 'active'].includes(subscription.status) && daysRemaining >= 0;
-    const isReadOnly = isExpired;
+    const isReadOnly = isExpired || isPendingPayment;
 
     const trialClientsRemaining = subscription.plan_type === 'trial' 
       ? subscription.max_trial_clients - subscription.trial_clients_count 
