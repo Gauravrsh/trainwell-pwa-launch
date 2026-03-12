@@ -25,7 +25,7 @@ export default function ReferralPreview() {
           <span className="text-gradient">Help Them Win Too.</span>
         </motion.h2>
         <motion.p
-          className="mx-auto mt-3 max-w-md text-center text-sm text-muted-foreground"
+          className="mx-auto mt-3 max-w-md text-center text-base text-muted-foreground"
           initial="hidden" whileInView="visible" viewport={{ once: true }}
           variants={fadeUp}
         >
@@ -39,9 +39,9 @@ export default function ReferralPreview() {
           variants={fadeUp}
         >
           <div className="grid grid-cols-3 bg-secondary/50">
-            <div className="p-3 text-xs font-semibold text-muted-foreground text-center">Your Plan</div>
-            <div className="p-3 text-xs font-semibold text-muted-foreground text-center">Friend's Plan</div>
-            <div className="p-3 text-xs font-semibold text-muted-foreground text-center">You Get</div>
+            <div className="p-3 sm:p-4 text-sm font-semibold text-muted-foreground text-center">Your Plan</div>
+            <div className="p-3 sm:p-4 text-sm font-semibold text-muted-foreground text-center">Friend's Plan</div>
+            <div className="p-3 sm:p-4 text-sm font-semibold text-muted-foreground text-center">You Get</div>
           </div>
 
           {matrix.map((row, i) => (
@@ -53,9 +53,9 @@ export default function ReferralPreview() {
                   : i % 2 === 0 ? 'bg-card' : 'bg-secondary/20'
               }`}
             >
-              <div className="p-3 text-center text-sm text-foreground">{row.yourPlan}</div>
-              <div className="p-3 text-center text-sm text-foreground">{row.refPlan}</div>
-              <div className="p-3 text-center text-sm font-bold text-primary">
+              <div className="p-3 sm:p-4 text-center text-base text-foreground">{row.yourPlan}</div>
+              <div className="p-3 sm:p-4 text-center text-base text-foreground">{row.refPlan}</div>
+              <div className="p-3 sm:p-4 text-center text-base font-bold text-primary">
                 {row.reward}
                 {row.elite && (
                   <span className="block text-[10px] font-medium text-primary/80">⭐ Best combo</span>

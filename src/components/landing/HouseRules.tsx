@@ -40,7 +40,7 @@ export default function HouseRules() {
           Rules of the <span className="text-gradient">House</span>
         </motion.h2>
         <motion.p
-          className="mx-auto mt-3 max-w-lg text-center text-sm text-muted-foreground"
+          className="mx-auto mt-3 max-w-lg text-center text-base text-muted-foreground"
           initial="hidden" whileInView="visible" viewport={{ once: true }}
           variants={fadeUp} custom={0.5}
         >
@@ -63,7 +63,7 @@ export default function HouseRules() {
                   <CardTitle className="text-base">{r.title}</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <p className="text-sm text-muted-foreground leading-relaxed">{r.desc}</p>
+                  <p className="text-base text-muted-foreground leading-relaxed">{r.desc}</p>
                 </CardContent>
               </Card>
             </motion.div>

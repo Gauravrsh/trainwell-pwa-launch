@@ -18,12 +18,12 @@ export default function ManifestoSection() {
           Client gets results → Client stays → Client refers friends →{' '}
           <span className="text-gradient">You build wealth.</span>
         </h2>
-        <p className="mt-6 text-base text-muted-foreground leading-relaxed max-w-xl mx-auto">
+        <p className="mt-6 text-base sm:text-lg text-muted-foreground leading-relaxed max-w-xl mx-auto">
           That's it. That's the whole game. Everything else — the diet plans, the exercise variations,
           the motivational speeches — only works if the client shows up and stays consistent.
           TrainWell doesn't replace your coaching. It makes sure your coaching actually reaches the client.
         </p>
-        <p className="mt-4 text-sm text-muted-foreground leading-relaxed max-w-xl mx-auto">
+        <p className="mt-4 text-base sm:text-lg text-muted-foreground leading-relaxed max-w-xl mx-auto">
           We built this for trainers like you. Not for gym chains. Not for influencers.
           For the trainer who wakes up at 5 AM, trains 8 clients a day,
           and deserves a tool that works as hard as they do.

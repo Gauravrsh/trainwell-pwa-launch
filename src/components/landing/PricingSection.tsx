@@ -45,7 +45,7 @@ export default function PricingSection() {
           <span className="text-gradient">One Client Pays You</span>
         </motion.h2>
         <motion.p
-          className="mx-auto mt-3 max-w-lg text-center text-sm text-muted-foreground"
+          className="mx-auto mt-3 max-w-lg text-center text-base text-muted-foreground"
           initial="hidden" whileInView="visible" viewport={{ once: true }}
           variants={fadeUp} custom={0.5}
         >
@@ -84,7 +84,7 @@ export default function PricingSection() {
                 <CardContent>
                   <ul className="space-y-2.5">
                     {p.features.map((f) => (
-                      <li key={f} className="flex items-start gap-2 text-sm text-muted-foreground">
+                      <li key={f} className="flex items-start gap-2 text-base text-muted-foreground">
                         <Check className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
                         {f}
                       </li>
