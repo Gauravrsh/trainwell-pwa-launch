@@ -15,6 +15,7 @@ import RoleSelection from "./pages/RoleSelection";
 import ProfileSetup from "./pages/ProfileSetup";
 import Home from "./pages/Home";
 import Calendar from "./pages/Calendar";
+import Landing from "./pages/Landing";
 import Plans from "./pages/Plans";
 import Progress from "./pages/Progress";
 import Refer from "./pages/Refer";
