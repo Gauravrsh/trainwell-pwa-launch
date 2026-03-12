@@ -18,7 +18,7 @@ export function TrainerPlatformSubscription() {
       setIsStartingTrial(true);
       await startTrial();
     } catch (error) {
-      console.error('Failed to start trial:', error);
+      logError('TrainerPlatformSubscription.startTrial', error);
     } finally {
       setIsStartingTrial(false);
     }
