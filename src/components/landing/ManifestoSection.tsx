@@ -13,15 +13,19 @@ export default function ManifestoSection() {
         initial="hidden" whileInView="visible" viewport={{ once: true, margin: '-60px' }}
         variants={fadeUp}
       >
-        <p className="text-xs font-semibold uppercase tracking-widest text-primary mb-4">Brand Manifesto</p>
-        <blockquote className="text-lg sm:text-xl font-medium leading-relaxed text-foreground italic">
-          "In India, PT is an investment, not an expense. When a client pays you ₹15,000,
-          they aren't paying for your time — they are paying for a <strong className="text-primary not-italic">new body</strong>.
-          If they don't get it, you lose a client."
+        <p className="text-xs font-semibold uppercase tracking-widest text-primary mb-4">Why This Exists</p>
+        <blockquote className="text-lg sm:text-xl font-medium leading-relaxed text-foreground">
+          "Whatever gets tracked, gets done."
         </blockquote>
-        <p className="mt-6 text-base text-muted-foreground leading-relaxed">
-          TrainWell removes the friction of tracking so that the only thing left is the result.
-          We don't just track workouts — <strong className="text-foreground">we track the truth</strong>.
+        <p className="mt-6 text-base text-muted-foreground leading-relaxed max-w-xl mx-auto">
+          Consistency builds habits. Habits replace motivation. Tracking builds consistency.
+          Every visible day of missed workout is motivation to show up tomorrow.
+          Every logged meal is a small win that compounds into a transformation.
+        </p>
+        <p className="mt-4 text-base text-muted-foreground leading-relaxed max-w-xl mx-auto">
+          When the client wins, they stay. When they stay, they refer.
+          When they refer, <strong className="text-foreground">you build wealth</strong>.
+          TrainWell doesn't just track workouts — <strong className="text-foreground">it tracks the truth</strong>.
         </p>
       </motion.div>
     </section>
