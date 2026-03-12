@@ -15,6 +15,7 @@ import RoleSelection from "./pages/RoleSelection";
 import ProfileSetup from "./pages/ProfileSetup";
 import Home from "./pages/Home";
 import Calendar from "./pages/Calendar";
+import Landing from "./pages/Landing";
 import Plans from "./pages/Plans";
 import Progress from "./pages/Progress";
 import Refer from "./pages/Refer";
@@ -63,7 +64,7 @@ const RoleSelectionRoute = ({ children }: { children: React.ReactNode }) => {
 
   // If profile already exists, go to home
   if (profile) {
-    return <Navigate to="/" replace />;
+    return <Navigate to="/dashboard" replace />;
   }
 
   return <>{children}</>;
@@ -88,7 +89,7 @@ const ProfileSetupRoute = () => {
 
   // If profile is complete, go to home
   if (profile.profile_complete) {
-    return <Navigate to="/" replace />;
+    return <Navigate to="/dashboard" replace />;
   }
 
   // Get role from profile
@@ -99,10 +100,20 @@ const AuthRoute = ({ children }: { children: React.ReactNode }) => {
   const { user } = useAuth();
 
   if (user) {
-    return <Navigate to="/" replace />;
+    return <Navigate to="/dashboard" replace />;
   }
 
   return <>{children}</>;
+};
+
+const PublicLandingRoute = () => {
+  const { user } = useAuth();
+
+  if (user) {
+    return <Navigate to="/dashboard" replace />;
+  }
+
+  return <Landing />;
 };
 
 const AppRoutes = () => (
@@ -131,8 +142,9 @@ const AppRoutes = () => (
       path="/profile-setup"
       element={<ProfileSetupRoute />}
     />
+    <Route path="/" element={<PublicLandingRoute />} />
     <Route
-      path="/"
+      path="/dashboard"
       element={
         <ProtectedRoute>
           <Calendar />
