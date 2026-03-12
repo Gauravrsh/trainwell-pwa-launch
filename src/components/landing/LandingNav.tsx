@@ -16,7 +16,7 @@ export default function LandingNav() {
             <Link to="/auth">Sign In</Link>
           </Button>
           <Button asChild size="sm" className="hidden sm:inline-flex font-bold">
-            <Link to="/auth">Start Discipline Trial</Link>
+            <Link to="/auth">Start Free Trial</Link>
           </Button>
         </div>
       </div>
