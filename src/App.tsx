@@ -100,10 +100,20 @@ const AuthRoute = ({ children }: { children: React.ReactNode }) => {
   const { user } = useAuth();
 
   if (user) {
-    return <Navigate to="/" replace />;
+    return <Navigate to="/dashboard" replace />;
   }
 
   return <>{children}</>;
+};
+
+const PublicLandingRoute = () => {
+  const { user } = useAuth();
+
+  if (user) {
+    return <Navigate to="/dashboard" replace />;
+  }
+
+  return <Landing />;
 };
 
 const AppRoutes = () => (
