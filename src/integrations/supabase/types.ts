@@ -991,6 +991,7 @@ export type Database = {
         | "grace"
         | "expired"
         | "cancelled"
+        | "pending_payment"
       service_type: "workout" | "nutrition" | "both"
       session_status:
         | "scheduled"
@@ -1144,6 +1145,7 @@ export const Constants = {
         "grace",
         "expired",
         "cancelled",
+        "pending_payment",
       ],
       service_type: ["workout", "nutrition", "both"],
       session_status: [
