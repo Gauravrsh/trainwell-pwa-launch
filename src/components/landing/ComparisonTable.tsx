@@ -1,19 +1,19 @@
 import { motion } from 'framer-motion';
 import { X, Check } from 'lucide-react';
 
-const rows = [
-  { label: 'Client Logs', whatsapp: 'Messy screenshots', trainwell: 'Structured, real-time' },
-  { label: 'Backdating', whatsapp: '"I\'ll log it tomorrow"', trainwell: 'Impossible — locked' },
-  { label: 'Progress Visibility', whatsapp: 'Zero', trainwell: 'Calendar + Charts' },
-  { label: 'Client Retention', whatsapp: '~3-6 months', trainwell: '12+ months' },
-  { label: 'Payment Tracking', whatsapp: 'Manual WhatsApp follow-up', trainwell: 'Built-in UPI & Razorpay' },
-  { label: 'Trainer as...', whatsapp: 'A nag', trainwell: 'A data-backed coach' },
-];
-
 const fadeUp = {
   hidden: { opacity: 0, y: 24 },
   visible: { opacity: 1, y: 0, transition: { duration: 0.5, ease: 'easeOut' } },
 };
+
+const rows = [
+  { label: 'Workout planning', whatsapp: 'Voice note / text list', trainwell: 'Structured, date-locked plans' },
+  { label: 'Client compliance', whatsapp: '"Haan sir, kar liya" on WhatsApp', trainwell: 'Green or Red on the calendar' },
+  { label: 'Diet logging', whatsapp: 'Client sends a photo... sometimes', trainwell: 'AI-powered, 10-second meal log' },
+  { label: 'Backdating', whatsapp: '"I\'ll log it tomorrow" (never does)', trainwell: 'Locked. Today only.' },
+  { label: 'Progress data', whatsapp: 'In your head or a notebook', trainwell: 'Charts, trends, real numbers' },
+  { label: 'Client retention', whatsapp: '3-6 months average', trainwell: '12+ months with results' },
+];
 
 export default function ComparisonTable() {
   return (
@@ -24,14 +24,15 @@ export default function ComparisonTable() {
           initial="hidden" whileInView="visible" viewport={{ once: true }}
           variants={fadeUp}
         >
-          WhatsApp Coaching vs. <span className="text-gradient">TrainWell</span>
+          WhatsApp Coaching vs.{' '}
+          <span className="text-gradient">TrainWell</span>
         </motion.h2>
         <motion.p
           className="mx-auto mt-3 max-w-md text-center text-sm text-muted-foreground"
           initial="hidden" whileInView="visible" viewport={{ once: true }}
           variants={fadeUp}
         >
-          You're already doing the hard work. Stop losing clients to bad tools.
+          You're already doing the hard work. The question is — are your tools keeping up?
         </motion.p>
 
         <motion.div
@@ -39,22 +40,24 @@ export default function ComparisonTable() {
           initial="hidden" whileInView="visible" viewport={{ once: true }}
           variants={fadeUp}
         >
-          {/* Header */}
           <div className="grid grid-cols-3 bg-secondary/50">
             <div className="p-3 text-xs font-semibold text-muted-foreground" />
-            <div className="p-3 text-center text-xs font-semibold text-destructive/80">WhatsApp</div>
+            <div className="p-3 text-center text-xs font-semibold text-muted-foreground">WhatsApp</div>
             <div className="p-3 text-center text-xs font-semibold text-primary">TrainWell</div>
           </div>
 
           {rows.map((row, i) => (
-            <div key={row.label} className={`grid grid-cols-3 ${i % 2 === 0 ? 'bg-card' : 'bg-secondary/20'}`}>
+            <div
+              key={row.label}
+              className={`grid grid-cols-3 ${i % 2 === 0 ? 'bg-card' : 'bg-secondary/20'}`}
+            >
               <div className="p-3 text-sm font-medium text-foreground">{row.label}</div>
-              <div className="flex items-center justify-center gap-1.5 p-3 text-xs text-destructive/70">
-                <X className="h-3.5 w-3.5 shrink-0 hidden sm:block" />
+              <div className="p-3 text-center text-sm text-muted-foreground flex items-start justify-center gap-1.5">
+                <X className="mt-0.5 h-3.5 w-3.5 shrink-0 text-destructive" />
                 <span>{row.whatsapp}</span>
               </div>
-              <div className="flex items-center justify-center gap-1.5 p-3 text-xs text-primary">
-                <Check className="h-3.5 w-3.5 shrink-0 hidden sm:block" />
+              <div className="p-3 text-center text-sm text-foreground flex items-start justify-center gap-1.5">
+                <Check className="mt-0.5 h-3.5 w-3.5 shrink-0 text-success" />
                 <span>{row.trainwell}</span>
               </div>
             </div>
