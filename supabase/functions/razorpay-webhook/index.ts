@@ -30,7 +30,13 @@ async function verifyRazorpaySignature(
     .map(b => b.toString(16).padStart(2, '0'))
     .join('');
   
-  return expectedSignature === signature;
+  // Constant-time comparison to prevent timing side-channel attacks
+  if (expectedSignature.length !== signature.length) return false;
+  let mismatch = 0;
+  for (let i = 0; i < expectedSignature.length; i++) {
+    mismatch |= expectedSignature.charCodeAt(i) ^ signature.charCodeAt(i);
+  }
+  return mismatch === 0;
 }
 
 Deno.serve(async (req) => {
