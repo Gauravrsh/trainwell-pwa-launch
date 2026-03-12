@@ -23,7 +23,7 @@ const SplashScreen = ({ onComplete }: SplashScreenProps) => {
       >
         {/* Logo Container with rounded corners matching the screenshot */}
         <motion.div
-          className="w-24 h-24 rounded-2xl overflow-hidden shadow-lg"
+          className="w-32 h-32 rounded-2xl overflow-hidden shadow-lg"
           initial={{ y: -20 }}
           animate={{ y: 0 }}
           transition={{ delay: 0.2, duration: 0.5, ease: "easeOut" }}

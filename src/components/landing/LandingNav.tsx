@@ -1,12 +1,14 @@
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
+import logoTrainwell from '@/assets/logo-trainwell.png';
 
 export default function LandingNav() {
   return (
     <nav className="fixed top-0 left-0 right-0 z-50 glass border-b border-border safe-top">
-      <div className="mx-auto flex h-14 max-w-5xl items-center justify-between px-4">
-        <Link to="/" className="text-lg font-bold">
-          Train<span className="text-primary">Well</span>
+      <div className="mx-auto flex h-16 max-w-5xl items-center justify-between px-4">
+        <Link to="/" className="flex items-center gap-2.5">
+          <img src={logoTrainwell} alt="TrainWell Logo" className="w-10 h-10 rounded-xl" />
+          <span className="text-xl font-bold">Train<span className="text-primary">Well</span></span>
         </Link>
         <div className="flex items-center gap-2">
           <Button asChild variant="ghost" size="sm">
