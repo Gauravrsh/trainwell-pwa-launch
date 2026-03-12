@@ -73,7 +73,7 @@ export function useTrainerReferral() {
         });
       }
     } catch (err) {
-      console.error('Error fetching referral data:', err);
+      logError('useTrainerReferral', err);
       setError(err instanceof Error ? err.message : 'Failed to fetch referral data');
     } finally {
       setLoading(false);

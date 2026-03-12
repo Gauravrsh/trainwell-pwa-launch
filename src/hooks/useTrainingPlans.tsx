@@ -200,7 +200,7 @@ export function useTrainingPlans() {
       toast.success('Training plan deleted!');
     },
     onError: (error) => {
-      console.error('Error deleting plan:', error);
+      logError('useTrainingPlans.delete', error);
       toast.error('Failed to delete training plan');
     },
   });

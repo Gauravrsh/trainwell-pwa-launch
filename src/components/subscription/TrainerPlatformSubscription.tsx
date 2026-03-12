@@ -33,7 +33,7 @@ export function TrainerPlatformSubscription() {
       }
       setShowPlanModal(false);
     } catch (error) {
-      console.error('Failed to select plan:', error);
+      logError('TrainerPlatformSubscription.selectPlan', error);
     }
   };
 
