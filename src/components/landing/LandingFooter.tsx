@@ -5,7 +5,7 @@ export default function LandingFooter() {
     <footer className="border-t border-border px-4 py-8">
       <div className="mx-auto flex max-w-5xl flex-col items-center gap-4 text-center sm:flex-row sm:justify-between sm:text-left">
         <div>
-          <span className="text-lg font-bold">train<span className="text-primary">well</span></span>
+          <span className="text-lg font-bold">Train<span className="text-primary">Well</span></span>
           <p className="mt-1 text-xs text-muted-foreground">© {new Date().getFullYear()} TrainWell. All rights reserved.</p>
         </div>
         <div className="flex gap-6 text-sm text-muted-foreground">

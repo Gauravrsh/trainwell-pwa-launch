@@ -10,7 +10,7 @@ export default function CTASection() {
           Stop Chasing Clients.{' '}
           <span className="text-gradient">Start Keeping Them.</span>
         </h2>
-        <p className="mx-auto mt-3 max-w-lg text-sm text-muted-foreground">
+        <p className="mx-auto mt-3 max-w-lg text-base text-muted-foreground">
           The tool costs less than one client's monthly fee. But it can be the reason that client stays for a year,
           refers two friends, and builds your reputation in ways no Instagram reel ever will.
         </p>

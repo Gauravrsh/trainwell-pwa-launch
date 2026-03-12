@@ -28,7 +28,7 @@ export default function ComparisonTable() {
           <span className="text-gradient">TrainWell</span>
         </motion.h2>
         <motion.p
-          className="mx-auto mt-3 max-w-md text-center text-sm text-muted-foreground"
+          className="mx-auto mt-3 max-w-md text-center text-base text-muted-foreground"
           initial="hidden" whileInView="visible" viewport={{ once: true }}
           variants={fadeUp}
         >

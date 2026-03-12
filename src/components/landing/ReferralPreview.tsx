@@ -53,9 +53,9 @@ export default function ReferralPreview() {
                   : i % 2 === 0 ? 'bg-card' : 'bg-secondary/20'
               }`}
             >
-              <div className="p-3 text-center text-sm text-foreground">{row.yourPlan}</div>
-              <div className="p-3 text-center text-sm text-foreground">{row.refPlan}</div>
-              <div className="p-3 text-center text-sm font-bold text-primary">
+              <div className="p-3 sm:p-4 text-center text-base text-foreground">{row.yourPlan}</div>
+              <div className="p-3 sm:p-4 text-center text-base text-foreground">{row.refPlan}</div>
+              <div className="p-3 sm:p-4 text-center text-base font-bold text-primary">
                 {row.reward}
                 {row.elite && (
                   <span className="block text-[10px] font-medium text-primary/80">⭐ Best combo</span>

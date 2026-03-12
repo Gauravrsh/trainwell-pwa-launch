@@ -46,7 +46,7 @@ export default function HeroSection() {
             </motion.p>
 
             <motion.p
-              className="mt-3 max-w-lg text-sm text-muted-foreground leading-relaxed"
+              className="mt-3 max-w-lg text-base text-muted-foreground leading-relaxed"
               initial="hidden" animate="visible" variants={fadeUp} custom={1.5}
             >
               The truth? Results only come from consistency. Consistency comes from tracking. TrainWell is the tool that makes sure

@@ -84,7 +84,7 @@ export default function PricingSection() {
                 <CardContent>
                   <ul className="space-y-2.5">
                     {p.features.map((f) => (
-                      <li key={f} className="flex items-start gap-2 text-sm text-muted-foreground">
+                      <li key={f} className="flex items-start gap-2 text-base text-muted-foreground">
                         <Check className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
                         {f}
                       </li>

@@ -63,7 +63,7 @@ export default function HouseRules() {
                   <CardTitle className="text-base">{r.title}</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <p className="text-sm text-muted-foreground leading-relaxed">{r.desc}</p>
+                  <p className="text-base text-muted-foreground leading-relaxed">{r.desc}</p>
                 </CardContent>
               </Card>
             </motion.div>

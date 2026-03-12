@@ -6,7 +6,7 @@ export default function LandingNav() {
     <nav className="fixed top-0 left-0 right-0 z-50 glass border-b border-border safe-top">
       <div className="mx-auto flex h-14 max-w-5xl items-center justify-between px-4">
         <Link to="/" className="text-lg font-bold">
-          train<span className="text-primary">well</span>
+          Train<span className="text-primary">Well</span>
         </Link>
         <div className="flex items-center gap-2">
           <Button asChild variant="ghost" size="sm">
