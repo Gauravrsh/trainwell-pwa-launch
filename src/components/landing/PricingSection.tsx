@@ -45,7 +45,7 @@ export default function PricingSection() {
           <span className="text-gradient">One Client Pays You</span>
         </motion.h2>
         <motion.p
-          className="mx-auto mt-3 max-w-lg text-center text-sm text-muted-foreground"
+          className="mx-auto mt-3 max-w-lg text-center text-base text-muted-foreground"
           initial="hidden" whileInView="visible" viewport={{ once: true }}
           variants={fadeUp} custom={0.5}
         >
