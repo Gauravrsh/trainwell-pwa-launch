@@ -191,14 +191,7 @@ const AppRoutes = () => (
         </ProtectedRoute>
       }
     />
-    <Route
-      path="/terms"
-      element={
-        <ProtectedRoute>
-          <Terms />
-        </ProtectedRoute>
-      }
-    />
+    <Route path="/terms" element={<Terms />} />
     <Route path="*" element={<NotFound />} />
   </Routes>
 );
