@@ -89,7 +89,7 @@ const ProfileSetupRoute = () => {
 
   // If profile is complete, go to home
   if (profile.profile_complete) {
-    return <Navigate to="/" replace />;
+    return <Navigate to="/dashboard" replace />;
   }
 
   // Get role from profile
