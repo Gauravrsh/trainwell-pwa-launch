@@ -142,8 +142,9 @@ const AppRoutes = () => (
       path="/profile-setup"
       element={<ProfileSetupRoute />}
     />
+    <Route path="/" element={<PublicLandingRoute />} />
     <Route
-      path="/"
+      path="/dashboard"
       element={
         <ProtectedRoute>
           <Calendar />
