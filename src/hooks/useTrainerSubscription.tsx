@@ -60,7 +60,7 @@ export function useTrainerSubscription() {
       if (fetchError) throw fetchError;
       setSubscription(data as TrainerSubscription | null);
     } catch (err) {
-      console.error('Error fetching subscription:', err);
+      logError('useTrainerSubscription', err);
       setError(err instanceof Error ? err.message : 'Failed to fetch subscription');
     } finally {
       setLoading(false);
