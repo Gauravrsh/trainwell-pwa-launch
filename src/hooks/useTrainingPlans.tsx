@@ -136,7 +136,7 @@ export function useTrainingPlans() {
       toast.success('Training plan updated!');
     },
     onError: (error) => {
-      console.error('Error updating plan:', error);
+      logError('useTrainingPlans.update', error);
       toast.error('Failed to update training plan');
     },
   });
