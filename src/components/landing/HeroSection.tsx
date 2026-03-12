@@ -22,28 +22,36 @@ export default function HeroSection() {
         <div className="grid items-center gap-12 lg:grid-cols-2">
           {/* Copy */}
           <div>
-            <motion.h1
-              className="text-3xl font-extrabold tracking-tight sm:text-4xl lg:text-5xl leading-[1.1]"
+            <motion.p
+              className="text-xs font-semibold uppercase tracking-widest text-primary mb-4"
               initial="hidden" animate="visible" variants={fadeUp} custom={0}
             >
-              Stop Losing Clients to{' '}
-              <span className="text-gradient">'Chalta&nbsp;Hai'</span>{' '}
-              Behavior.
+              Why This Exists
+            </motion.p>
+
+            <motion.h1
+              className="text-3xl font-extrabold tracking-tight sm:text-4xl lg:text-5xl leading-[1.1]"
+              initial="hidden" animate="visible" variants={fadeUp} custom={0.5}
+            >
+              Whatever Gets Tracked,{' '}
+              <span className="text-gradient">Gets Done.</span>
             </motion.h1>
 
             <motion.p
               className="mt-5 max-w-lg text-base text-muted-foreground sm:text-lg leading-relaxed"
               initial="hidden" animate="visible" variants={fadeUp} custom={1}
             >
-              Your income depends on client results. Their results depend on consistency.
-              TrainWell is the first platform that <strong className="text-foreground">enforces daily discipline</strong> — no backdating, no excuses, just results.
+              Your client pays you ₹10-15K every month for a new body. Not for your time — for <strong className="text-foreground">results</strong>.
+              If results don't come, the client leaves. No referral. No testimonial. Just another 3-month dropout.
             </motion.p>
 
             <motion.p
               className="mt-3 max-w-lg text-sm text-muted-foreground leading-relaxed"
               initial="hidden" animate="visible" variants={fadeUp} custom={1.5}
             >
-              Whatever gets tracked, gets done. The rest is noise.
+              The truth? Results only come from consistency. Consistency comes from tracking. TrainWell is the tool that makes sure
+              every workout and every meal is logged — <strong className="text-foreground">today, not tomorrow</strong>. No backdating. No "chalta hai."
+              Just an honest mirror that shows exactly where your client stands.
             </motion.p>
 
             <motion.div
@@ -52,7 +60,7 @@ export default function HeroSection() {
             >
               <Button asChild size="lg" className="gap-2 text-base font-bold">
                 <Link to="/auth">
-                  Start 14-Day Discipline Trial <ArrowRight className="h-4 w-4" />
+                  Start Free 14-Day Trial <ArrowRight className="h-4 w-4" />
                 </Link>
               </Button>
               <Button asChild variant="outline" size="lg" className="text-base">
@@ -64,11 +72,11 @@ export default function HeroSection() {
               className="mt-4 text-xs text-muted-foreground"
               initial="hidden" animate="visible" variants={fadeUp} custom={3}
             >
-              No credit card · 3 clients included · Results or nothing.
+              No credit card needed · 3 clients included · Cancel anytime.
             </motion.p>
           </div>
 
-          {/* Calendar Mockup — exact replica of in-app view */}
+          {/* Calendar Mockup */}
           <div className="flex justify-center lg:justify-end">
             <CalendarMockup />
           </div>

@@ -23,12 +23,12 @@ const plans = [
   },
   {
     name: 'Annual',
-    subtitle: 'Elite Trainer Plan',
+    subtitle: 'For Serious Trainers',
     price: '₹5,988',
     period: '/year',
     highlight: true,
     badge: 'Best for Retention',
-    features: ['14 months access', 'Unlimited clients', '+90 days per annual referral', 'Priority support'],
+    features: ['14 months access (2 months free)', 'Unlimited clients', '+90 days per annual referral', 'Priority support'],
   },
 ];
 
@@ -41,15 +41,17 @@ export default function PricingSection() {
           initial="hidden" whileInView="visible" viewport={{ once: true }}
           variants={fadeUp} custom={0}
         >
-          Commit to Your Business{' '}
-          <span className="text-gradient">for the Year</span>
+          Less Than What{' '}
+          <span className="text-gradient">One Client Pays You</span>
         </motion.h2>
         <motion.p
           className="mx-auto mt-3 max-w-lg text-center text-sm text-muted-foreground"
           initial="hidden" whileInView="visible" viewport={{ once: true }}
           variants={fadeUp} custom={0.5}
         >
-          We don't want "trial" trainers. We want builders. Clients use TrainWell for free — always.
+          ₹499/month is less than what most clients pay you for a single session.
+          If this tool helps you keep even one client for 3 extra months, it's already paid for itself 10x over.
+          Clients use TrainWell for free — always.
         </motion.p>
 
         <div className="mt-12 grid gap-6 sm:grid-cols-2">
@@ -95,7 +97,7 @@ export default function PricingSection() {
                     size="lg"
                   >
                     <Link to="/auth">
-                      {p.highlight ? 'Go Annual' : 'Get Started'}{' '}
+                      {p.highlight ? 'Go Annual — Save 2 Months' : 'Start Monthly'}{' '}
                       <ArrowRight className="h-4 w-4" />
                     </Link>
                   </Button>
@@ -105,13 +107,12 @@ export default function PricingSection() {
           ))}
         </div>
 
-        {/* Trial note */}
         <motion.p
           className="mt-8 text-center text-xs text-muted-foreground"
           initial="hidden" whileInView="visible" viewport={{ once: true }}
           variants={fadeUp} custom={3}
         >
-          New trainer? Start with a free 14-day trial — 3 clients, all features. No card needed.
+          New here? Start with a free 14-day trial — 3 clients, all features. No card needed.
         </motion.p>
       </div>
     </section>

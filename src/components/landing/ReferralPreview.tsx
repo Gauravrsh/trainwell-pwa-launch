@@ -21,14 +21,16 @@ export default function ReferralPreview() {
           initial="hidden" whileInView="visible" viewport={{ once: true }}
           variants={fadeUp}
         >
-          Grow Your <span className="text-gradient">Tribe</span>
+          You Know Good Trainers.{' '}
+          <span className="text-gradient">Help Them Win Too.</span>
         </motion.h2>
         <motion.p
           className="mx-auto mt-3 max-w-md text-center text-sm text-muted-foreground"
           initial="hidden" whileInView="visible" viewport={{ once: true }}
           variants={fadeUp}
         >
-          Elite Trainers help Elite Trainers. Refer an annual subscriber and earn up to 90 days free. No cap.
+          Refer a trainer friend. When they subscribe, you get free days added to your plan.
+          Both of you on Annual? That's <strong className="text-foreground">90 days free</strong>. No limit on referrals.
         </motion.p>
 
         <motion.div
@@ -36,11 +38,10 @@ export default function ReferralPreview() {
           initial="hidden" whileInView="visible" viewport={{ once: true }}
           variants={fadeUp}
         >
-          {/* Header */}
           <div className="grid grid-cols-3 bg-secondary/50">
             <div className="p-3 text-xs font-semibold text-muted-foreground text-center">Your Plan</div>
-            <div className="p-3 text-xs font-semibold text-muted-foreground text-center">Referee's Plan</div>
-            <div className="p-3 text-xs font-semibold text-muted-foreground text-center">Your Reward</div>
+            <div className="p-3 text-xs font-semibold text-muted-foreground text-center">Friend's Plan</div>
+            <div className="p-3 text-xs font-semibold text-muted-foreground text-center">You Get</div>
           </div>
 
           {matrix.map((row, i) => (
@@ -57,7 +58,7 @@ export default function ReferralPreview() {
               <div className="p-3 text-center text-sm font-bold text-primary">
                 {row.reward}
                 {row.elite && (
-                  <span className="block text-[10px] font-medium text-primary/80">⭐ Elite Trainer Reward</span>
+                  <span className="block text-[10px] font-medium text-primary/80">⭐ Best combo</span>
                 )}
               </div>
             </div>

@@ -14,19 +14,23 @@ export default function MirrorSection() {
         variants={fadeUp}
       >
         <h2 className="text-2xl font-extrabold sm:text-3xl leading-tight">
-          The Mirror Doesn't Lie.{' '}
-          <span className="text-gradient">Neither Does This App.</span>
+          The Calendar Doesn't Lie.{' '}
+          <span className="text-gradient">And Neither Should Your Clients.</span>
         </h2>
         <p className="mt-5 text-base text-muted-foreground leading-relaxed sm:text-lg">
-          A client who doesn't log is a client who will eventually drop off.
-          TrainWell turns the daily log into a <strong className="text-foreground">digital mirror</strong>.
-          When the calendar turns <span className="font-bold text-destructive">Red</span>,
-          the client knows exactly why they aren't seeing results. You stop being a "nag" and start being a{' '}
-          <strong className="text-foreground">professional coach backed by data</strong>.
+          You already know which clients will drop off. It's the ones who "forgot" to eat right yesterday,
+          who "didn't have time" to work out, who'll tell you they'll make up for it "next week."
+        </p>
+        <p className="mt-4 text-base text-muted-foreground leading-relaxed">
+          TrainWell turns every day into a simple <span className="font-bold text-success">Green</span> or{' '}
+          <span className="font-bold text-destructive">Red</span> box on the calendar.
+          There's no story to tell. No excuse to give. The client sees it. You see it.
+          When there are 5 red boxes in a row, you don't have to say "bhai, tu seriously nahi le raha hai."
+          The calendar says it for you.
         </p>
         <p className="mt-4 text-sm text-muted-foreground leading-relaxed">
-          In India, PT is an investment — not an expense. When a client pays ₹15,000/month, they're paying for a new body.
-          If they don't get it, you lose a client. TrainWell removes the friction of tracking so the only thing left is the result.
+          You stop being the "nag." You start being the coach who shows up with data.
+          That's the difference between a trainer who keeps clients for 3 months and one who keeps them for 12.
         </p>
       </motion.div>
     </section>
