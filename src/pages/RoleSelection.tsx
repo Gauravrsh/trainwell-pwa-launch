@@ -167,7 +167,7 @@ const RoleSelection = () => {
           animate={{ opacity: 1, scale: 1 }}
           className="text-center"
         >
-          <div className="w-16 h-16 rounded-2xl overflow-hidden shadow-lg mx-auto mb-6 relative">
+          <div className="w-20 h-20 rounded-2xl overflow-hidden shadow-lg mx-auto mb-6 relative">
             <img src={logoTrainwell} alt="TrainWell Logo" className="w-full h-full object-cover" />
             <div className="absolute inset-0 flex items-center justify-center bg-background/50">
               <Loader2 className="w-8 h-8 text-primary animate-spin" />
