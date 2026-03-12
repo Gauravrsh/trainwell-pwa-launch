@@ -64,7 +64,7 @@ const RoleSelectionRoute = ({ children }: { children: React.ReactNode }) => {
 
   // If profile already exists, go to home
   if (profile) {
-    return <Navigate to="/" replace />;
+    return <Navigate to="/dashboard" replace />;
   }
 
   return <>{children}</>;
