@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useProfile } from '@/hooks/useProfile';
 import { toast } from 'sonner';
+import { logError } from '@/lib/errorUtils';
 import type { Database } from '@/integrations/supabase/types';
 
 type TrainingPlan = Database['public']['Tables']['client_training_plans']['Row'];
