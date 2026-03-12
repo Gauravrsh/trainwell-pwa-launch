@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Crown, Clock, AlertTriangle, Check, Sparkles, Lock } from 'lucide-react';
+import { logError } from '@/lib/errorUtils';
 import { useTrainerSubscription } from '@/hooks/useTrainerSubscription';
 import { PlanSelectionModal } from './PlanSelectionModal';
 import { SubscriptionExpiryWarning } from './SubscriptionExpiryWarning';
