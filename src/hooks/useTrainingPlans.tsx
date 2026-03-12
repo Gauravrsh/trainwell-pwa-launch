@@ -113,7 +113,7 @@ export function useTrainingPlans() {
       toast.success('Training plan created successfully!');
     },
     onError: (error) => {
-      console.error('Error creating plan:', error);
+      logError('useTrainingPlans.create', error);
       toast.error('Failed to create training plan');
     },
   });
