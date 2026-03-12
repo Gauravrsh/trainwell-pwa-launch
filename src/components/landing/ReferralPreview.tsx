@@ -39,9 +39,9 @@ export default function ReferralPreview() {
           variants={fadeUp}
         >
           <div className="grid grid-cols-3 bg-secondary/50">
-            <div className="p-3 text-xs font-semibold text-muted-foreground text-center">Your Plan</div>
-            <div className="p-3 text-xs font-semibold text-muted-foreground text-center">Friend's Plan</div>
-            <div className="p-3 text-xs font-semibold text-muted-foreground text-center">You Get</div>
+            <div className="p-3 sm:p-4 text-sm font-semibold text-muted-foreground text-center">Your Plan</div>
+            <div className="p-3 sm:p-4 text-sm font-semibold text-muted-foreground text-center">Friend's Plan</div>
+            <div className="p-3 sm:p-4 text-sm font-semibold text-muted-foreground text-center">You Get</div>
           </div>
 
           {matrix.map((row, i) => (
