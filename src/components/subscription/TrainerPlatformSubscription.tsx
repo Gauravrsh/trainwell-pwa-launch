@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Crown, Clock, AlertTriangle, Check, Sparkles, Lock } from 'lucide-react';
+import { logError } from '@/lib/errorUtils';
 import { useTrainerSubscription } from '@/hooks/useTrainerSubscription';
 import { PlanSelectionModal } from './PlanSelectionModal';
 import { SubscriptionExpiryWarning } from './SubscriptionExpiryWarning';
@@ -17,7 +18,7 @@ export function TrainerPlatformSubscription() {
       setIsStartingTrial(true);
       await startTrial();
     } catch (error) {
-      console.error('Failed to start trial:', error);
+      logError('TrainerPlatformSubscription.startTrial', error);
     } finally {
       setIsStartingTrial(false);
     }
@@ -32,7 +33,7 @@ export function TrainerPlatformSubscription() {
       }
       setShowPlanModal(false);
     } catch (error) {
-      console.error('Failed to select plan:', error);
+      logError('TrainerPlatformSubscription.selectPlan', error);
     }
   };
 

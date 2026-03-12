@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useProfile } from '@/hooks/useProfile';
 import { supabase } from '@/integrations/supabase/client';
+import { logError } from '@/lib/errorUtils';
 
 export interface ReferralStats {
   totalReferrals: number;
@@ -72,7 +73,7 @@ export function useTrainerReferral() {
         });
       }
     } catch (err) {
-      console.error('Error fetching referral data:', err);
+      logError('useTrainerReferral', err);
       setError(err instanceof Error ? err.message : 'Failed to fetch referral data');
     } finally {
       setLoading(false);

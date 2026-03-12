@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { useProfile } from '@/hooks/useProfile';
 import { supabase } from '@/integrations/supabase/client';
+import { logError } from '@/lib/errorUtils';
 
 export interface TrainerSubscription {
   id: string;
@@ -60,7 +61,7 @@ export function useTrainerSubscription() {
       if (fetchError) throw fetchError;
       setSubscription(data as TrainerSubscription | null);
     } catch (err) {
-      console.error('Error fetching subscription:', err);
+      logError('useTrainerSubscription', err);
       setError(err instanceof Error ? err.message : 'Failed to fetch subscription');
     } finally {
       setLoading(false);

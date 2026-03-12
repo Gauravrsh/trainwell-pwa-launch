@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useProfile } from '@/hooks/useProfile';
 import { toast } from 'sonner';
+import { logError } from '@/lib/errorUtils';
 import type { Database } from '@/integrations/supabase/types';
 
 type TrainingPlan = Database['public']['Tables']['client_training_plans']['Row'];
@@ -112,7 +113,7 @@ export function useTrainingPlans() {
       toast.success('Training plan created successfully!');
     },
     onError: (error) => {
-      console.error('Error creating plan:', error);
+      logError('useTrainingPlans.create', error);
       toast.error('Failed to create training plan');
     },
   });
@@ -135,7 +136,7 @@ export function useTrainingPlans() {
       toast.success('Training plan updated!');
     },
     onError: (error) => {
-      console.error('Error updating plan:', error);
+      logError('useTrainingPlans.update', error);
       toast.error('Failed to update training plan');
     },
   });
@@ -199,7 +200,7 @@ export function useTrainingPlans() {
       toast.success('Training plan deleted!');
     },
     onError: (error) => {
-      console.error('Error deleting plan:', error);
+      logError('useTrainingPlans.delete', error);
       toast.error('Failed to delete training plan');
     },
   });
