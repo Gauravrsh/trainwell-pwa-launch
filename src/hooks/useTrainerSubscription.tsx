@@ -100,7 +100,7 @@ export function useTrainerSubscription() {
     const isInGracePeriod = subscription.status === 'grace' || (daysRemaining < 0 && graceEndDate && today <= graceEndDate);
     
     // pending_payment means plan selected but payment not yet confirmed by webhook
-    const isPendingPayment = subscription.status === 'pending_payment';
+    const isPendingPayment = (subscription.status as string) === 'pending_payment';
     
     const isExpired = subscription.status === 'expired' || 
       (graceEndDate && today > graceEndDate) ||
