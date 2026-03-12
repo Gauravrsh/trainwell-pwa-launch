@@ -3,10 +3,11 @@ import { X, Check } from 'lucide-react';
 
 const rows = [
   { label: 'Client Logs', whatsapp: 'Messy screenshots', trainwell: 'Structured, real-time' },
-  { label: 'Backdating', whatsapp: 'Common excuse', trainwell: 'Impossible — locked' },
-  { label: 'Progress Visibility', whatsapp: 'None', trainwell: 'Calendar + Charts' },
-  { label: 'Avg. Client Retention', whatsapp: '~3 months', trainwell: '12+ months' },
-  { label: 'Payment Tracking', whatsapp: 'Manual follow-up', trainwell: 'Built-in UPI & Razorpay' },
+  { label: 'Backdating', whatsapp: '"I\'ll log it tomorrow"', trainwell: 'Impossible — locked' },
+  { label: 'Progress Visibility', whatsapp: 'Zero', trainwell: 'Calendar + Charts' },
+  { label: 'Client Retention', whatsapp: '~3-6 months', trainwell: '12+ months' },
+  { label: 'Payment Tracking', whatsapp: 'Manual WhatsApp follow-up', trainwell: 'Built-in UPI & Razorpay' },
+  { label: 'Trainer as...', whatsapp: 'A nag', trainwell: 'A data-backed coach' },
 ];
 
 const fadeUp = {
@@ -25,6 +26,13 @@ export default function ComparisonTable() {
         >
           WhatsApp Coaching vs. <span className="text-gradient">TrainWell</span>
         </motion.h2>
+        <motion.p
+          className="mx-auto mt-3 max-w-md text-center text-sm text-muted-foreground"
+          initial="hidden" whileInView="visible" viewport={{ once: true }}
+          variants={fadeUp}
+        >
+          You're already doing the hard work. Stop losing clients to bad tools.
+        </motion.p>
 
         <motion.div
           className="mt-10 overflow-hidden rounded-xl border border-border"
@@ -42,12 +50,12 @@ export default function ComparisonTable() {
             <div key={row.label} className={`grid grid-cols-3 ${i % 2 === 0 ? 'bg-card' : 'bg-secondary/20'}`}>
               <div className="p-3 text-sm font-medium text-foreground">{row.label}</div>
               <div className="flex items-center justify-center gap-1.5 p-3 text-xs text-destructive/70">
-                <X className="h-3.5 w-3.5 shrink-0" />
-                <span className="hidden sm:inline">{row.whatsapp}</span>
+                <X className="h-3.5 w-3.5 shrink-0 hidden sm:block" />
+                <span>{row.whatsapp}</span>
               </div>
               <div className="flex items-center justify-center gap-1.5 p-3 text-xs text-primary">
-                <Check className="h-3.5 w-3.5 shrink-0" />
-                <span className="hidden sm:inline">{row.trainwell}</span>
+                <Check className="h-3.5 w-3.5 shrink-0 hidden sm:block" />
+                <span>{row.trainwell}</span>
               </div>
             </div>
           ))}

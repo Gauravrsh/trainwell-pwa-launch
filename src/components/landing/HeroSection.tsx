@@ -39,6 +39,13 @@ export default function HeroSection() {
               TrainWell is the first platform that <strong className="text-foreground">enforces daily discipline</strong> — no backdating, no excuses, just results.
             </motion.p>
 
+            <motion.p
+              className="mt-3 max-w-lg text-sm text-muted-foreground leading-relaxed"
+              initial="hidden" animate="visible" variants={fadeUp} custom={1.5}
+            >
+              Whatever gets tracked, gets done. The rest is noise.
+            </motion.p>
+
             <motion.div
               className="mt-8 flex flex-col gap-3 sm:flex-row"
               initial="hidden" animate="visible" variants={fadeUp} custom={2}
@@ -61,7 +68,7 @@ export default function HeroSection() {
             </motion.p>
           </div>
 
-          {/* Calendar Mockup */}
+          {/* Calendar Mockup — exact replica of in-app view */}
           <div className="flex justify-center lg:justify-end">
             <CalendarMockup />
           </div>

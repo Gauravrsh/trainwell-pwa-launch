@@ -7,10 +7,11 @@ export default function CTASection() {
     <section className="px-4 py-16">
       <div className="mx-auto max-w-3xl rounded-2xl border border-primary/20 bg-primary/5 p-8 text-center sm:p-12">
         <h2 className="text-2xl font-extrabold sm:text-3xl">
-          Results → Retention → Referrals → <span className="text-gradient">Wealth</span>
+          Client Wins → Retention → Referrals → <span className="text-gradient">Your Wealth</span>
         </h2>
-        <p className="mx-auto mt-3 max-w-md text-sm text-muted-foreground">
-          Join disciplined trainers across India who stopped tolerating "Chalta Hai" and started building real coaching businesses.
+        <p className="mx-auto mt-3 max-w-lg text-sm text-muted-foreground">
+          Stop tolerating "Chalta Hai." Start building a coaching business where every client gets results,
+          stays longer, and sends you their friends. The tool costs less than one client's monthly fee.
         </p>
         <Button asChild size="lg" className="mt-6 gap-2 text-base font-bold">
           <Link to="/auth">
