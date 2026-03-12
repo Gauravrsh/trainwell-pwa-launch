@@ -41,9 +41,9 @@ export default function ComparisonTable() {
           variants={fadeUp}
         >
           <div className="grid grid-cols-3 bg-secondary/50">
-            <div className="p-3 text-xs font-semibold text-muted-foreground" />
-            <div className="p-3 text-center text-xs font-semibold text-muted-foreground">WhatsApp</div>
-            <div className="p-3 text-center text-xs font-semibold text-primary">TrainWell</div>
+            <div className="p-3 sm:p-4 text-sm font-semibold text-muted-foreground" />
+            <div className="p-3 sm:p-4 text-center text-sm font-semibold text-muted-foreground">WhatsApp</div>
+            <div className="p-3 sm:p-4 text-center text-sm font-semibold text-primary">TrainWell</div>
           </div>
 
           {rows.map((row, i) => (
@@ -51,13 +51,13 @@ export default function ComparisonTable() {
               key={row.label}
               className={`grid grid-cols-3 ${i % 2 === 0 ? 'bg-card' : 'bg-secondary/20'}`}
             >
-              <div className="p-3 text-sm font-medium text-foreground">{row.label}</div>
-              <div className="p-3 text-center text-sm text-muted-foreground flex items-start justify-center gap-1.5">
-                <X className="mt-0.5 h-3.5 w-3.5 shrink-0 text-destructive" />
+              <div className="p-3 sm:p-4 text-base font-medium text-foreground">{row.label}</div>
+              <div className="p-3 sm:p-4 text-center text-base text-muted-foreground flex items-start justify-center gap-1.5">
+                <X className="mt-1 h-4 w-4 shrink-0 text-destructive" />
                 <span>{row.whatsapp}</span>
               </div>
-              <div className="p-3 text-center text-sm text-foreground flex items-start justify-center gap-1.5">
-                <Check className="mt-0.5 h-3.5 w-3.5 shrink-0 text-success" />
+              <div className="p-3 sm:p-4 text-center text-base text-foreground flex items-start justify-center gap-1.5">
+                <Check className="mt-1 h-4 w-4 shrink-0 text-success" />
                 <span>{row.trainwell}</span>
               </div>
             </div>
