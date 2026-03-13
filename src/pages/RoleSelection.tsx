@@ -155,6 +155,14 @@ const RoleSelection = () => {
 
   // Wrapper for manual button clicks
   const handleRoleSelect = (role: 'trainer' | 'client') => {
+    if (role === 'client' && !localStorage.getItem('inviteTrainerCode')) {
+      toast({
+        title: "Incompatible Action",
+        description: "Please use the Client Referral Link provided by your trainer to sign up.",
+        variant: "destructive",
+      });
+      return;
+    }
     handleRoleSelectInternal(role);
   };
 
