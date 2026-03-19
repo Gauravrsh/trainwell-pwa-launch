@@ -6,7 +6,14 @@ import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { sanitizeErrorMessage, logError } from '@/lib/errorUtils';
-import logoTrainwell from '@/assets/logo-trainwell.png';
+const WaveformLogo = ({ className = "w-20 h-20" }: { className?: string }) => (
+  <div className={`${className} rounded-2xl overflow-hidden shadow-lg bg-[hsl(0,0%,4%)] flex items-center justify-center`}>
+    <svg width="70%" height="70%" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M6 17Q10 10 14 17Q18 10 26 17" stroke="#BFFF00" strokeWidth="3.5" strokeLinecap="round" fill="none"/>
+      <path d="M6 23Q10 16 14 23Q18 16 26 23" stroke="#BFFF00" strokeWidth="3.5" strokeLinecap="round" fill="none" opacity="0.55"/>
+    </svg>
+  </div>
+);
 
 const RoleSelection = () => {
   const [loading, setLoading] = useState(false);
