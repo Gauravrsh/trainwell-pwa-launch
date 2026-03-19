@@ -6,7 +6,14 @@ import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { sanitizeErrorMessage, logError } from '@/lib/errorUtils';
-import logoTrainwell from '@/assets/logo-trainwell.png';
+const WaveformLogo = ({ className = "w-20 h-20" }: { className?: string }) => (
+  <div className={`${className} rounded-2xl overflow-hidden shadow-lg bg-[hsl(0,0%,4%)] flex items-center justify-center`}>
+    <svg width="70%" height="70%" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M6 17Q10 10 14 17Q18 10 26 17" stroke="#BFFF00" strokeWidth="3.5" strokeLinecap="round" fill="none"/>
+      <path d="M6 23Q10 16 14 23Q18 16 26 23" stroke="#BFFF00" strokeWidth="3.5" strokeLinecap="round" fill="none" opacity="0.55"/>
+    </svg>
+  </div>
+);
 
 const RoleSelection = () => {
   const [loading, setLoading] = useState(false);
@@ -175,9 +182,9 @@ const RoleSelection = () => {
           animate={{ opacity: 1, scale: 1 }}
           className="text-center"
         >
-          <div className="w-20 h-20 rounded-2xl overflow-hidden shadow-lg mx-auto mb-6 relative">
-            <img src={logoTrainwell} alt="TrainWell Logo" className="w-full h-full object-cover" />
-            <div className="absolute inset-0 flex items-center justify-center bg-background/50">
+          <div className="mx-auto mb-6 relative">
+            <WaveformLogo />
+            <div className="absolute inset-0 flex items-center justify-center bg-background/50 rounded-2xl">
               <Loader2 className="w-8 h-8 text-primary animate-spin" />
             </div>
           </div>
@@ -205,9 +212,9 @@ const RoleSelection = () => {
             initial={{ scale: 0.8, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             transition={{ delay: 0.1 }}
-            className="w-20 h-20 rounded-2xl overflow-hidden shadow-lg mx-auto mb-6"
+            className="mx-auto mb-6"
           >
-            <img src={logoTrainwell} alt="TrainWell Logo" className="w-full h-full object-cover" />
+            <WaveformLogo />
           </motion.div>
           <h1 className="text-2xl font-bold text-foreground mb-2">
             Choose Your Role
