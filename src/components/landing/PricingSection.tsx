@@ -23,12 +23,12 @@ const plans = [
   },
   {
     name: 'Annual',
-    subtitle: 'For Serious Trainers',
+    subtitle: 'For Elite Trainers',
     price: '₹5,988',
     period: '/year',
     highlight: true,
-    badge: 'Best for Retention',
-    features: ['14 months access (2 months free)', 'Unlimited clients', '+90 days per annual referral', 'Priority support'],
+    badge: 'For Best Client Results',
+    features: ['Everything in Monthly Plan +', 'Additional 2 months free', '+90 days per annual referral', 'Invite to workshops'],
   },
 ];
 
