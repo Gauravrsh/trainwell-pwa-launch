@@ -46,7 +46,7 @@ export default function HeroSection() {
             </motion.p>
 
             <motion.p
-              className="mt-3 max-w-lg text-base text-muted-foreground leading-relaxed"
+              className="mt-3 max-w-lg text-base text-muted-foreground sm:text-lg leading-relaxed"
               initial="hidden" animate="visible" variants={fadeUp} custom={1.5}
             >
               The hard truth? Results come ONLY from consistency. Keto, intermittent fasting, strength training, HIIT, Mobility — no matter which diet type and which workout type you get your client on, if consistency is not there, then failure is just a matter of time.
