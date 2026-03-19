@@ -53,7 +53,7 @@ export default function HeroSection() {
             </motion.p>
 
             <motion.p
-              className="mt-3 max-w-lg text-base text-muted-foreground leading-relaxed"
+              className="mt-3 max-w-lg text-base text-muted-foreground sm:text-lg leading-relaxed"
               initial="hidden" animate="visible" variants={fadeUp} custom={1.8}
             >
               Consistency comes from tracking. TrainWell is the tool that makes sure every workout and every meal is logged — <strong className="text-foreground">today, not tomorrow</strong>. No backdating. No "chalta hai."
