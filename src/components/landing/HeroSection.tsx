@@ -26,7 +26,7 @@ export default function HeroSection() {
               className="text-xs font-semibold uppercase tracking-widest text-primary mb-4"
               initial="hidden" animate="visible" variants={fadeUp} custom={0}
             >
-              Why This Exists
+              The Hard Truth
             </motion.p>
 
             <motion.h1
