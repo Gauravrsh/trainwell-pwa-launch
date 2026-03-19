@@ -41,7 +41,7 @@ export default function HeroSection() {
               className="mt-5 max-w-lg text-base text-muted-foreground sm:text-lg leading-relaxed"
               initial="hidden" animate="visible" variants={fadeUp} custom={1}
             >
-              Your client pays you ₹10-15K every month for a new body. Not for your time — for <strong className="text-foreground">results</strong>.
+              Your client pays you every month for a new body. Not for your time — for <strong className="text-foreground">results</strong>.
               If results don't come, the client leaves. No referral. No testimonial. Just another client dropout.
             </motion.p>
 
