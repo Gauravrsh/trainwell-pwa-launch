@@ -23,12 +23,12 @@ const plans = [
   },
   {
     name: 'Annual',
-    subtitle: 'For Serious Trainers',
+    subtitle: 'For Elite Trainers',
     price: '₹5,988',
     period: '/year',
     highlight: true,
-    badge: 'Best for Retention',
-    features: ['14 months access (2 months free)', 'Unlimited clients', '+90 days per annual referral', 'Priority support'],
+    badge: 'For Best Client Results',
+    features: ['Everything in Monthly Plan +', 'Additional 2 months free', '+90 days per annual referral', 'Invite to workshops'],
   },
 ];
 
@@ -41,8 +41,8 @@ export default function PricingSection() {
           initial="hidden" whileInView="visible" viewport={{ once: true }}
           variants={fadeUp} custom={0}
         >
-          Less Than What{' '}
-          <span className="text-gradient">One Client Pays You</span>
+          Half of What{' '}
+          <span className="text-gradient">One Client Pays You</span> for a single session
         </motion.h2>
         <motion.p
           className="mx-auto mt-3 max-w-lg text-center text-base text-muted-foreground"
@@ -50,8 +50,8 @@ export default function PricingSection() {
           variants={fadeUp} custom={0.5}
         >
           ₹499/month is less than what most clients pay you for a single session.
-          If this tool helps you keep even one client for 3 extra months, it's already paid for itself 10x over.
-          Clients use TrainWell for free — always.
+          If TrainWell helps you get noticeable results for your client, and client continues for even 3 extra months, it's already paid for itself 10x over.
+          Don't forget the strong testimonials and referrals you will earn for yourself. Clients use TrainWell for free — always.
         </motion.p>
 
         <div className="mt-12 grid gap-6 sm:grid-cols-2">
@@ -97,7 +97,7 @@ export default function PricingSection() {
                     size="lg"
                   >
                     <Link to="/auth">
-                      {p.highlight ? 'Go Annual — Save 2 Months' : 'Start Monthly'}{' '}
+                      {p.highlight ? 'Go Annual — Maximise Client Results' : 'Start Monthly'}{' '}
                       <ArrowRight className="h-4 w-4" />
                     </Link>
                   </Button>
