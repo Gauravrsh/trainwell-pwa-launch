@@ -8,11 +8,11 @@ const fadeUp = {
 
 const rows = [
   { label: 'Workout planning', whatsapp: 'Voice note / text list', trainwell: 'Structured, date-locked plans' },
-  { label: 'Client compliance', whatsapp: '"Haan sir, kar liya" on WhatsApp', trainwell: 'Green or Red on the calendar' },
+  { label: 'Client compliance', whatsapp: 'Responds on WhatsApp', trainwell: 'Green or Red on the calendar' },
   { label: 'Diet logging', whatsapp: 'Client sends a photo... sometimes', trainwell: 'AI-powered, 10-second meal log' },
   { label: 'Backdating', whatsapp: '"I\'ll log it tomorrow" (never does)', trainwell: 'Locked. Today only.' },
   { label: 'Progress data', whatsapp: 'In your head or a notebook', trainwell: 'Charts, trends, real numbers' },
-  { label: 'Client retention', whatsapp: '3-6 months average', trainwell: '12+ months with results' },
+  { label: 'Client retention', whatsapp: '3-6 months average. Limited results', trainwell: '12+ months with remarkable results' },
 ];
 
 export default function ComparisonTable() {
