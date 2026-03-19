@@ -24,7 +24,7 @@ export default function ComparisonTable() {
           initial="hidden" whileInView="visible" viewport={{ once: true }}
           variants={fadeUp}
         >
-          WhatsApp Coaching vs.{' '}
+          WhatsApp Tracking vs.{' '}
           <span className="text-gradient">TrainWell</span>
         </motion.h2>
         <motion.p
