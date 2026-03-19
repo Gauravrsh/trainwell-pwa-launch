@@ -1,21 +1,19 @@
 
 
-## Logo Enhancement — SVG Preview
+# Visual Preview of Updated Landing Page Copy
 
-I'll update only the `public/favicon.svg` file so you can see the enlarged waveform logo directly in the browser preview. No other files will be touched until you approve the design.
+## The Reality
 
-### Updated SVG
+I cannot generate images or host external HTML previews. The only way to give you a true visual preview is to **implement the copy changes in your project** — you'll instantly see them in your live preview URL.
 
-The new favicon.svg will have:
-- **Waveforms span x: 4 to 28** (was 8 to 24) — 75% of width vs 50% before
-- **Top waveform:** `M4 14 L10 7 L16 14 L22 7 L28 14` — centered higher with more amplitude
-- **Bottom waveform:** `M4 25 L10 18 L16 25 L22 18 L28 25` — at 50% opacity, spaced further from top
-- **Stroke width: 3.5** (was 3) — thicker for better visibility at small sizes
-- **Same rounded corners** (`rx="8"`), same colors (`#0a0a0a` bg, `#BFFF00` strokes)
+## What I Propose
 
-### What changes
-- `public/favicon.svg` — single file update with enlarged waveform paths
+1. **Apply all copy changes** across the 9 landing page components (HeroSection, CalendarMockup, MirrorSection, HouseRules, ComparisonTable, PricingSection, ManifestoSection, CTASection, Landing.tsx)
+2. **Remove ReferralPreview** from the page flow
+3. You review it live at your preview URL
+4. If anything needs tweaking, we iterate. If you want to fully revert, one click in version history restores the previous state.
 
-### Next steps after approval
-Once you approve the SVG, I'll generate matching PNG assets at all required sizes (192, 512, 180) and update the splash screen, nav, footer, and cache-bust all references.
+This is purely a copy update — no structural/layout/styling changes — so reverting is trivial and risk-free.
+
+## Shall I proceed with implementing the copy so you can see it live?
 
