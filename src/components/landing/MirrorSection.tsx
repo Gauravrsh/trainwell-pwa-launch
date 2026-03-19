@@ -17,10 +17,10 @@ export default function MirrorSection() {
           Mirror Doesn't Lie.
         </h2>
         <p className="mt-5 text-base text-muted-foreground leading-relaxed sm:text-lg">
-          TrainWell app is a mirror. It turns every day into a simple <span className="font-bold text-success">Green</span> or{' '}
+          TrainWell app is a mirror. It tracks every day into a simple <span className="font-bold text-success">Green</span> or{' '}
           <span className="font-bold text-destructive">Red</span> box on the calendar.
           There's no story to tell. No excuse to give. The client sees it. You see it.
-          When there are 5 red boxes in a row, you don't have to say anything to the client.
+          When there are more red boxes in a month, you don't have to say anything to the client.
           The calendar says it for you.
         </p>
         <p className="mt-4 text-base text-muted-foreground leading-relaxed sm:text-lg">
