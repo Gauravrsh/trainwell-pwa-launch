@@ -13,13 +13,13 @@ const fadeUp = {
 const rules = [
   {
     icon: Lock,
-    title: "No Backdating. Period.",
-    desc: "You log the workout for today or for the future. Client marks it done today — not tomorrow, not \"next week.\" Past dates are locked. If it wasn't logged, it's a miss. This one rule alone changes everything.",
+    title: "No Back date entries",
+    desc: "You log the workout/meal for today or plan for the future. Client marks it done today — not tomorrow, not \"next week.\" Past dates are locked. If it wasn't logged, it's a miss. This one habit forming rule alone changes everything. For both you and your client!",
   },
   {
     icon: Calendar,
-    title: 'Green, Red — No Grey Area',
-    desc: "Every day on the calendar is either Green (done) or Red (missed). No \"pending from last Tuesday.\" Your client can see their own month at a glance. When 20 out of 30 days are Green, they feel it. When 15 are Red, there's nothing to argue about.",
+    title: 'Its either Green or Red — There\'s No Grey',
+    desc: "Every day on the calendar is either Green (done) or Red (missed). No \"pending from last tuesday.\" When 20 out of 30 days are Green, client feels it. When 15 are Red, there's nothing left to discuss..",
   },
   {
     icon: Camera,
