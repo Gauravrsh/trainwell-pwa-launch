@@ -42,15 +42,21 @@ export default function HeroSection() {
               initial="hidden" animate="visible" variants={fadeUp} custom={1}
             >
               Your client pays you ₹10-15K every month for a new body. Not for your time — for <strong className="text-foreground">results</strong>.
-              If results don't come, the client leaves. No referral. No testimonial. Just another 3-month dropout.
+              If results don't come, the client leaves. No referral. No testimonial. Just another client dropout.
             </motion.p>
 
             <motion.p
               className="mt-3 max-w-lg text-base text-muted-foreground leading-relaxed"
               initial="hidden" animate="visible" variants={fadeUp} custom={1.5}
             >
-              The truth? Results only come from consistency. Consistency comes from tracking. TrainWell is the tool that makes sure
-              every workout and every meal is logged — <strong className="text-foreground">today, not tomorrow</strong>. No backdating. No "chalta hai."
+              The hard truth? Results come ONLY from consistency. Keto, intermittent fasting, strength training, HIIT, Mobility — no matter which diet type and which workout type you get your client on, if consistency is not there, then failure is just a matter of time.
+            </motion.p>
+
+            <motion.p
+              className="mt-3 max-w-lg text-base text-muted-foreground leading-relaxed"
+              initial="hidden" animate="visible" variants={fadeUp} custom={1.8}
+            >
+              Consistency comes from tracking. TrainWell is the tool that makes sure every workout and every meal is logged — <strong className="text-foreground">today, not tomorrow</strong>. No backdating. No "chalta hai."
               Just an honest mirror that shows exactly where your client stands.
             </motion.p>
 

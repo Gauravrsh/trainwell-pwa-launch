@@ -97,7 +97,7 @@ export default function PricingSection() {
                     size="lg"
                   >
                     <Link to="/auth">
-                      {p.highlight ? 'Go Annual — Save 2 Months' : 'Start Monthly'}{' '}
+                      {p.highlight ? 'Go Annual — Maximise Client Results' : 'Start Monthly'}{' '}
                       <ArrowRight className="h-4 w-4" />
                     </Link>
                   </Button>

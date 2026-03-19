@@ -45,7 +45,7 @@ export default function HouseRules() {
           variants={fadeUp} custom={0.5}
         >
           These aren't features. These are non-negotiables. You and your client both agree to play by these rules.
-          That's what makes it work.
+          That's what makes it work. Follow them and see the magic for yourself.
         </motion.p>
 
         <div className="mt-12 grid gap-6 sm:grid-cols-3">

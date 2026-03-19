@@ -32,7 +32,7 @@ export default function ComparisonTable() {
           initial="hidden" whileInView="visible" viewport={{ once: true }}
           variants={fadeUp}
         >
-          You're already doing the hard work. The question is — are your tools keeping up?
+          You're already doing the hard work. The question is — are your methods supporting you?
         </motion.p>
 
         <motion.div

@@ -4,7 +4,6 @@ import MirrorSection from '@/components/landing/MirrorSection';
 import HouseRules from '@/components/landing/HouseRules';
 import ComparisonTable from '@/components/landing/ComparisonTable';
 import PricingSection from '@/components/landing/PricingSection';
-import ReferralPreview from '@/components/landing/ReferralPreview';
 import ManifestoSection from '@/components/landing/ManifestoSection';
 import CTASection from '@/components/landing/CTASection';
 import LandingFooter from '@/components/landing/LandingFooter';
@@ -18,7 +17,6 @@ export default function Landing() {
       <HouseRules />
       <ComparisonTable />
       <PricingSection />
-      <ReferralPreview />
       <ManifestoSection />
       <CTASection />
       <LandingFooter />

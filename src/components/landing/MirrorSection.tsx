@@ -14,23 +14,18 @@ export default function MirrorSection() {
         variants={fadeUp}
       >
         <h2 className="text-2xl font-extrabold sm:text-3xl leading-tight">
-          The Calendar Doesn't Lie.{' '}
-          <span className="text-gradient">And Neither Should Your Clients.</span>
+          Mirror Doesn't Lie.
         </h2>
         <p className="mt-5 text-base text-muted-foreground leading-relaxed sm:text-lg">
-          You already know which clients will drop off. It's the ones who "forgot" to eat right yesterday,
-          who "didn't have time" to work out, who'll tell you they'll make up for it "next week."
-        </p>
-        <p className="mt-4 text-base text-muted-foreground leading-relaxed sm:text-lg">
-          TrainWell turns every day into a simple <span className="font-bold text-success">Green</span> or{' '}
+          TrainWell app is a mirror. It turns every day into a simple <span className="font-bold text-success">Green</span> or{' '}
           <span className="font-bold text-destructive">Red</span> box on the calendar.
           There's no story to tell. No excuse to give. The client sees it. You see it.
-          When there are 5 red boxes in a row, you don't have to say "bhai, tu seriously nahi le raha hai."
+          When there are 5 red boxes in a row, you don't have to say anything to the client.
           The calendar says it for you.
         </p>
         <p className="mt-4 text-base text-muted-foreground leading-relaxed sm:text-lg">
-          You stop being the "nag." You start being the coach who shows up with data.
-          That's the difference between a trainer who keeps clients for 3 months and one who keeps them for 12.
+          You stop 'babysitting' the client. You start being the coach who shows up with data.
+          That's the difference between a trainer whose client gets results, and the ones, whose don't.
         </p>
       </motion.div>
     </section>
