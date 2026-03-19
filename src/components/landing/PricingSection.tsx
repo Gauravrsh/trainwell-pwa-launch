@@ -50,8 +50,8 @@ export default function PricingSection() {
           variants={fadeUp} custom={0.5}
         >
           ₹499/month is less than what most clients pay you for a single session.
-          If this tool helps you keep even one client for 3 extra months, it's already paid for itself 10x over.
-          Clients use TrainWell for free — always.
+          If TrainWell helps you get noticeable results for your client, and client continues for even 3 extra months, it's already paid for itself 10x over.
+          Don't forget the strong testimonials and referrals you will earn for yourself. Clients use TrainWell for free — always.
         </motion.p>
 
         <div className="mt-12 grid gap-6 sm:grid-cols-2">
