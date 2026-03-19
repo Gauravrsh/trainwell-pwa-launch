@@ -41,8 +41,8 @@ export default function PricingSection() {
           initial="hidden" whileInView="visible" viewport={{ once: true }}
           variants={fadeUp} custom={0}
         >
-          Less Than What{' '}
-          <span className="text-gradient">One Client Pays You</span>
+          Half of What{' '}
+          <span className="text-gradient">One Client Pays You</span> for a single session
         </motion.h2>
         <motion.p
           className="mx-auto mt-3 max-w-lg text-center text-base text-muted-foreground"
