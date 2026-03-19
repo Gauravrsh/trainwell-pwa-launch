@@ -205,9 +205,9 @@ const RoleSelection = () => {
             initial={{ scale: 0.8, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             transition={{ delay: 0.1 }}
-            className="mx-auto mb-6"
+            className="w-20 h-20 rounded-2xl overflow-hidden shadow-lg mx-auto mb-6"
           >
-            <WaveformLogo />
+            <img src={logoTrainwell} alt="TrainWell Logo" className="w-full h-full object-cover" />
           </motion.div>
           <h1 className="text-2xl font-bold text-foreground mb-2">
             Choose Your Role
