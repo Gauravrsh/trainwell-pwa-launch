@@ -182,8 +182,19 @@ export function PlanSelectionModal({
   }, [open, checkScrollHint]);
 
   return (
-    <Dialog open={open} onOpenChange={(isOpen) => !isOpen && onClose()}>
-      <DialogContent className="max-w-md p-0 overflow-hidden max-h-[90vh] flex flex-col">
+    <Dialog open={open} onOpenChange={(isOpen) => {
+      if (!isOpen && isRazorpayActive) return; // Block close while Razorpay is open
+      if (!isOpen) onClose();
+    }}>
+      <DialogContent
+        className="max-w-md p-0 overflow-hidden max-h-[90vh] flex flex-col"
+        onInteractOutside={(e) => {
+          if (isRazorpayActive) e.preventDefault();
+        }}
+        onEscapeKeyDown={(e) => {
+          if (isRazorpayActive) e.preventDefault();
+        }}
+      >
         <DialogHeader className="p-6 pb-0 flex-shrink-0">
           <DialogTitle className="text-xl font-bold">
             {isRenewal ? 'Renew Your Plan' : 'Choose Your Plan'}
