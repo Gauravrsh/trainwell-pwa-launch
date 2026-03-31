@@ -62,7 +62,7 @@ export default function HeroSection() {
               No credit card · Upto 3 clients free · No question asked cancellation
             </motion.p>
 
-            <motion.div
+            <motion.div style={{ display: 'flex', justifyContent: 'center' }}
               className="mt-5 inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/10 px-4 py-1.5 text-xs font-semibold text-primary"
               initial="hidden" animate="visible" variants={fadeUp} custom={2.5}
             >
