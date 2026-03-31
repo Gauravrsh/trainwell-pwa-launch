@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { motion } from 'framer-motion';
-import { Check, Crown, Sparkles, ChevronDown } from 'lucide-react';
+import { Check, Crown, Sparkles, ChevronDown, X } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 import {
   Dialog,
   DialogContent,
@@ -72,10 +73,53 @@ export function PlanSelectionModal({
 }: PlanSelectionModalProps) {
   const [selectedPlan, setSelectedPlan] = useState<'monthly' | 'annual'>('annual');
   const [showScrollHint, setShowScrollHint] = useState(false);
+  const [isRazorpayActive, setIsRazorpayActive] = useState(false);
   const paymentContainerRef = useRef<HTMLDivElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
   const selectedPlanData = plans.find(p => p.id === selectedPlan);
+
+  // Detect Razorpay checkout popup appearing/disappearing in the DOM
+  useEffect(() => {
+    if (!open) {
+      setIsRazorpayActive(false);
+      return;
+    }
+
+    const observer = new MutationObserver(() => {
+      const razorpayFrame = document.querySelector('.razorpay-container, .razorpay-checkout-frame, iframe[src*="razorpay"]');
+      setIsRazorpayActive(!!razorpayFrame);
+    });
+
+    observer.observe(document.body, { childList: true, subtree: true });
+    return () => observer.disconnect();
+  }, [open]);
+
+  // Close/remove the Razorpay popup programmatically
+  const handleCancelPayment = useCallback(() => {
+    // Remove Razorpay overlays from the DOM
+    const razorpayElements = document.querySelectorAll(
+      '.razorpay-container, .razorpay-checkout-frame, .razorpay-backdrop, iframe[src*="razorpay"]'
+    );
+    razorpayElements.forEach(el => el.remove());
+    setIsRazorpayActive(false);
+
+    // Re-inject the payment button so user can try again
+    if (paymentContainerRef.current) {
+      clearContainer(paymentContainerRef.current);
+      const buttonId = selectedPlanData?.razorpayButtonId;
+      if (buttonId && VALID_RAZORPAY_BUTTON_IDS.has(buttonId)) {
+        const form = document.createElement('form');
+        form.style.width = '100%';
+        const script = document.createElement('script');
+        script.src = 'https://checkout.razorpay.com/v1/payment-button.js';
+        script.setAttribute('data-payment_button_id', buttonId);
+        script.async = true;
+        form.appendChild(script);
+        paymentContainerRef.current.appendChild(form);
+      }
+    }
+  }, [selectedPlanData?.razorpayButtonId]);
 
   // Check if scroll is needed
   const checkScrollHint = useCallback(() => {
@@ -138,8 +182,19 @@ export function PlanSelectionModal({
   }, [open, checkScrollHint]);
 
   return (
-    <Dialog open={open} onOpenChange={(isOpen) => !isOpen && onClose()}>
-      <DialogContent className="max-w-md p-0 overflow-hidden max-h-[90vh] flex flex-col">
+    <Dialog open={open} onOpenChange={(isOpen) => {
+      if (!isOpen && isRazorpayActive) return; // Block close while Razorpay is open
+      if (!isOpen) onClose();
+    }}>
+      <DialogContent
+        className="max-w-md p-0 overflow-hidden max-h-[90vh] flex flex-col"
+        onInteractOutside={(e) => {
+          if (isRazorpayActive) e.preventDefault();
+        }}
+        onEscapeKeyDown={(e) => {
+          if (isRazorpayActive) e.preventDefault();
+        }}
+      >
         <DialogHeader className="p-6 pb-0 flex-shrink-0">
           <DialogTitle className="text-xl font-bold">
             {isRenewal ? 'Renew Your Plan' : 'Choose Your Plan'}
@@ -214,6 +269,17 @@ export function PlanSelectionModal({
           {/* Razorpay Payment Button Container */}
           <div className="w-full py-2 flex flex-col items-center">
             <div ref={paymentContainerRef} className="flex justify-center items-center [&_form]:flex [&_form]:justify-center [&_form]:w-full [&_.razorpay-payment-button]:mx-auto" />
+            {isRazorpayActive && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleCancelPayment}
+                className="mt-3 gap-1.5"
+              >
+                <X className="w-3.5 h-3.5" />
+                Cancel Payment
+              </Button>
+            )}
             <p className="text-xs text-center text-muted-foreground mt-3">
               Secure payment via Razorpay
             </p>
