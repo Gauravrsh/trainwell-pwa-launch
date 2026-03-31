@@ -26,7 +26,7 @@ export default function HeroSection() {
               className="text-xs font-semibold uppercase tracking-widest text-primary mb-4"
               initial="hidden" animate="visible" variants={fadeUp} custom={0}
             >
-              The Hard Truth
+              For Personal Trainers Who Deliver Client Results
             </motion.p>
 
             <motion.h1
@@ -41,45 +41,34 @@ export default function HeroSection() {
               className="mt-5 max-w-lg text-base text-muted-foreground sm:text-lg leading-relaxed"
               initial="hidden" animate="visible" variants={fadeUp} custom={1}
             >
-              Your client pays you every month for a new body. Not for your time — for <strong className="text-foreground">results</strong>.
-              If results don't come, the client leaves. No referral. No testimonial. Just another client dropout.
-            </motion.p>
-
-            <motion.p
-              className="mt-3 max-w-lg text-base text-muted-foreground sm:text-lg leading-relaxed"
-              initial="hidden" animate="visible" variants={fadeUp} custom={1.5}
-            >
-              The hard truth? Results come ONLY from consistency. Keto, intermittent fasting, strength training, HIIT, Mobility — no matter which diet type and which workout type you get your client on, if consistency is not there, then failure is just a matter of time.
-            </motion.p>
-
-            <motion.p
-              className="mt-3 max-w-lg text-base text-muted-foreground sm:text-lg leading-relaxed"
-              initial="hidden" animate="visible" variants={fadeUp} custom={1.8}
-            >
-              Consistency comes from tracking. TrainWell is the tool that makes sure every workout and every meal is logged — <strong className="text-foreground">today, not tomorrow</strong>. No backdating. No "chalta hai."
-              Just an honest mirror that shows exactly where your client stands.
+              Your clients pay you for results. Results come from consistency. Yes, just consistency! And you know it. TrainWell tracks every workout and every meal — <strong className="text-foreground">today, not tomorrow</strong>.
             </motion.p>
 
             <motion.div
               className="mt-8 flex flex-col gap-3 sm:flex-row"
-              initial="hidden" animate="visible" variants={fadeUp} custom={2}
+              initial="hidden" animate="visible" variants={fadeUp} custom={1.5}
             >
               <Button asChild size="lg" className="gap-2 text-base font-bold">
                 <Link to="/auth">
                   Start Free 14-Day Trial <ArrowRight className="h-4 w-4" />
                 </Link>
               </Button>
-              <Button asChild variant="outline" size="lg" className="text-base">
-                <Link to="/auth">Sign In</Link>
-              </Button>
             </motion.div>
 
             <motion.p
               className="mt-4 text-xs text-muted-foreground"
-              initial="hidden" animate="visible" variants={fadeUp} custom={3}
+              initial="hidden" animate="visible" variants={fadeUp} custom={2}
             >
-              No credit card needed · 3 clients included · Cancel anytime.
+              No credit card · Upto 3 clients free · No question asked cancellation
             </motion.p>
+
+            <motion.div
+              className="mt-5 inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/10 px-4 py-1.5 text-xs font-semibold text-primary"
+              initial="hidden" animate="visible" variants={fadeUp} custom={2.5}
+            >
+              <span className="h-1.5 w-1.5 rounded-full bg-primary animate-pulse" />
+              Used by personal trainers across India
+            </motion.div>
           </div>
 
           {/* Calendar Mockup */}

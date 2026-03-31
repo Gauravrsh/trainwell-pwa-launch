@@ -11,13 +11,13 @@ export default function LandingNav() {
           <span className="text-xl font-bold">Train<span className="text-primary">Well</span></span>
         </Link>
         <div className="flex items-center gap-2">
+          <Button asChild variant="ghost" size="sm" className="hidden sm:inline-flex">
+            <a href="#how-it-works">How It Works</a>
+          </Button>
           <Button asChild variant="ghost" size="sm">
             <a href="#pricing">Pricing</a>
           </Button>
-          <Button asChild variant="ghost" size="sm">
-            <Link to="/auth">Sign In</Link>
-          </Button>
-          <Button asChild size="sm" className="hidden sm:inline-flex font-bold">
+          <Button asChild size="sm" className="font-bold">
             <Link to="/auth">Start Free Trial</Link>
           </Button>
         </div>
