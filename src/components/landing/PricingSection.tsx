@@ -45,7 +45,7 @@ export default function PricingSection() {
           initial="hidden" whileInView="visible" viewport={{ once: true }}
           variants={fadeUp} custom={0}
         >
-          Small Investment For{' '}
+          Small Investment{' '}
           <span className="text-gradient">Big Returns</span>
         </motion.h2>
         <motion.p
