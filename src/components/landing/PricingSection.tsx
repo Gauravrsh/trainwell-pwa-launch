@@ -49,11 +49,11 @@ export default function PricingSection() {
           <span className="text-gradient">Big Returns</span>
         </motion.h2>
         <motion.p
-          className="mx-auto mt-3 max-w-lg text-center text-sm sm:text-base text-muted-foreground"
+          className="mx-auto mt-3 max-w-lg text-center text-sm sm:text-base text-muted-foreground whitespace-pre-line"
           initial="hidden" whileInView="visible" viewport={{ once: true }}
           variants={fadeUp} custom={0.5}
         >
-          That social media post where your client flaunts the results, and gives you the credit — what would you pay for that? It's priceless right? Focus on what truly matters and what will get your clients' results. Cutting corners on that is, well, a bad career decision!!
+          {`That social media post where your client flaunts the results, and gives you the credit — what would you pay for that? It's priceless right? \nFocus on what truly matters and what will get your clients' results. Cutting corners on that is, well, a bad career decision!!`}
         </motion.p>
 
         <div className="mt-12 grid gap-6 sm:grid-cols-2">

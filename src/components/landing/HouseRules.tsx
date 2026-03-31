@@ -19,7 +19,7 @@ const rules = [
   {
     icon: Calendar,
     title: 'Green or Red — No Grey Area',
-    desc: 'Every day is done or missed. You and your client both see the month at a glance. Nothing to argue about.',
+    desc: 'Every day is done or missed. You and your client both see the month at a glance. Nothing left for explanations or justifications.',
   },
   {
     icon: FileText,
