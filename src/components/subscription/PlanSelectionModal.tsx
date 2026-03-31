@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { motion } from 'framer-motion';
-import { Check, Crown, Sparkles, ChevronDown } from 'lucide-react';
+import { Check, Crown, Sparkles, ChevronDown, X } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 import {
   Dialog,
   DialogContent,
