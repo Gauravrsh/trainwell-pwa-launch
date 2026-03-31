@@ -73,10 +73,53 @@ export function PlanSelectionModal({
 }: PlanSelectionModalProps) {
   const [selectedPlan, setSelectedPlan] = useState<'monthly' | 'annual'>('annual');
   const [showScrollHint, setShowScrollHint] = useState(false);
+  const [isRazorpayActive, setIsRazorpayActive] = useState(false);
   const paymentContainerRef = useRef<HTMLDivElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
   const selectedPlanData = plans.find(p => p.id === selectedPlan);
+
+  // Detect Razorpay checkout popup appearing/disappearing in the DOM
+  useEffect(() => {
+    if (!open) {
+      setIsRazorpayActive(false);
+      return;
+    }
+
+    const observer = new MutationObserver(() => {
+      const razorpayFrame = document.querySelector('.razorpay-container, .razorpay-checkout-frame, iframe[src*="razorpay"]');
+      setIsRazorpayActive(!!razorpayFrame);
+    });
+
+    observer.observe(document.body, { childList: true, subtree: true });
+    return () => observer.disconnect();
+  }, [open]);
+
+  // Close/remove the Razorpay popup programmatically
+  const handleCancelPayment = useCallback(() => {
+    // Remove Razorpay overlays from the DOM
+    const razorpayElements = document.querySelectorAll(
+      '.razorpay-container, .razorpay-checkout-frame, .razorpay-backdrop, iframe[src*="razorpay"]'
+    );
+    razorpayElements.forEach(el => el.remove());
+    setIsRazorpayActive(false);
+
+    // Re-inject the payment button so user can try again
+    if (paymentContainerRef.current) {
+      clearContainer(paymentContainerRef.current);
+      const buttonId = selectedPlanData?.razorpayButtonId;
+      if (buttonId && VALID_RAZORPAY_BUTTON_IDS.has(buttonId)) {
+        const form = document.createElement('form');
+        form.style.width = '100%';
+        const script = document.createElement('script');
+        script.src = 'https://checkout.razorpay.com/v1/payment-button.js';
+        script.setAttribute('data-payment_button_id', buttonId);
+        script.async = true;
+        form.appendChild(script);
+        paymentContainerRef.current.appendChild(form);
+      }
+    }
+  }, [selectedPlanData?.razorpayButtonId]);
 
   // Check if scroll is needed
   const checkScrollHint = useCallback(() => {
