@@ -21,7 +21,7 @@ export default function HeroSection() {
       <div className="relative mx-auto max-w-5xl">
         <div className="grid items-center gap-12 lg:grid-cols-2">
           {/* Copy */}
-          <div>
+          <div className="text-center lg:text-left">
             <motion.p
               className="text-xs font-semibold uppercase tracking-widest text-primary mb-4"
               initial="hidden" animate="visible" variants={fadeUp} custom={0}
