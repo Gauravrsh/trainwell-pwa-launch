@@ -15,7 +15,7 @@ const fadeUp = {
 const plans = [
   {
     name: 'Monthly',
-    subtitle: 'Getting Started',
+    subtitle: 'FOR SMART TRAINERS',
     price: '₹499',
     period: '/month',
     equiv: 'Pay Monthly',
