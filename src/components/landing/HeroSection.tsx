@@ -26,7 +26,7 @@ export default function HeroSection() {
               className="text-xs font-semibold uppercase tracking-widest text-primary mb-4"
               initial="hidden" animate="visible" variants={fadeUp} custom={0}
             >
-              For Personal Trainers Who Deliver Client Results
+              FOR TRAINERS WHO DELIVER RESULTS
             </motion.p>
 
             <motion.h1
