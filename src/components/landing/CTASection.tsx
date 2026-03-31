@@ -4,23 +4,24 @@ import { Button } from '@/components/ui/button';
 
 export default function CTASection() {
   return (
-    <section className="px-4 py-16">
-      <div className="mx-auto max-w-3xl rounded-2xl border border-primary/20 bg-primary/5 p-8 text-center sm:p-12">
+    <section className="px-4 py-16 sm:py-24 text-center">
+      <div className="mx-auto max-w-3xl">
         <h2 className="text-2xl font-extrabold sm:text-3xl">
-          Stop Chasing Clients.{' '}
-          <span className="text-gradient">Have them chase YOU.</span>
+          The Flywheel That Builds{' '}
+          <span className="text-gradient">Your Career</span>
         </h2>
-        <p className="mx-auto mt-3 max-w-lg text-base text-muted-foreground">
-          The tool costs less than one client's 1 session fee. But it can be the reason that client stays for a year,
-          refers three friends, and builds your reputation in ways no Instagram reel ever will.
+        <p className="mx-auto mt-6 max-w-xl text-base sm:text-lg text-muted-foreground leading-relaxed">
+          Client tracks consistently → <strong className="text-foreground">Results come</strong> →
+          Client stays longer → <strong className="text-foreground">Refers friends</strong> →
+          Your reputation grows → More clients → <strong className="text-foreground">Repeat</strong>
         </p>
-        <Button asChild size="lg" className="mt-6 gap-2 text-base font-bold">
+        <Button asChild size="lg" className="mt-8 gap-2 text-base font-bold">
           <Link to="/auth">
             Start Free 14-Day Trial <ArrowRight className="h-4 w-4" />
           </Link>
         </Button>
-        <p className="mt-3 text-xs text-muted-foreground">
-          3 clients included · All features · No credit card
+        <p className="mt-4 text-xs text-muted-foreground">
+          No credit card · 3 clients free · Cancel anytime
         </p>
       </div>
     </section>

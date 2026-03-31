@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Check, ArrowRight, Star } from 'lucide-react';
+import { Check, ArrowRight, Dumbbell } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
@@ -18,17 +18,21 @@ const plans = [
     subtitle: 'Getting Started',
     price: '₹499',
     period: '/month',
+    equiv: 'Pay Monthly',
     highlight: false,
-    features: ['Unlimited clients', 'All features unlocked', '30 days + 3-day grace', 'UPI & Razorpay payments'],
+    features: ['Unlimited clients', 'Progress graphs for clients', '30 days validity + 3-day grace', 'UPI & Card payments'],
+    cta: 'Start Monthly',
   },
   {
     name: 'Annual',
     subtitle: 'For Elite Trainers',
     price: '₹5,988',
     period: '/year',
+    equiv: 'Pay Annual',
     highlight: true,
-    badge: 'For Best Client Results',
-    features: ['Everything in Monthly Plan +', 'Additional 2 months free', '+90 days per annual referral', 'Invite to workshops'],
+    badge: '💪 Choice of Top Trainers',
+    features: ['Everything in Monthly +', '2 months free (10 for 12)', '+90 days per annual referral', 'Invite to workshops'],
+    cta: 'Go Annual — Invest in your Career',
   },
 ];
 
@@ -41,17 +45,15 @@ export default function PricingSection() {
           initial="hidden" whileInView="visible" viewport={{ once: true }}
           variants={fadeUp} custom={0}
         >
-          Half of What{' '}
-          <span className="text-gradient">One Client Pays You</span> for a single session
+          Small Investment For{' '}
+          <span className="text-gradient">Big Returns</span>
         </motion.h2>
         <motion.p
-          className="mx-auto mt-3 max-w-lg text-center text-base text-muted-foreground"
+          className="mx-auto mt-3 max-w-lg text-center text-sm sm:text-base text-muted-foreground"
           initial="hidden" whileInView="visible" viewport={{ once: true }}
           variants={fadeUp} custom={0.5}
         >
-          ₹499/month is less than what most clients pay you for a single session.
-          If TrainWell helps you get noticeable results for your client, and client continues for even 3 extra months, it's already paid for itself 10x over.
-          Don't forget the strong testimonials and referrals you will earn for yourself. Clients use TrainWell for free — always.
+          That social media post where your client flaunts the results, and gives you the credit — what would you pay for that? It's priceless right? Focus on what truly matters and what will get your clients' results. Cutting corners on that is, well, a bad career decision!!
         </motion.p>
 
         <div className="mt-12 grid gap-6 sm:grid-cols-2">
@@ -69,8 +71,8 @@ export default function PricingSection() {
                 }`}
               >
                 {p.badge && (
-                  <span className="absolute -top-3 left-1/2 -translate-x-1/2 inline-flex items-center gap-1 rounded-full bg-primary px-3 py-0.5 text-xs font-bold text-primary-foreground">
-                    <Star className="h-3 w-3" /> {p.badge}
+                  <span className="absolute -top-3 left-1/2 -translate-x-1/2 inline-flex items-center gap-1 rounded-full bg-primary px-3 py-0.5 text-xs font-bold text-primary-foreground whitespace-nowrap">
+                    {p.badge}
                   </span>
                 )}
                 <CardHeader className="pb-2">
@@ -80,11 +82,12 @@ export default function PricingSection() {
                     <span className="text-4xl font-extrabold">{p.price}</span>
                     <span className="text-sm text-muted-foreground">{p.period}</span>
                   </div>
+                  <p className="text-xs text-muted-foreground mt-1">{p.equiv}</p>
                 </CardHeader>
                 <CardContent>
                   <ul className="space-y-2.5">
                     {p.features.map((f) => (
-                      <li key={f} className="flex items-start gap-2 text-base text-muted-foreground">
+                      <li key={f} className="flex items-start gap-2 text-sm text-muted-foreground">
                         <Check className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
                         {f}
                       </li>
@@ -97,8 +100,7 @@ export default function PricingSection() {
                     size="lg"
                   >
                     <Link to="/auth">
-                      {p.highlight ? 'Go Annual — Maximise Client Results' : 'Start Monthly'}{' '}
-                      <ArrowRight className="h-4 w-4" />
+                      {p.cta} <ArrowRight className="h-4 w-4" />
                     </Link>
                   </Button>
                 </CardContent>
@@ -112,7 +114,7 @@ export default function PricingSection() {
           initial="hidden" whileInView="visible" viewport={{ once: true }}
           variants={fadeUp} custom={3}
         >
-          New here? Start with a free 14-day trial — 3 clients, all features. No card needed.
+          Start with a free 14-day trial — 3 clients, all features. No card needed.
         </motion.p>
       </div>
     </section>

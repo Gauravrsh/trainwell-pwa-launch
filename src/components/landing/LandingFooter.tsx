@@ -16,6 +16,7 @@ export default function LandingFooter() {
           <Link to="/terms" className="hover:text-foreground transition-colors">Terms</Link>
           <a href="#pricing" className="hover:text-foreground transition-colors">Pricing</a>
           <Link to="/auth" className="hover:text-foreground transition-colors">Sign In</Link>
+          <a href="mailto:contact@trainwell.app" className="hover:text-foreground transition-colors">Contact</a>
         </div>
       </div>
     </footer>
