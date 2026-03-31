@@ -31,7 +31,7 @@ const plans = [
     equiv: 'Pay Annual',
     highlight: true,
     badge: '💪 Choice of Top Trainers',
-    features: ['Everything in Monthly +', '2 months free (10 for 12)', '+90 days per annual referral', 'Invite to workshops'],
+    features: ['Everything in Monthly +', '2 months free', '+90 days per annual referral', 'Invite to workshops'],
     cta: 'Go Annual — Invest in your Career',
   },
 ];
