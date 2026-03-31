@@ -68,7 +68,7 @@ export default function HeroSection() {
                 initial="hidden" animate="visible" variants={fadeUp} custom={2.5}
               >
                 <span className="h-1.5 w-1.5 rounded-full bg-primary animate-pulse" />
-                Used by personal trainers across India
+                Used by top PTs across India
               </motion.div>
             </div>
           </div>
