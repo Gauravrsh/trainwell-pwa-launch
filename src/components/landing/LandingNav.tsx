@@ -14,9 +14,6 @@ export default function LandingNav() {
           <Button asChild variant="ghost" size="sm" className="hidden sm:inline-flex">
             <a href="#how-it-works">How It Works</a>
           </Button>
-          <Button asChild variant="ghost" size="sm">
-            <a href="#pricing">Pricing</a>
-          </Button>
           <Button asChild size="sm" className="font-bold">
             <Link to="/auth">Start Free Trial</Link>
           </Button>
