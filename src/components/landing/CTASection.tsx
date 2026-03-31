@@ -11,9 +11,9 @@ export default function CTASection() {
           <span className="text-gradient">Your Career</span>
         </h2>
         <p className="mx-auto mt-6 max-w-xl text-base sm:text-lg text-muted-foreground leading-relaxed">
-          Client tracks consistently → <strong className="text-foreground">Results come</strong> →
-          Client stays longer → <strong className="text-foreground">Refers friends</strong> →
-          Your reputation grows → More clients → <strong className="text-foreground">Repeat</strong>
+          Client tracks consistently → Results come →
+          Client stays longer → Refers friends →&nbsp; &nbsp; &nbsp; &nbsp;
+          Your reputation grows →&nbsp;More Clients&nbsp;→ Repeat
         </p>
         <Button asChild size="lg" className="mt-8 gap-2 text-base font-bold">
           <Link to="/auth">

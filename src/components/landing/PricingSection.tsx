@@ -15,7 +15,7 @@ const fadeUp = {
 const plans = [
   {
     name: 'Monthly',
-    subtitle: 'Getting Started',
+    subtitle: 'FOR SMART TRAINERS',
     price: '₹499',
     period: '/month',
     equiv: 'Pay Monthly',
@@ -31,7 +31,7 @@ const plans = [
     equiv: 'Pay Annual',
     highlight: true,
     badge: '💪 Choice of Top Trainers',
-    features: ['Everything in Monthly +', '2 months free (10 for 12)', '+90 days per annual referral', 'Invite to workshops'],
+    features: ['Everything in Monthly +', '2 months free', '+90 days per annual referral', 'Invite to workshops'],
     cta: 'Go Annual — Invest in your Career',
   },
 ];
@@ -45,15 +45,15 @@ export default function PricingSection() {
           initial="hidden" whileInView="visible" viewport={{ once: true }}
           variants={fadeUp} custom={0}
         >
-          Small Investment For{' '}
+          Small Investment{' '}
           <span className="text-gradient">Big Returns</span>
         </motion.h2>
         <motion.p
-          className="mx-auto mt-3 max-w-lg text-center text-sm sm:text-base text-muted-foreground"
+          className="mx-auto mt-3 max-w-lg text-center text-sm sm:text-base text-muted-foreground whitespace-pre-line"
           initial="hidden" whileInView="visible" viewport={{ once: true }}
           variants={fadeUp} custom={0.5}
         >
-          That social media post where your client flaunts the results, and gives you the credit — what would you pay for that? It's priceless right? Focus on what truly matters and what will get your clients' results. Cutting corners on that is, well, a bad career decision!!
+          {`That social media post where your client flaunts the results, and gives you the credit — what would you pay for that? It's priceless right? \nFocus on what truly matters and what will get your clients' results. Cutting corners on that is, well, a bad career decision!!`}
         </motion.p>
 
         <div className="mt-12 grid gap-6 sm:grid-cols-2">
