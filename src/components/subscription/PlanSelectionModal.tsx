@@ -25,7 +25,7 @@ const VALID_RAZORPAY_BUTTON_IDS = new Set([
 
 const plans = [
   {
-    id: 'monthly',
+    id: 'monthly' as const,
     name: 'Monthly',
     price: 499,
     period: '/month',
@@ -40,7 +40,7 @@ const plans = [
     ],
   },
   {
-    id: 'annual',
+    id: 'annual' as const,
     name: 'Annual',
     price: 5988,
     originalPrice: 5988,
@@ -64,6 +64,24 @@ const clearContainer = (element: HTMLElement): void => {
   }
 };
 
+// Inject a Razorpay button script into a container
+const injectRazorpayButton = (container: HTMLElement, buttonId: string, onLoad?: () => void) => {
+  if (!VALID_RAZORPAY_BUTTON_IDS.has(buttonId)) {
+    console.error('Invalid Razorpay button ID - rejected for security');
+    return;
+  }
+  clearContainer(container);
+  const form = document.createElement('form');
+  form.style.width = '100%';
+  const script = document.createElement('script');
+  script.src = 'https://checkout.razorpay.com/v1/payment-button.js';
+  script.setAttribute('data-payment_button_id', buttonId);
+  script.async = true;
+  if (onLoad) script.onload = onLoad;
+  form.appendChild(script);
+  container.appendChild(form);
+};
+
 export function PlanSelectionModal({
   open,
   onClose,
@@ -74,10 +92,10 @@ export function PlanSelectionModal({
   const [selectedPlan, setSelectedPlan] = useState<'monthly' | 'annual'>('annual');
   const [showScrollHint, setShowScrollHint] = useState(false);
   const [isRazorpayActive, setIsRazorpayActive] = useState(false);
-  const paymentContainerRef = useRef<HTMLDivElement>(null);
+  const [buttonsLoaded, setButtonsLoaded] = useState(false);
+  const monthlyContainerRef = useRef<HTMLDivElement>(null);
+  const annualContainerRef = useRef<HTMLDivElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
-
-  const selectedPlanData = plans.find(p => p.id === selectedPlan);
 
   // Detect Razorpay checkout popup appearing/disappearing in the DOM
   useEffect(() => {
@@ -97,29 +115,19 @@ export function PlanSelectionModal({
 
   // Close/remove the Razorpay popup programmatically
   const handleCancelPayment = useCallback(() => {
-    // Remove Razorpay overlays from the DOM
     const razorpayElements = document.querySelectorAll(
       '.razorpay-container, .razorpay-checkout-frame, .razorpay-backdrop, iframe[src*="razorpay"]'
     );
     razorpayElements.forEach(el => el.remove());
     setIsRazorpayActive(false);
 
-    // Re-inject the payment button so user can try again
-    if (paymentContainerRef.current) {
-      clearContainer(paymentContainerRef.current);
-      const buttonId = selectedPlanData?.razorpayButtonId;
-      if (buttonId && VALID_RAZORPAY_BUTTON_IDS.has(buttonId)) {
-        const form = document.createElement('form');
-        form.style.width = '100%';
-        const script = document.createElement('script');
-        script.src = 'https://checkout.razorpay.com/v1/payment-button.js';
-        script.setAttribute('data-payment_button_id', buttonId);
-        script.async = true;
-        form.appendChild(script);
-        paymentContainerRef.current.appendChild(form);
-      }
+    // Re-inject the button for the selected plan
+    const container = selectedPlan === 'monthly' ? monthlyContainerRef.current : annualContainerRef.current;
+    const buttonId = plans.find(p => p.id === selectedPlan)?.razorpayButtonId;
+    if (container && buttonId) {
+      injectRazorpayButton(container, buttonId);
     }
-  }, [selectedPlanData?.razorpayButtonId]);
+  }, [selectedPlan]);
 
   // Check if scroll is needed
   const checkScrollHint = useCallback(() => {
@@ -131,46 +139,43 @@ export function PlanSelectionModal({
     }
   }, []);
 
-  // Render Razorpay button when plan changes or modal opens
+  // Preload BOTH Razorpay buttons once when modal opens
   useEffect(() => {
-    const buttonId = selectedPlanData?.razorpayButtonId;
-    
-    if (open && buttonId && paymentContainerRef.current) {
-      // SECURITY: Validate button ID against whitelist before loading external script
-      if (!VALID_RAZORPAY_BUTTON_IDS.has(buttonId)) {
-        console.error('Invalid Razorpay button ID - rejected for security');
-        return;
-      }
-      
-      // Use safe DOM clearing instead of innerHTML
-      clearContainer(paymentContainerRef.current);
-      
-      // Create form element
-      const form = document.createElement('form');
-      form.style.width = '100%';
-      
-      // Create and append script
-      const script = document.createElement('script');
-      script.src = 'https://checkout.razorpay.com/v1/payment-button.js';
-      script.setAttribute('data-payment_button_id', buttonId);
-      script.async = true;
-      
-      // Check scroll hint after button loads
-      script.onload = () => {
-        setTimeout(checkScrollHint, 100);
-      };
-      
-      form.appendChild(script);
-      paymentContainerRef.current.appendChild(form);
+    if (!open) {
+      setButtonsLoaded(false);
+      return;
     }
-    
-    return () => {
-      if (paymentContainerRef.current) {
-        // Use safe DOM clearing instead of innerHTML
-        clearContainer(paymentContainerRef.current);
+
+    let loadCount = 0;
+    const onScriptLoad = () => {
+      loadCount++;
+      if (loadCount >= 2) {
+        setButtonsLoaded(true);
+        setTimeout(checkScrollHint, 100);
       }
     };
-  }, [open, selectedPlan, selectedPlanData?.razorpayButtonId, checkScrollHint]);
+
+    // Inject monthly button
+    if (monthlyContainerRef.current) {
+      const monthlyPlan = plans.find(p => p.id === 'monthly');
+      if (monthlyPlan) {
+        injectRazorpayButton(monthlyContainerRef.current, monthlyPlan.razorpayButtonId, onScriptLoad);
+      }
+    }
+
+    // Inject annual button
+    if (annualContainerRef.current) {
+      const annualPlan = plans.find(p => p.id === 'annual');
+      if (annualPlan) {
+        injectRazorpayButton(annualContainerRef.current, annualPlan.razorpayButtonId, onScriptLoad);
+      }
+    }
+
+    return () => {
+      if (monthlyContainerRef.current) clearContainer(monthlyContainerRef.current);
+      if (annualContainerRef.current) clearContainer(annualContainerRef.current);
+    };
+  }, [open, checkScrollHint]);
 
   // Check scroll hint on open and resize
   useEffect(() => {
@@ -183,7 +188,7 @@ export function PlanSelectionModal({
 
   return (
     <Dialog open={open} onOpenChange={(isOpen) => {
-      if (!isOpen && isRazorpayActive) return; // Block close while Razorpay is open
+      if (!isOpen && isRazorpayActive) return;
       if (!isOpen) onClose();
     }}>
       <DialogContent
@@ -193,6 +198,10 @@ export function PlanSelectionModal({
         }}
         onEscapeKeyDown={(e) => {
           if (isRazorpayActive) e.preventDefault();
+        }}
+        onOpenAutoFocus={(e) => {
+          // Prevent Dialog from stealing focus — lets Razorpay iframe receive input
+          e.preventDefault();
         }}
       >
         <DialogHeader className="p-6 pb-0 flex-shrink-0">
@@ -216,7 +225,7 @@ export function PlanSelectionModal({
             <motion.button
               key={plan.id}
               whileTap={{ scale: 0.98 }}
-              onClick={() => setSelectedPlan(plan.id as 'monthly' | 'annual')}
+              onClick={() => setSelectedPlan(plan.id)}
               className={`w-full p-4 rounded-2xl border-2 text-left transition-all ${
                 selectedPlan === plan.id
                   ? 'border-primary bg-primary/5'
@@ -266,9 +275,20 @@ export function PlanSelectionModal({
             </motion.button>
           ))}
 
-          {/* Razorpay Payment Button Container */}
+          {/* Razorpay Payment Button Containers — both always mounted, CSS toggles visibility */}
           <div className="w-full py-2 flex flex-col items-center">
-            <div ref={paymentContainerRef} className="flex justify-center items-center [&_form]:flex [&_form]:justify-center [&_form]:w-full [&_.razorpay-payment-button]:mx-auto" />
+            <div
+              ref={monthlyContainerRef}
+              className={`flex justify-center items-center w-full [&_form]:flex [&_form]:justify-center [&_form]:w-full [&_.razorpay-payment-button]:mx-auto ${
+                selectedPlan === 'monthly' ? 'block' : 'hidden'
+              }`}
+            />
+            <div
+              ref={annualContainerRef}
+              className={`flex justify-center items-center w-full [&_form]:flex [&_form]:justify-center [&_form]:w-full [&_.razorpay-payment-button]:mx-auto ${
+                selectedPlan === 'annual' ? 'block' : 'hidden'
+              }`}
+            />
             {isRazorpayActive && (
               <Button
                 variant="outline"
