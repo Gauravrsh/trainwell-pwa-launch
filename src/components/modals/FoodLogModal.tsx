@@ -146,17 +146,59 @@ export const FoodLogModal = ({ open, onOpenChange, onSave }: FoodLogModalProps) 
 
   const capturePhoto = () => {
     if (videoRef.current) {
+      const video = videoRef.current;
+      // Ensure video has valid dimensions before capture
+      if (!video.videoWidth || !video.videoHeight) {
+        toast.error('Camera not ready yet. Please try again.');
+        return;
+      }
       const canvas = document.createElement('canvas');
-      canvas.width = videoRef.current.videoWidth;
-      canvas.height = videoRef.current.videoHeight;
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
       const ctx = canvas.getContext('2d');
       if (ctx) {
-        ctx.drawImage(videoRef.current, 0, 0);
+        ctx.drawImage(video, 0, 0);
         const imageData = canvas.toDataURL('image/jpeg', 0.8);
-        setCapturedImage(imageData);
-        stopCamera();
+        // Validate the data URL is not empty/corrupt
+        if (imageData && imageData.length > 100) {
+          setCapturedImage(imageData);
+          stopCamera();
+        } else {
+          toast.error('Failed to capture photo. Please try again or upload from gallery.');
+        }
       }
     }
+  };
+
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    
+    if (!file.type.startsWith('image/')) {
+      toast.error('Please select an image file');
+      return;
+    }
+
+    // Limit to 10MB
+    if (file.size > 10 * 1024 * 1024) {
+      toast.error('Image is too large. Please select an image under 10MB.');
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const result = event.target?.result as string;
+      if (result) {
+        setCapturedImage(result);
+      }
+    };
+    reader.onerror = () => {
+      toast.error('Failed to read image. Please try again.');
+    };
+    reader.readAsDataURL(file);
+    
+    // Reset input so same file can be re-selected
+    e.target.value = '';
   };
 
   const analyzeFood = async () => {
