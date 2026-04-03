@@ -287,6 +287,12 @@ export function PlanSelectionModal({
               style={{ display: selectedPlan === 'annual' ? 'flex' : 'none' }}
               className="justify-center items-center w-full min-h-[50px] [&_form]:flex [&_form]:justify-center [&_form]:w-full [&_.razorpay-payment-button]:mx-auto"
             />
+            {!buttonsLoaded && (
+              <div className="flex items-center gap-2 py-3 text-sm text-muted-foreground">
+                <div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                Loading payment options...
+              </div>
+            )}
             {isRazorpayActive && (
               <Button
                 variant="outline"
