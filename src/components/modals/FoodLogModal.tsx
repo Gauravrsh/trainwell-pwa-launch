@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Camera, Utensils, Loader2, Check, AlertCircle, Plus } from 'lucide-react';
+import { X, Camera, Utensils, Loader2, Check, AlertCircle, Plus, ImagePlus } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -73,6 +73,7 @@ export const FoodLogModal = ({ open, onOpenChange, onSave }: FoodLogModalProps) 
   
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const analysisResultsRef = useRef<HTMLDivElement>(null);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
 
@@ -145,17 +146,59 @@ export const FoodLogModal = ({ open, onOpenChange, onSave }: FoodLogModalProps) 
 
   const capturePhoto = () => {
     if (videoRef.current) {
+      const video = videoRef.current;
+      // Ensure video has valid dimensions before capture
+      if (!video.videoWidth || !video.videoHeight) {
+        toast.error('Camera not ready yet. Please try again.');
+        return;
+      }
       const canvas = document.createElement('canvas');
-      canvas.width = videoRef.current.videoWidth;
-      canvas.height = videoRef.current.videoHeight;
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
       const ctx = canvas.getContext('2d');
       if (ctx) {
-        ctx.drawImage(videoRef.current, 0, 0);
+        ctx.drawImage(video, 0, 0);
         const imageData = canvas.toDataURL('image/jpeg', 0.8);
-        setCapturedImage(imageData);
-        stopCamera();
+        // Validate the data URL is not empty/corrupt
+        if (imageData && imageData.length > 100) {
+          setCapturedImage(imageData);
+          stopCamera();
+        } else {
+          toast.error('Failed to capture photo. Please try again or upload from gallery.');
+        }
       }
     }
+  };
+
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    
+    if (!file.type.startsWith('image/')) {
+      toast.error('Please select an image file');
+      return;
+    }
+
+    // Limit to 10MB
+    if (file.size > 10 * 1024 * 1024) {
+      toast.error('Image is too large. Please select an image under 10MB.');
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const result = event.target?.result as string;
+      if (result) {
+        setCapturedImage(result);
+      }
+    };
+    reader.onerror = () => {
+      toast.error('Failed to read image. Please try again.');
+    };
+    reader.readAsDataURL(file);
+    
+    // Reset input so same file can be re-selected
+    e.target.value = '';
   };
 
   const analyzeFood = async () => {
@@ -368,17 +411,35 @@ export const FoodLogModal = ({ open, onOpenChange, onSave }: FoodLogModalProps) 
                   </Button>
                 </motion.div>
               ) : (
-                <motion.button
+                <motion.div
                   key="placeholder"
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   exit={{ opacity: 0 }}
-                  onClick={startCamera}
-                  className="w-full aspect-[4/3] rounded-xl border-2 border-dashed border-border bg-secondary/30 flex flex-col items-center justify-center gap-2 hover:border-primary/50 hover:bg-secondary/50 transition-colors"
+                  className="flex gap-2"
                 >
-                  <Camera className="w-8 h-8 text-muted-foreground" />
-                  <span className="text-sm text-muted-foreground">Tap to take photo</span>
-                </motion.button>
+                  <button
+                    onClick={startCamera}
+                    className="flex-1 aspect-[4/3] rounded-xl border-2 border-dashed border-border bg-secondary/30 flex flex-col items-center justify-center gap-2 hover:border-primary/50 hover:bg-secondary/50 transition-colors"
+                  >
+                    <Camera className="w-7 h-7 text-muted-foreground" />
+                    <span className="text-xs text-muted-foreground">Take Photo</span>
+                  </button>
+                  <button
+                    onClick={() => fileInputRef.current?.click()}
+                    className="flex-1 aspect-[4/3] rounded-xl border-2 border-dashed border-border bg-secondary/30 flex flex-col items-center justify-center gap-2 hover:border-primary/50 hover:bg-secondary/50 transition-colors"
+                  >
+                    <ImagePlus className="w-7 h-7 text-muted-foreground" />
+                    <span className="text-xs text-muted-foreground">Upload Photo</span>
+                  </button>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*"
+                    onChange={handleFileUpload}
+                    className="hidden"
+                  />
+                </motion.div>
               )}
             </AnimatePresence>
           </div>
