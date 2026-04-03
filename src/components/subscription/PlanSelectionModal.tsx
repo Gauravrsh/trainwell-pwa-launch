@@ -279,15 +279,13 @@ export function PlanSelectionModal({
           <div className="w-full py-2 flex flex-col items-center">
             <div
               ref={monthlyContainerRef}
-              className={`flex justify-center items-center w-full [&_form]:flex [&_form]:justify-center [&_form]:w-full [&_.razorpay-payment-button]:mx-auto ${
-                selectedPlan === 'monthly' ? 'block' : 'hidden'
-              }`}
+              style={{ display: selectedPlan === 'monthly' ? 'flex' : 'none' }}
+              className="justify-center items-center w-full min-h-[50px] [&_form]:flex [&_form]:justify-center [&_form]:w-full [&_.razorpay-payment-button]:mx-auto"
             />
             <div
               ref={annualContainerRef}
-              className={`flex justify-center items-center w-full [&_form]:flex [&_form]:justify-center [&_form]:w-full [&_.razorpay-payment-button]:mx-auto ${
-                selectedPlan === 'annual' ? 'block' : 'hidden'
-              }`}
+              style={{ display: selectedPlan === 'annual' ? 'flex' : 'none' }}
+              className="justify-center items-center w-full min-h-[50px] [&_form]:flex [&_form]:justify-center [&_form]:w-full [&_.razorpay-payment-button]:mx-auto"
             />
             {isRazorpayActive && (
               <Button
