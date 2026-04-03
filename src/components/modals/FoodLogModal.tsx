@@ -411,17 +411,35 @@ export const FoodLogModal = ({ open, onOpenChange, onSave }: FoodLogModalProps) 
                   </Button>
                 </motion.div>
               ) : (
-                <motion.button
+                <motion.div
                   key="placeholder"
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   exit={{ opacity: 0 }}
-                  onClick={startCamera}
-                  className="w-full aspect-[4/3] rounded-xl border-2 border-dashed border-border bg-secondary/30 flex flex-col items-center justify-center gap-2 hover:border-primary/50 hover:bg-secondary/50 transition-colors"
+                  className="flex gap-2"
                 >
-                  <Camera className="w-8 h-8 text-muted-foreground" />
-                  <span className="text-sm text-muted-foreground">Tap to take photo</span>
-                </motion.button>
+                  <button
+                    onClick={startCamera}
+                    className="flex-1 aspect-[4/3] rounded-xl border-2 border-dashed border-border bg-secondary/30 flex flex-col items-center justify-center gap-2 hover:border-primary/50 hover:bg-secondary/50 transition-colors"
+                  >
+                    <Camera className="w-7 h-7 text-muted-foreground" />
+                    <span className="text-xs text-muted-foreground">Take Photo</span>
+                  </button>
+                  <button
+                    onClick={() => fileInputRef.current?.click()}
+                    className="flex-1 aspect-[4/3] rounded-xl border-2 border-dashed border-border bg-secondary/30 flex flex-col items-center justify-center gap-2 hover:border-primary/50 hover:bg-secondary/50 transition-colors"
+                  >
+                    <ImagePlus className="w-7 h-7 text-muted-foreground" />
+                    <span className="text-xs text-muted-foreground">Upload Photo</span>
+                  </button>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*"
+                    onChange={handleFileUpload}
+                    className="hidden"
+                  />
+                </motion.div>
               )}
             </AnimatePresence>
           </div>
