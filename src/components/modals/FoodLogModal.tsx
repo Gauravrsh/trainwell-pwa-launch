@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Camera, Utensils, Loader2, Check, AlertCircle, Plus, ImagePlus } from 'lucide-react';
+import { X, Camera, Utensils, Loader2, Check, Plus, ImagePlus, Sparkles } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -66,16 +66,17 @@ export const FoodLogModal = ({ open, onOpenChange, onSave }: FoodLogModalProps) 
   const [foodText, setFoodText] = useState('');
   const [capturedImage, setCapturedImage] = useState<string | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
   const [analysis, setAnalysis] = useState<FoodAnalysis | null>(null);
-  const [showCamera, setShowCamera] = useState(false);
   const [sessionMeals, setSessionMeals] = useState<SessionMeal[]>([]);
   const [showScrollHint, setShowScrollHint] = useState(false);
   
-  const videoRef = useRef<HTMLVideoElement>(null);
-  const streamRef = useRef<MediaStream | null>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const cameraInputRef = useRef<HTMLInputElement>(null);
+  const galleryInputRef = useRef<HTMLInputElement>(null);
   const analysisResultsRef = useRef<HTMLDivElement>(null);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
+
+  const hasInput = !!(foodText.trim() || capturedImage);
 
   // Check if analysis results are visible
   const checkScrollVisibility = useCallback(() => {
@@ -87,17 +88,13 @@ export const FoodLogModal = ({ open, onOpenChange, onSave }: FoodLogModalProps) 
     const scrollArea = scrollAreaRef.current;
     const resultsTop = analysisResultsRef.current.offsetTop;
     const scrollBottom = scrollArea.scrollTop + scrollArea.clientHeight;
-    
-    // Show hint if results are below the visible area
     setShowScrollHint(resultsTop > scrollBottom + 20);
   }, [analysis]);
 
   // Auto-scroll to results after analysis
   useEffect(() => {
     if (analysis && analysisResultsRef.current) {
-      // Check if user prefers reduced motion
       const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-      
       setTimeout(() => {
         analysisResultsRef.current?.scrollIntoView({ 
           behavior: prefersReducedMotion ? 'auto' : 'smooth', 
@@ -120,57 +117,8 @@ export const FoodLogModal = ({ open, onOpenChange, onSave }: FoodLogModalProps) 
     return () => scrollArea.removeEventListener('scroll', handleScroll);
   }, [checkScrollVisibility]);
 
-  const startCamera = async () => {
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ 
-        video: { facingMode: 'environment' } 
-      });
-      streamRef.current = stream;
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-      }
-      setShowCamera(true);
-    } catch (error) {
-      logError('FoodLogModal.startCamera', error);
-      toast.error('Could not access camera. Please check permissions.');
-    }
-  };
-
-  const stopCamera = () => {
-    if (streamRef.current) {
-      streamRef.current.getTracks().forEach(track => track.stop());
-      streamRef.current = null;
-    }
-    setShowCamera(false);
-  };
-
-  const capturePhoto = () => {
-    if (videoRef.current) {
-      const video = videoRef.current;
-      // Ensure video has valid dimensions before capture
-      if (!video.videoWidth || !video.videoHeight) {
-        toast.error('Camera not ready yet. Please try again.');
-        return;
-      }
-      const canvas = document.createElement('canvas');
-      canvas.width = video.videoWidth;
-      canvas.height = video.videoHeight;
-      const ctx = canvas.getContext('2d');
-      if (ctx) {
-        ctx.drawImage(video, 0, 0);
-        const imageData = canvas.toDataURL('image/jpeg', 0.8);
-        // Validate the data URL is not empty/corrupt
-        if (imageData && imageData.length > 100) {
-          setCapturedImage(imageData);
-          stopCamera();
-        } else {
-          toast.error('Failed to capture photo. Please try again or upload from gallery.');
-        }
-      }
-    }
-  };
-
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  // Handle file selection (from camera or gallery)
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
     
@@ -179,7 +127,6 @@ export const FoodLogModal = ({ open, onOpenChange, onSave }: FoodLogModalProps) 
       return;
     }
 
-    // Limit to 10MB
     if (file.size > 10 * 1024 * 1024) {
       toast.error('Image is too large. Please select an image under 10MB.');
       return;
@@ -190,6 +137,8 @@ export const FoodLogModal = ({ open, onOpenChange, onSave }: FoodLogModalProps) 
       const result = event.target?.result as string;
       if (result) {
         setCapturedImage(result);
+        // Clear any previous analysis when new image is added
+        setAnalysis(null);
       }
     };
     reader.onerror = () => {
@@ -201,10 +150,10 @@ export const FoodLogModal = ({ open, onOpenChange, onSave }: FoodLogModalProps) 
     e.target.value = '';
   };
 
-  const analyzeFood = async () => {
+  const analyzeFood = async (): Promise<FoodAnalysis | null> => {
     if (!foodText.trim() && !capturedImage) {
       toast.error('Please enter food description or take a photo');
-      return;
+      return null;
     }
 
     setIsAnalyzing(true);
@@ -223,11 +172,13 @@ export const FoodLogModal = ({ open, onOpenChange, onSave }: FoodLogModalProps) 
 
       if (error) throw error;
 
-      setAnalysis(data as FoodAnalysis);
-      toast.success('Food analyzed! See nutritional breakdown below');
+      const result = data as FoodAnalysis;
+      setAnalysis(result);
+      return result;
     } catch (error) {
       logError('FoodLogModal.analyzeFood', error);
       toast.error('Failed to analyze food. Please try again.');
+      return null;
     } finally {
       setIsAnalyzing(false);
     }
@@ -240,68 +191,79 @@ export const FoodLogModal = ({ open, onOpenChange, onSave }: FoodLogModalProps) 
     setShowScrollHint(false);
   };
 
-  const handleSaveAndContinue = () => {
-    if (!analysis) {
-      toast.error('Please analyze the food first');
-      return;
+  // Core save logic — auto-analyzes if needed, then saves
+  const saveCurrentMeal = async (): Promise<boolean> => {
+    if (!hasInput) {
+      toast.error('Please enter food description or take a photo');
+      return false;
     }
 
-    // Save to parent
-    onSave({
-      mealType,
-      rawText: foodText,
-      calories: analysis.totals.calories,
-      protein: analysis.totals.protein,
-      carbs: analysis.totals.carbs,
-      fat: analysis.totals.fat
-    });
+    setIsSaving(true);
+    try {
+      // Auto-analyze if not already done
+      let currentAnalysis = analysis;
+      if (!currentAnalysis) {
+        currentAnalysis = await analyzeFood();
+        if (!currentAnalysis) {
+          return false; // Analysis failed
+        }
+      }
+
+      onSave({
+        mealType,
+        rawText: foodText,
+        calories: currentAnalysis.totals.calories,
+        protein: currentAnalysis.totals.protein,
+        carbs: currentAnalysis.totals.carbs,
+        fat: currentAnalysis.totals.fat,
+      });
+
+      return true;
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleSaveAndContinue = async () => {
+    const saved = await saveCurrentMeal();
+    if (!saved) return;
 
     // Track in session
+    const currentAnalysis = analysis!;
     const newMeal: SessionMeal = {
       mealType,
-      calories: analysis.totals.calories,
-      protein: analysis.totals.protein,
-      carbs: analysis.totals.carbs,
-      fat: analysis.totals.fat
+      calories: currentAnalysis.totals.calories,
+      protein: currentAnalysis.totals.protein,
+      carbs: currentAnalysis.totals.carbs,
+      fat: currentAnalysis.totals.fat,
     };
     setSessionMeals(prev => [...prev, newMeal]);
 
     // Auto-advance meal type
     const nextMeal = getNextMealType(mealType);
-    setMealType(nextMeal);
-
-    // Reset form for next meal
-    resetForm();
-
     const mealName = mealType.charAt(0).toUpperCase() + mealType.slice(1);
+    setMealType(nextMeal);
+    resetForm();
     toast.success(`${mealName} logged! Ready for ${nextMeal}`);
   };
 
-  const handleDone = () => {
-    // If there's an analyzed meal pending, save it first
-    if (analysis) {
-      onSave({
-        mealType,
-        rawText: foodText,
-        calories: analysis.totals.calories,
-        protein: analysis.totals.protein,
-        carbs: analysis.totals.carbs,
-        fat: analysis.totals.fat
-      });
-      
-      const totalMeals = sessionMeals.length + 1;
-      toast.success(`${totalMeals} meal${totalMeals > 1 ? 's' : ''} logged successfully!`);
+  const handleDone = async () => {
+    // If there's input pending, save it first
+    if (hasInput) {
+      const saved = await saveCurrentMeal();
+      if (saved) {
+        const totalMeals = sessionMeals.length + 1;
+        toast.success(`${totalMeals} meal${totalMeals > 1 ? 's' : ''} logged successfully!`);
+      }
     } else if (sessionMeals.length > 0) {
       toast.success(`${sessionMeals.length} meal${sessionMeals.length > 1 ? 's' : ''} logged successfully!`);
     }
 
-    // Reset all state and close
     handleClose(false);
   };
 
   const handleClose = (open: boolean) => {
     if (!open) {
-      stopCamera();
       resetForm();
       setMealType('breakfast');
       setSessionMeals([]);
@@ -313,6 +275,8 @@ export const FoodLogModal = ({ open, onOpenChange, onSave }: FoodLogModalProps) 
     analysisResultsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
     setShowScrollHint(false);
   };
+
+  const isProcessing = isAnalyzing || isSaving;
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
@@ -351,44 +315,12 @@ export const FoodLogModal = ({ open, onOpenChange, onSave }: FoodLogModalProps) 
             </Select>
           </div>
 
-          {/* Camera Section */}
+          {/* Photo Section — uses native file input with capture for mobile camera */}
           <div className="space-y-2">
-            <Label className="text-xs text-muted-foreground">Food Photo</Label>
+            <Label className="text-xs text-muted-foreground">Food Photo (optional)</Label>
             
             <AnimatePresence mode="wait">
-              {showCamera ? (
-                <motion.div
-                  key="camera"
-                  initial={{ opacity: 0, scale: 0.95 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  exit={{ opacity: 0, scale: 0.95 }}
-                  className="relative rounded-xl overflow-hidden bg-black"
-                >
-                  <video
-                    ref={videoRef}
-                    autoPlay
-                    playsInline
-                    className="w-full aspect-[4/3] object-cover"
-                  />
-                  <div className="absolute bottom-4 left-0 right-0 flex justify-center gap-4">
-                    <Button
-                      variant="secondary"
-                      size="icon"
-                      className="h-12 w-12 rounded-full"
-                      onClick={stopCamera}
-                    >
-                      <X className="w-5 h-5" />
-                    </Button>
-                    <Button
-                      size="icon"
-                      className="h-14 w-14 rounded-full"
-                      onClick={capturePhoto}
-                    >
-                      <Camera className="w-6 h-6" />
-                    </Button>
-                  </div>
-                </motion.div>
-              ) : capturedImage ? (
+              {capturedImage ? (
                 <motion.div
                   key="preview"
                   initial={{ opacity: 0, scale: 0.95 }}
@@ -399,13 +331,16 @@ export const FoodLogModal = ({ open, onOpenChange, onSave }: FoodLogModalProps) 
                   <img 
                     src={capturedImage} 
                     alt="Captured food" 
-                    className="w-full aspect-[4/3] object-cover"
+                    className="w-full aspect-[4/3] object-cover rounded-xl"
                   />
                   <Button
                     variant="secondary"
                     size="icon"
-                    className="absolute top-2 right-2 h-8 w-8 rounded-full"
-                    onClick={() => setCapturedImage(null)}
+                    className="absolute top-2 right-2 h-8 w-8 rounded-full bg-background/80 backdrop-blur-sm"
+                    onClick={() => {
+                      setCapturedImage(null);
+                      setAnalysis(null);
+                    }}
                   >
                     <X className="w-4 h-4" />
                   </Button>
@@ -416,27 +351,38 @@ export const FoodLogModal = ({ open, onOpenChange, onSave }: FoodLogModalProps) 
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   exit={{ opacity: 0 }}
-                  className="flex gap-2"
+                  className="flex gap-3"
                 >
+                  {/* Take Photo — opens device camera directly */}
                   <button
-                    onClick={startCamera}
-                    className="flex-1 aspect-[4/3] rounded-xl border-2 border-dashed border-border bg-secondary/30 flex flex-col items-center justify-center gap-2 hover:border-primary/50 hover:bg-secondary/50 transition-colors"
+                    onClick={() => cameraInputRef.current?.click()}
+                    className="flex-1 py-6 rounded-xl border-2 border-dashed border-border bg-secondary/30 flex flex-col items-center justify-center gap-2 hover:border-primary/50 hover:bg-secondary/50 transition-colors active:scale-95"
                   >
                     <Camera className="w-7 h-7 text-muted-foreground" />
                     <span className="text-xs text-muted-foreground">Take Photo</span>
                   </button>
+                  {/* Gallery upload */}
                   <button
-                    onClick={() => fileInputRef.current?.click()}
-                    className="flex-1 aspect-[4/3] rounded-xl border-2 border-dashed border-border bg-secondary/30 flex flex-col items-center justify-center gap-2 hover:border-primary/50 hover:bg-secondary/50 transition-colors"
+                    onClick={() => galleryInputRef.current?.click()}
+                    className="flex-1 py-6 rounded-xl border-2 border-dashed border-border bg-secondary/30 flex flex-col items-center justify-center gap-2 hover:border-primary/50 hover:bg-secondary/50 transition-colors active:scale-95"
                   >
                     <ImagePlus className="w-7 h-7 text-muted-foreground" />
-                    <span className="text-xs text-muted-foreground">Upload Photo</span>
+                    <span className="text-xs text-muted-foreground">From Gallery</span>
                   </button>
+                  {/* Hidden file inputs */}
                   <input
-                    ref={fileInputRef}
+                    ref={cameraInputRef}
                     type="file"
                     accept="image/*"
-                    onChange={handleFileUpload}
+                    capture="environment"
+                    onChange={handleFileSelect}
+                    className="hidden"
+                  />
+                  <input
+                    ref={galleryInputRef}
+                    type="file"
+                    accept="image/*"
+                    onChange={handleFileSelect}
                     className="hidden"
                   />
                 </motion.div>
@@ -453,34 +399,42 @@ export const FoodLogModal = ({ open, onOpenChange, onSave }: FoodLogModalProps) 
               id="food-text"
               placeholder="e.g., 2 eggs, 1 slice of toast with butter, glass of orange juice..."
               value={foodText}
-              onChange={(e) => setFoodText(e.target.value)}
+              onChange={(e) => {
+                setFoodText(e.target.value);
+                // Clear previous analysis when text changes
+                if (analysis) setAnalysis(null);
+              }}
               className="mt-1 min-h-[100px] bg-secondary/50 ring-offset-card"
             />
           </div>
 
-          {/* Analyze Button - changes state after analysis */}
-          {analysis ? (
-            <div className="flex items-center justify-center gap-2 py-3 px-4 rounded-xl bg-success/10 border border-success/30">
-              <Check className="w-5 h-5 text-success" />
-              <span className="text-sm font-medium text-success">Analysis Complete</span>
-              <span className="text-xs text-muted-foreground">— scroll for details</span>
-            </div>
-          ) : (
-            <Button
-              variant="outline"
-              className="w-full"
+          {/* Optional: Preview macros before saving */}
+          {!analysis && hasInput && (
+            <button
               onClick={analyzeFood}
-              disabled={isAnalyzing || (!foodText.trim() && !capturedImage)}
+              disabled={isAnalyzing}
+              className="w-full flex items-center justify-center gap-2 py-2 text-sm text-muted-foreground hover:text-primary transition-colors disabled:opacity-50"
             >
               {isAnalyzing ? (
                 <>
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
                   Analyzing...
                 </>
               ) : (
-                'Analyze Food'
+                <>
+                  <Sparkles className="w-3.5 h-3.5" />
+                  Preview nutritional breakdown
+                </>
               )}
-            </Button>
+            </button>
+          )}
+
+          {/* Analysis Complete badge */}
+          {analysis && (
+            <div className="flex items-center justify-center gap-2 py-2 px-4 rounded-xl bg-success/10 border border-success/30">
+              <Check className="w-4 h-4 text-success" />
+              <span className="text-sm font-medium text-success">Analysis Complete</span>
+            </div>
           )}
 
           {/* Analysis Results */}
@@ -544,8 +498,8 @@ export const FoodLogModal = ({ open, onOpenChange, onSave }: FoodLogModalProps) 
             )}
           </AnimatePresence>
 
-          {/* Gradient fade indicator for more content */}
-          {!analysis && (foodText.trim() || capturedImage) && (
+          {/* Gradient fade indicator */}
+          {!analysis && hasInput && (
             <div className="pointer-events-none absolute bottom-0 left-0 right-0 h-8 bg-gradient-to-t from-background to-transparent" />
           )}
         </div>
@@ -553,22 +507,39 @@ export const FoodLogModal = ({ open, onOpenChange, onSave }: FoodLogModalProps) 
         {/* Scroll hint overlay */}
         <ScrollHint visible={showScrollHint} onClick={scrollToResults} />
 
-        {/* Footer with dual actions */}
+        {/* Footer */}
         <div className="dialog-footer p-6 pt-4 border-t border-border space-y-3">
           <Button 
             className="w-full h-12 rounded-xl"
-            onClick={handleSaveAndContinue}
-            disabled={!analysis}
-          >
-            <Plus className="w-4 h-4 mr-2" />
-            Save & Add Another Meal
-          </Button>
-          <Button 
-            variant="secondary"
-            className="w-full h-10 rounded-xl"
             onClick={handleDone}
+            disabled={isProcessing || (!hasInput && sessionMeals.length === 0)}
           >
-            {analysis || sessionMeals.length > 0 ? 'Done' : 'Cancel'}
+            {isProcessing ? (
+              <>
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                {isAnalyzing ? 'Analyzing & Saving...' : 'Saving...'}
+              </>
+            ) : (
+              hasInput ? 'Log Food' : (sessionMeals.length > 0 ? 'Done' : 'Log Food')
+            )}
+          </Button>
+          {hasInput && (
+            <Button 
+              variant="outline"
+              className="w-full h-10 rounded-xl"
+              onClick={handleSaveAndContinue}
+              disabled={isProcessing}
+            >
+              <Plus className="w-4 h-4 mr-2" />
+              Save & Add Another Meal
+            </Button>
+          )}
+          <Button 
+            variant="ghost"
+            className="w-full h-9 rounded-xl text-muted-foreground"
+            onClick={() => handleClose(false)}
+          >
+            Cancel
           </Button>
         </div>
       </DialogContent>
