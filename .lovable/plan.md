@@ -1,23 +1,38 @@
 
 
-# Update Landing Page Mockup HTML
+# Pitch Deck: TrainWell Community Manager Recruit
 
-## What
-Replace the contents of `public/landing-mockup.html` with the user's updated HTML code containing revised copy, layout tweaks, and new sections.
+## What we're building
+A new `/pitch` route — a public, scroll-based interactive pitch deck styled in TrainWell's dark theme with lime accents. It presents the company vision, team structure, the community manager role, growth goals, and the compensation offer in a personal, founder-to-recruit tone.
 
-## Steps
-1. Overwrite `public/landing-mockup.html` with the provided HTML (fixing the malformed contact link tag at the bottom)
+## Slide sections (single scrollable page, section-by-section with fade-in animations)
 
-## Key changes from previous mockup
-- Updated hero copy and CTA text
-- Revised "How It Works" step descriptions
-- New House Rules content (third rule changed to "Log everyday" flywheel concept)
-- Comparison table: client retention changed from "12+" to "18+ months"
-- Pricing section: new headline and description copy, updated CTA button text
-- Final CTA rewritten as "The Flywheel That Builds Your Career"
-- Footer includes contact email link
+1. **Title** — "TrainWell: Join the Founding Team" with a short personal line from you
+2. **The Problem** — Why trainers lose clients (no tracking, no accountability, low retention). Quick stats framing the opportunity in the Indian PT market.
+3. **The Solution** — "Whatever Gets Tracked, Gets Done." 2-3 app screenshots/mockups showing calendar view, food logging, progress charts. Moderate product walkthrough.
+4. **The Triad** — Visual triangle diagram mirroring your sketch: Product + Strategy (Founder), Community + Social (Her role), AI + Automation (Third co-builder). Clean SVG/CSS triangle.
+5. **Your Role: Community + Social** — Detailed responsibilities pulled from your notes:
+   - Onboard trainers personally, ensure 100% logging adherence for their clients
+   - Drive community engagement: contests, leaderboards, workshops, webinars
+   - Social media strategy: Instagram/FB reels, posts, engagement
+   - Trainer referral activation
+6. **The Playbook** — Growth roadmap diagram (from sketch 2):
+   - **0-90 days**: Get 20 trainers, 150-200 clients, 100% logging adherence, cashback contest, validate product-proposition fit
+   - **90-180 days**: Achieve PMF, scale to 500 paying trainers
+   - Community manager personally nurturing T1→T6 and their clients
+7. **Compensation** — Transparent: small monthly stipend during 0-6 month validation phase. After PMF confirmation, formal salary + equity/shares discussion. Framed as a founding opportunity, not a job.
+8. **Why Now** — The product is built and live. First trainers are onboarding. This is the ground floor.
+9. **CTA** — "Let's build this together." with contact/next steps.
 
-## Notes
-- The contact link in the footer HTML is malformed (`@trainwell.app">Contact</a>`) — will fix to `<a href="mailto:contact@trainwell.app">Contact</a>`
-- File served at `/landing-mockup.html` as before
+## Technical approach
+
+- **New file**: `src/pages/Pitch.tsx` — single-page scrollable deck with section components
+- **New route**: `/pitch` added to `App.tsx` as a public route (no auth required)
+- **Styling**: Uses existing TrainWell dark theme (`bg-background`, `text-foreground`, lime `primary` accents)
+- **Animations**: Framer Motion `whileInView` fade-ups for each section as user scrolls
+- **Responsive**: Mobile-first (411px viewport), scales up gracefully
+- **Triangle diagram**: CSS/Tailwind positioned elements with connecting lines, no external images
+- **Growth roadmap**: Styled timeline component with milestone markers
+
+No database changes needed. No new dependencies.
 
