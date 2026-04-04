@@ -185,7 +185,7 @@ const TriadSection = () => (
       {/* Bottom-left — Community */}
       <div className="absolute left-0 bottom-0 flex flex-col items-center w-32">
         <div className="w-16 h-16 rounded-full bg-primary/20 border-2 border-primary flex items-center justify-center mb-2 ring-4 ring-primary/10">
-          <Heart className="w-7 h-7 text-primary" />
+          <UsersRound className="w-7 h-7 text-primary" />
         </div>
         <p className="text-primary font-bold text-sm">Community & Social</p>
         <p className="text-muted-foreground text-xs">← Your role</p>
