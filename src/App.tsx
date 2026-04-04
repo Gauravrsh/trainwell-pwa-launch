@@ -193,6 +193,7 @@ const AppRoutes = () => (
       }
     />
     <Route path="/terms" element={<Terms />} />
+    <Route path="/pitch" element={<Pitch />} />
     <Route path="*" element={<NotFound />} />
   </Routes>
 );
