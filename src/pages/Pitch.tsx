@@ -418,7 +418,7 @@ const CTASection = () => (
         <span className="text-primary">together.</span>
       </motion.h2>
       <motion.p variants={fadeUp} className="mt-4 text-lg text-muted-foreground max-w-md mx-auto">
-        If this resonates, let's talk next steps. No pressure — just a conversation between two people who want to build something meaningful.
+        If this resonates, let's talk next steps. No pressure — just a conversation between two people who can build something meaningful - and big.
       </motion.p>
       <motion.div variants={fadeUp} className="mt-8">
         <a
