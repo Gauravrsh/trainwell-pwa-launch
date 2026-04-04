@@ -90,7 +90,7 @@ const ProblemSection = () => (
     <motion.div variants={stagger} className="mt-10 grid grid-cols-1 md:grid-cols-3 gap-4">
       {[
         { stat: "3-6 mo", label: "Average client retention", icon: Clock },
-        { stat: "₹40K-1.5L", label: "Monthly trainer earnings at stake", icon: TrendingUp },
+        { stat: "₹40K-2L", label: "Monthly trainer earnings at stake", icon: TrendingUp },
         { stat: "0", label: "Tools built for this trainer", icon: Target },
       ].map((item) => (
         <motion.div
