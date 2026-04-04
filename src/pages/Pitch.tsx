@@ -369,12 +369,6 @@ const CompensationSection = () => (
       </motion.div>
     </motion.div>
 
-    <motion.div variants={fadeUp} className="mt-6 bg-primary/5 border border-primary/10 rounded-xl p-5">
-      <p className="text-muted-foreground text-sm leading-relaxed italic">
-        "I'm not offering you a job. I'm offering you a seat at the table before the table gets crowded. 
-        The product is built. The first trainers are signing up. What's missing is someone who can own the community side with the same intensity I bring to product."
-      </p>
-    </motion.div>
   </Section>
 );
 
