@@ -1,5 +1,5 @@
 import { motion } from "framer-motion";
-import { ArrowRight, Users, Target, TrendingUp, Calendar, Utensils, BarChart3, Star, Zap, Heart, CheckCircle2, Clock, Rocket } from "lucide-react";
+import { ArrowRight, Users, Target, TrendingUp, Calendar, Utensils, BarChart3, Star, Zap, UsersRound, CheckCircle2, Clock, Rocket } from "lucide-react";
 
 const fadeUp = {
   hidden: { opacity: 0, y: 40 },
