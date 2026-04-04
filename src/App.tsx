@@ -21,6 +21,7 @@ import Progress from "./pages/Progress";
 import Refer from "./pages/Refer";
 import Profile from "./pages/Profile";
 import Terms from "./pages/Terms";
+import Pitch from "./pages/Pitch";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -192,6 +193,7 @@ const AppRoutes = () => (
       }
     />
     <Route path="/terms" element={<Terms />} />
+    <Route path="/pitch" element={<Pitch />} />
     <Route path="*" element={<NotFound />} />
   </Routes>
 );
