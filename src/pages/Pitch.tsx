@@ -225,7 +225,7 @@ const RoleSection = () => {
       </motion.h2>
       <motion.p variants={fadeUp} className="mt-4 text-lg text-muted-foreground leading-relaxed max-w-2xl">
         You <span className="text-foreground font-medium">own</span> this pillar. 
-        The success of every trainer on the platform flows through you. You yourself being a trainer makes you in-house Subject Matter Expert.
+        The success of every trainer on the platform flows through you. You yourself being a trainer makes you in-house Subject Matter Expert
       </motion.p>
 
       <motion.div variants={stagger} className="mt-10 grid grid-cols-1 md:grid-cols-2 gap-4">
