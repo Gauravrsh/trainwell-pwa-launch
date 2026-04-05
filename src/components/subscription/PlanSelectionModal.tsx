@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { motion } from 'framer-motion';
-import { Check, Crown, Sparkles, ChevronDown, X } from 'lucide-react';
+import { Check, Crown, Sparkles, ChevronDown, ExternalLink } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -22,6 +22,15 @@ const VALID_RAZORPAY_BUTTON_IDS = new Set([
   'pl_S6cIGsJyU7Owle', // Monthly plan
   'pl_S6ccDIYhIw1AaB', // Annual plan
 ]);
+
+const getRazorpayPaymentUrl = (buttonId: string): string | null => {
+  if (!VALID_RAZORPAY_BUTTON_IDS.has(buttonId)) {
+    console.error('Invalid Razorpay button ID - rejected for security');
+    return null;
+  }
+
+  return `https://razorpay.com/payment-button/${buttonId}/view`;
+};
 
 const plans = [
   {
@@ -57,80 +66,14 @@ const plans = [
   },
 ];
 
-// Safe DOM clearing function - avoids innerHTML for security
-const clearContainer = (element: HTMLElement): void => {
-  while (element.firstChild) {
-    element.removeChild(element.firstChild);
-  }
-};
-
-// Inject a Razorpay button script into a container
-const injectRazorpayButton = (
-  container: HTMLElement,
-  buttonId: string,
-  handlers?: { onLoad?: () => void; onError?: () => void }
-) => {
-  if (!VALID_RAZORPAY_BUTTON_IDS.has(buttonId)) {
-    console.error('Invalid Razorpay button ID - rejected for security');
-    return;
-  }
-  clearContainer(container);
-  const form = document.createElement('form');
-  form.style.width = '100%';
-  const script = document.createElement('script');
-  script.src = 'https://checkout.razorpay.com/v1/payment-button.js';
-  script.setAttribute('data-payment_button_id', buttonId);
-  script.async = true;
-  if (handlers?.onLoad) script.onload = handlers.onLoad;
-  if (handlers?.onError) script.onerror = handlers.onError;
-  form.appendChild(script);
-  container.appendChild(form);
-};
-
 export function PlanSelectionModal({
   open,
   onClose,
-  onSelectPlan,
   isRenewal,
-  currentPlan,
 }: PlanSelectionModalProps) {
   const [selectedPlan, setSelectedPlan] = useState<'monthly' | 'annual'>('annual');
   const [showScrollHint, setShowScrollHint] = useState(false);
-  const [isRazorpayActive, setIsRazorpayActive] = useState(false);
-  const [buttonStatus, setButtonStatus] = useState<'idle' | 'loading' | 'ready' | 'error'>('idle');
-  const [reloadKey, setReloadKey] = useState(0);
-  const paymentContainerRef = useRef<HTMLDivElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
-
-  // Detect Razorpay checkout popup appearing/disappearing in the DOM
-  useEffect(() => {
-    if (!open) {
-      setIsRazorpayActive(false);
-      return;
-    }
-
-    const observer = new MutationObserver(() => {
-      const razorpayFrame = document.querySelector('.razorpay-container, .razorpay-checkout-frame, iframe[src*="razorpay"]');
-      setIsRazorpayActive(!!razorpayFrame);
-    });
-
-    observer.observe(document.body, { childList: true, subtree: true });
-    return () => observer.disconnect();
-  }, [open]);
-
-  // Close/remove the Razorpay popup programmatically
-  const handleCancelPayment = useCallback(() => {
-    const razorpayElements = document.querySelectorAll(
-      '.razorpay-container, .razorpay-checkout-frame, .razorpay-backdrop, iframe[src*="razorpay"]'
-    );
-    razorpayElements.forEach(el => el.remove());
-    setIsRazorpayActive(false);
-    setReloadKey((current) => current + 1);
-  }, []);
-
-  const handleRetryButtonLoad = useCallback(() => {
-    setReloadKey((current) => current + 1);
-  }, []);
 
   // Check if scroll is needed
   const checkScrollHint = useCallback(() => {
@@ -142,114 +85,47 @@ export function PlanSelectionModal({
     }
   }, []);
 
-  // Inject only the currently visible Razorpay button.
-  // Loading hidden hosted buttons is unreliable on some mobile browsers.
   useEffect(() => {
-    if (!open) {
-      setButtonStatus('idle');
-      return;
+    if (open) {
+      setSelectedPlan('annual');
     }
-
-    const container = paymentContainerRef.current;
-    const selectedPlanConfig = plans.find((plan) => plan.id === selectedPlan);
-
-    if (!container || !selectedPlanConfig) {
-      return;
-    }
-
-    let mutationObserver: MutationObserver | null = null;
-    let timeoutId: number | null = null;
-    let animationFrameId: number | null = null;
-    let cancelled = false;
-
-    const markReadyIfButtonRendered = () => {
-      if (cancelled) return false;
-
-      const hasRenderedButton = !!container.querySelector(
-        '.razorpay-payment-button, iframe[src*="razorpay"], button, input[type="submit"]'
-      );
-
-      if (hasRenderedButton) {
-        setButtonStatus('ready');
-        window.setTimeout(checkScrollHint, 100);
-      }
-
-      return hasRenderedButton;
-    };
-
-    const cleanupWatchers = () => {
-      if (mutationObserver) mutationObserver.disconnect();
-      if (timeoutId) window.clearTimeout(timeoutId);
-      if (animationFrameId) window.cancelAnimationFrame(animationFrameId);
-    };
-
-    setButtonStatus('loading');
-    clearContainer(container);
-
-    animationFrameId = window.requestAnimationFrame(() => {
-      injectRazorpayButton(container, selectedPlanConfig.razorpayButtonId, {
-        onLoad: () => {
-          window.setTimeout(() => {
-            markReadyIfButtonRendered();
-          }, 250);
-        },
-        onError: () => {
-          if (!cancelled) {
-            setButtonStatus('error');
-          }
-        },
-      });
-
-      if (markReadyIfButtonRendered()) {
-        return;
-      }
-
-      mutationObserver = new MutationObserver(() => {
-        if (markReadyIfButtonRendered()) {
-          cleanupWatchers();
-        }
-      });
-
-      mutationObserver.observe(container, { childList: true, subtree: true });
-
-      timeoutId = window.setTimeout(() => {
-        if (!markReadyIfButtonRendered() && !cancelled) {
-          setButtonStatus('error');
-        }
-      }, 8000);
-    });
-
-    return () => {
-      cancelled = true;
-      cleanupWatchers();
-      clearContainer(container);
-    };
-  }, [open, selectedPlan, reloadKey, checkScrollHint]);
+  }, [open]);
 
   // Check scroll hint on open and resize
   useEffect(() => {
     if (open) {
-      setTimeout(checkScrollHint, 100);
+      window.setTimeout(checkScrollHint, 100);
       window.addEventListener('resize', checkScrollHint);
       return () => window.removeEventListener('resize', checkScrollHint);
     }
   }, [open, checkScrollHint]);
 
+  const selectedPlanConfig = plans.find((plan) => plan.id === selectedPlan) ?? plans[1];
+
+  const handleProceedToPayment = useCallback(() => {
+    const paymentUrl = getRazorpayPaymentUrl(selectedPlanConfig.razorpayButtonId);
+
+    if (!paymentUrl) {
+      return;
+    }
+
+    const paymentWindow = window.open(paymentUrl, '_blank', 'noopener,noreferrer');
+
+    if (!paymentWindow) {
+      window.location.assign(paymentUrl);
+      return;
+    }
+
+    onClose();
+  }, [onClose, selectedPlanConfig.razorpayButtonId]);
+
   return (
     <Dialog open={open} onOpenChange={(isOpen) => {
-      if (!isOpen && isRazorpayActive) return;
       if (!isOpen) onClose();
     }}>
       <DialogContent
         className="max-w-md p-0 overflow-hidden max-h-[90vh] flex flex-col"
-        onInteractOutside={(e) => {
-          if (isRazorpayActive) e.preventDefault();
-        }}
-        onEscapeKeyDown={(e) => {
-          if (isRazorpayActive) e.preventDefault();
-        }}
         onOpenAutoFocus={(e) => {
-          // Prevent Dialog from stealing focus — lets Razorpay iframe receive input
           e.preventDefault();
         }}
       >
@@ -324,41 +200,27 @@ export function PlanSelectionModal({
             </motion.button>
           ))}
 
-          {/* Razorpay Payment Button Container */}
-          <div className="w-full py-2 flex flex-col items-center">
-            <div
-              ref={paymentContainerRef}
-              className="justify-center items-center w-full min-h-[50px] [&_form]:flex [&_form]:justify-center [&_form]:w-full [&_.razorpay-payment-button]:mx-auto"
-            />
-            {buttonStatus === 'loading' && (
-              <div className="flex items-center gap-2 py-3 text-sm text-muted-foreground">
-                <div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-                Loading payment options...
-              </div>
-            )}
-            {buttonStatus === 'error' && (
-              <div className="flex flex-col items-center gap-3 py-3 text-center">
-                <p className="text-sm text-muted-foreground max-w-xs">
-                  Payment button couldn&apos;t load on this device. Tap retry to reload it.
+          {/* Razorpay Checkout CTA */}
+          <div className="w-full py-2 flex flex-col items-center gap-3">
+            <div className="w-full rounded-2xl border border-border bg-secondary/40 p-4 space-y-3">
+              <div className="space-y-1">
+                <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
+                  Selected plan
                 </p>
-                <Button variant="outline" size="sm" onClick={handleRetryButtonLoad}>
-                  Retry Payment Button
-                </Button>
+                <p className="text-lg font-semibold text-foreground">
+                  {selectedPlanConfig.name} · ₹{selectedPlanConfig.price.toLocaleString()}
+                  <span className="text-muted-foreground font-normal">{selectedPlanConfig.period}</span>
+                </p>
               </div>
-            )}
-            {isRazorpayActive && (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleCancelPayment}
-                className="mt-3 gap-1.5"
-              >
-                <X className="w-3.5 h-3.5" />
-                Cancel Payment
+
+              <Button onClick={handleProceedToPayment} className="w-full gap-2 min-h-12">
+                Proceed to Pay
+                <ExternalLink className="w-4 h-4" />
               </Button>
-            )}
+            </div>
+
             <p className="text-xs text-center text-muted-foreground mt-3">
-              Secure payment via Razorpay
+              Opens Razorpay&apos;s secure payment page directly, which avoids the mobile freeze caused by embedded checkout overlays.
             </p>
           </div>
 
