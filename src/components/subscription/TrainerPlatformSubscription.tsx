@@ -60,7 +60,7 @@ export function TrainerPlatformSubscription() {
               <Crown className="w-6 h-6 text-primary" />
             </div>
             <div>
-              <h3 className="font-semibold text-foreground">TrainWell Platform</h3>
+              <h3 className="font-semibold text-foreground">Vecto Platform</h3>
               <p className="text-sm text-muted-foreground">Start managing clients today</p>
             </div>
           </div>

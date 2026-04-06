@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 
-const STORAGE_KEY = 'trainwell_install_prompt';
+const STORAGE_KEY = 'vecto_install_prompt';
 const DAYS_BEFORE_SHOWING = 3;
 const MAX_SHOW_COUNT = 5;
 

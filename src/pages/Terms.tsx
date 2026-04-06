@@ -64,7 +64,7 @@ export default function Terms() {
               <div>
                 <h4 className="font-semibold text-foreground mb-2">1. Acceptance of Terms</h4>
                 <p>
-                  By accessing or using TrainWell, you agree to be bound by these Terms of Service 
+                  By accessing or using Vecto, you agree to be bound by these Terms of Service 
                   and all applicable laws and regulations. If you do not agree with any of these 
                   terms, you are prohibited from using this platform.
                 </p>
@@ -80,7 +80,7 @@ export default function Terms() {
               <div>
                 <h4 className="font-semibold text-foreground mb-2">3. User Conduct</h4>
                 <p>
-                  You agree to use TrainWell only for lawful purposes and in a way that does not 
+                  You agree to use Vecto only for lawful purposes and in a way that does not 
                   infringe the rights of, restrict, or inhibit anyone else's use and enjoyment of 
                   the platform.
                 </p>
@@ -89,7 +89,7 @@ export default function Terms() {
                 <h4 className="font-semibold text-foreground mb-2">4. Content Ownership</h4>
                 <p>
                   All content you create (workout plans, client data, etc.) remains your intellectual 
-                  property. You grant TrainWell a license to store and display this content as 
+                  property. You grant Vecto a license to store and display this content as 
                   necessary to provide our services.
                 </p>
               </div>
