@@ -1,5 +1,18 @@
 
 
+# Standard Operating Procedures
+
+## SOP-1: Issue Repository (MANDATORY)
+
+**Before ANY bug fix, code change, or enhancement**, read `docs/issue-repository.md` first.
+
+- Check if the issue has been encountered before (search by symptom, file, or component name)
+- Do NOT re-introduce any previously fixed issue (TW-XXX)
+- After every bug fix, append the new issue to `docs/issue-repository.md` with the next TW-XXX ID
+- This is mandatory and unconditional — not dependent on user instruction
+
+---
+
 # Pitch Deck: TrainWell Community Manager Recruit
 
 ## What we're building
@@ -35,4 +48,3 @@ A new `/pitch` route — a public, scroll-based interactive pitch deck styled in
 - **Growth roadmap**: Styled timeline component with milestone markers
 
 No database changes needed. No new dependencies.
-
