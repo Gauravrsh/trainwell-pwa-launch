@@ -6,7 +6,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { sanitizeErrorMessage, logError } from '@/lib/errorUtils';
-import logoVecto from '@/assets/logo-vecto.png';
+
 
 const RoleSelection = () => {
   const [loading, setLoading] = useState(false);
