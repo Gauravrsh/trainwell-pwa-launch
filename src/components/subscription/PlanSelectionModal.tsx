@@ -4,6 +4,7 @@ import { motion } from 'framer-motion';
 import { Check, Crown, Sparkles, ChevronDown, ExternalLink, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
+import { supabase } from '@/integrations/supabase/client';
 import {
   Dialog,
   DialogContent,
@@ -118,8 +119,6 @@ export function PlanSelectionModal({
   // Poll for subscription activation after payment window opens
   const startPolling = useCallback(() => {
     if (pollingRef.current) clearInterval(pollingRef.current);
-    
-    const { supabase } = require('@/integrations/supabase/client');
     
     let attempts = 0;
     const maxAttempts = 60; // 5 minutes max (5s intervals)
