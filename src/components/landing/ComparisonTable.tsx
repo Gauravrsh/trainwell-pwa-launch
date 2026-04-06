@@ -7,12 +7,12 @@ const fadeUp = {
 };
 
 const rows = [
-  { label: 'Workout planning', whatsapp: 'Voice note / text list', trainwell: 'Structured, date-locked plans' },
-  { label: 'Client compliance', whatsapp: '"Haan sir, kar liya"', trainwell: 'Green or Red on the calendar' },
-  { label: 'Diet logging', whatsapp: 'Sends a photo... sometimes', trainwell: 'AI-powered, 10-sec meal log' },
-  { label: 'Backdating', whatsapp: '"I\'ll log it tomorrow"', trainwell: 'Locked. Today only.' },
-  { label: 'Progress data', whatsapp: 'In your head or a notebook', trainwell: 'Charts, trends, real numbers' },
-  { label: 'Client retention', whatsapp: '3–6 months average', trainwell: '18+ months with results' },
+  { label: 'Workout planning', whatsapp: 'Voice note / text list', vecto: 'Structured, date-locked plans' },
+  { label: 'Client compliance', whatsapp: '"Haan sir, kar liya"', vecto: 'Green or Red on the calendar' },
+  { label: 'Diet logging', whatsapp: 'Sends a photo... sometimes', vecto: 'AI-powered, 10-sec meal log' },
+  { label: 'Backdating', whatsapp: '"I\'ll log it tomorrow"', vecto: 'Locked. Today only.' },
+  { label: 'Progress data', whatsapp: 'In your head or a notebook', vecto: 'Charts, trends, real numbers' },
+  { label: 'Client retention', whatsapp: '3–6 months average', vecto: '18+ months with results' },
 ];
 
 export default function ComparisonTable() {
@@ -25,7 +25,7 @@ export default function ComparisonTable() {
           variants={fadeUp}
         >
           WhatsApp Coaching vs.{' '}
-          <span className="text-gradient">TrainWell</span>
+          <span className="text-gradient">Vecto</span>
         </motion.h2>
         <motion.p
           className="mx-auto mt-3 max-w-md text-center text-muted-foreground text-base sm:text-lg"
@@ -43,7 +43,7 @@ export default function ComparisonTable() {
           <div className="grid grid-cols-3 bg-secondary/50">
             <div className="p-3 sm:p-4 text-sm font-semibold text-muted-foreground" />
             <div className="p-3 sm:p-4 text-center font-semibold text-muted-foreground text-base">WhatsApp</div>
-            <div className="p-3 sm:p-4 text-center font-semibold text-primary text-base">TrainWell</div>
+            <div className="p-3 sm:p-4 text-center font-semibold text-primary text-base">Vecto</div>
           </div>
 
           {rows.map((row, i) => (
@@ -58,7 +58,7 @@ export default function ComparisonTable() {
               </div>
               <div className="p-3 sm:p-4 text-center text-sm text-foreground flex items-start justify-center gap-1.5">
                 <Check className="mt-0.5 h-4 w-4 shrink-0 text-success" />
-                <span>{row.trainwell}</span>
+                <span>{row.vecto}</span>
               </div>
             </div>
           ))}

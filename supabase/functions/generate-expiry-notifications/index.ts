@@ -9,7 +9,7 @@ const corsHeaders = {
 const NOTIFICATION_CONTENT: Record<number, { title: string; body: string }> = {
   [-3]: {
     title: "Your Journey Isn't Over Yet",
-    body: "Your TrainWell subscription ends in 3 days. Your clients are counting on you - keep the momentum going!",
+    body: "Your Vecto subscription ends in 3 days. Your clients are counting on you - keep the momentum going!",
   },
   [-2]: {
     title: '48 Hours Left',

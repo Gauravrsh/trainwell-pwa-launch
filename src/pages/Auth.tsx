@@ -8,7 +8,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
 import { sanitizeErrorMessage } from '@/lib/errorUtils';
 import { z } from 'zod';
-import logoTrainwell from '@/assets/logo-trainwell.png';
+import logoVecto from '@/assets/logo-vecto.png';
 
 type AuthMode = 'signin' | 'signup' | 'forgot';
 
@@ -174,10 +174,10 @@ export default function Auth() {
             transition={{ type: 'spring', stiffness: 200 }}
             className="w-20 h-20 rounded-2xl overflow-hidden shadow-lg mb-6 mx-auto"
           >
-            <img src={logoTrainwell} alt="TrainWell Logo" className="w-full h-full object-cover" />
+            <img src={logoVecto} alt="Vecto Logo" className="w-full h-full object-cover" />
           </motion.div>
-          <h1 className="text-3xl font-bold text-foreground mb-2">TrainWell</h1>
-          <p className="text-muted-foreground">Your fitness journey starts here</p>
+          <h1 className="text-3xl font-bold text-foreground mb-2"><span className="text-primary">V</span>ECTO</h1>
+          <p className="text-muted-foreground">Effort | Direction | Discipline</p>
         </div>
 
         <AnimatePresence mode="wait">

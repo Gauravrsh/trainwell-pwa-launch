@@ -51,10 +51,10 @@ export function InstallPromptModal({ open, onClose, onRemindLater }: InstallProm
               <div className="p-6 pt-8">
                 {/* Header */}
                 <h2 className="text-2xl font-bold text-foreground mb-2">
-                   Install TrainWell
+                   Install Vecto
                  </h2>
                  <p className="text-muted-foreground mb-6">
-                   Get the full app experience – add TrainWell to your home screen for quick and easy access!
+                   Get the full app experience – add Vecto to your home screen for quick and easy access!
                 </p>
 
                 {/* Steps */}

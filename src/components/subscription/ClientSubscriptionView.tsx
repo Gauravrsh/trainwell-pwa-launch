@@ -61,7 +61,7 @@ export function ClientSubscriptionView() {
             <Check className="w-5 h-5 text-success" />
           </div>
           <div>
-            <p className="font-semibold text-foreground">TrainWell is Free for Clients</p>
+            <p className="font-semibold text-foreground">Vecto is Free for Clients</p>
             <p className="text-sm text-muted-foreground">
               No platform fees. Your trainer handles the billing.
             </p>

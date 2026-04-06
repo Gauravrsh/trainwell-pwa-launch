@@ -19,7 +19,7 @@ export function ReferralTermsAccordion() {
           <div>
             <h4 className="font-semibold text-foreground mb-2">1. The Core Offer</h4>
             <p>
-              The Program allows existing TrainWell Trainers ("Referrers") to earn subscription 
+              The Program allows existing Vecto Trainers ("Referrers") to earn subscription 
               validity extensions by referring new Trainers ("Referees") who successfully 
               subscribe to a paid plan.
             </p>
@@ -104,8 +104,8 @@ export function ReferralTermsAccordion() {
             <ul className="space-y-2 list-disc list-inside">
               <li><strong>Non-Transferable:</strong> Extensions have no cash value and cannot be transferred or sold.</li>
               <li><strong>Uncapped:</strong> No limit on total validity you can accrue through referrals.</li>
-              <li><strong>Fair Usage:</strong> TrainWell may limit AI features if usage exceeds reasonable benchmarks.</li>
-              <li><strong>Program Modification:</strong> TrainWell reserves the right to modify this program with 30 days' notice.</li>
+              <li><strong>Fair Usage:</strong> Vecto may limit AI features if usage exceeds reasonable benchmarks.</li>
+              <li><strong>Program Modification:</strong> Vecto reserves the right to modify this program with 30 days' notice.</li>
             </ul>
           </div>
         </AccordionContent>

@@ -44,7 +44,7 @@ const TitleSection = () => (
       transition={{ duration: 0.8, delay: 0.2 }}
       className="text-4xl md:text-6xl lg:text-7xl font-bold text-foreground tracking-tight leading-[1.1]"
     >
-      Join <span className="text-primary">TrainWell</span>
+      Join <span className="text-primary">Vecto</span>
       <br />
       <span className="text-muted-foreground">as Co-Builder</span>
     </motion.h1>
@@ -118,7 +118,7 @@ const SolutionSection = () => (
       <span className="text-primary">gets done.</span>
     </motion.h2>
     <motion.p variants={fadeUp} className="mt-6 text-lg text-muted-foreground leading-relaxed max-w-2xl">
-      TrainWell is a dead-simple tool that gets trainers and clients to log every workout and every meal, every single day. 
+      Vecto is a dead-simple tool that gets trainers and clients to log every workout and every meal, every single day. 
       The calendar becomes a mirror — showing up green or red. No hiding, no excuses.
     </motion.p>
 
@@ -161,7 +161,7 @@ const TriadSection = () => (
       <span className="text-muted-foreground">One mission.</span>
     </motion.h2>
     <motion.p variants={fadeUp} className="text-muted-foreground text-lg max-w-xl mb-12">
-      TrainWell isn't a solo act. It takes three complementary builders, each owning a pillar.
+      Vecto isn't a solo act. It takes three complementary builders, each owning a pillar.
     </motion.p>
 
     {/* Triangle layout */}
@@ -422,7 +422,7 @@ const CTASection = () => (
       </motion.p>
       <motion.div variants={fadeUp} className="mt-8">
         <a
-          href="mailto:contact@trainwell.app"
+          href="mailto:contact@vecto.fit"
           className="inline-flex items-center gap-2 bg-primary text-primary-foreground font-semibold px-8 py-3 rounded-full hover:bg-primary/90 transition-colors"
         >
           Let's Talk <ArrowRight className="w-4 h-4" />
@@ -437,7 +437,7 @@ const CTASection = () => (
       viewport={{ once: true }}
       className="absolute bottom-8 text-xs text-muted-foreground"
     >
-      TrainWell © 2025 — Whatever gets tracked, gets done.
+      Vecto © 2025 — Whatever gets tracked, gets done.
     </motion.p>
   </section>
 );

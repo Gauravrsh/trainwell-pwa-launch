@@ -57,8 +57,8 @@ export default function Refer() {
     if (navigator.share) {
       try {
         await navigator.share({
-          title: 'Join TrainWell as a Trainer',
-          text: `Start your fitness training business with TrainWell! Use my referral link to get 14 bonus days on your first subscription.`,
+          title: 'Join Vecto as a Trainer',
+          text: `Start your fitness training business with Vecto! Use my referral link to get 14 bonus days on your first subscription.`,
           url: referralLink,
         });
       } catch (error) {
@@ -73,8 +73,8 @@ export default function Refer() {
     if (navigator.share) {
       try {
         await navigator.share({
-          title: 'Join me on TrainWell',
-          text: `Track your workouts, nutrition, and progress with me on TrainWell! Use my invite link to get started.`,
+          title: 'Join me on Vecto',
+          text: `Track your workouts, nutrition, and progress with me on Vecto! Use my invite link to get started.`,
           url: clientInviteLink,
         });
       } catch (error) {
@@ -118,7 +118,7 @@ export default function Refer() {
         </h1>
         <p className="text-sm text-muted-foreground">
           {activeTab === 'client' 
-            ? 'Grow your client base with TrainWell' 
+            ? 'Grow your client base with Vecto' 
             : 'Earn validity extensions by referring trainers'}
         </p>
       </motion.div>

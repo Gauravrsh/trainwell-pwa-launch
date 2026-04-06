@@ -94,8 +94,8 @@ export const TrainerDashboard = () => {
       return;
     }
 
-    const inviteUrl = `https://trainwell.lovable.app/auth?trainer=${profile.unique_id}`;
-    const message = `Hey! Join me on TrainWell for personalized fitness coaching. Click here to sign up: ${inviteUrl}`;
+    const inviteUrl = `${window.location.origin}/auth?trainer=${profile.unique_id}`;
+    const message = `Hey! Join me on Vecto for personalized fitness coaching. Click here to sign up: ${inviteUrl}`;
     const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(message)}`;
     
     window.open(whatsappUrl, '_blank');
