@@ -39,6 +39,13 @@ async function verifyRazorpaySignature(
   return mismatch === 0;
 }
 
+// Map payment amount (paise) to plan type
+function inferPlanType(amountPaise: number): 'monthly' | 'annual' | null {
+  if (amountPaise === 49900) return 'monthly';   // ₹499
+  if (amountPaise === 598800) return 'annual';    // ₹5988
+  return null;
+}
+
 Deno.serve(async (req) => {
   // Handle CORS preflight
   if (req.method === 'OPTIONS') {
@@ -105,9 +112,43 @@ Deno.serve(async (req) => {
       const amount = paymentEntity?.amount; // Amount in paise
       const notes = paymentEntity?.notes || {};
       
-      // Extract trainer info from notes (set during payment creation)
-      const trainerProfileId = notes.trainer_profile_id;
-      const planType = notes.plan_type; // 'monthly' or 'annual'
+      // Try to get trainer info from notes first (API-created orders)
+      let trainerProfileId = notes.trainer_profile_id;
+      let planType = notes.plan_type as 'monthly' | 'annual' | undefined;
+
+      // FALLBACK: For Payment Button payments, notes are empty.
+      // Infer plan type from amount and find the matching pending_payment subscription.
+      if (!trainerProfileId && amount) {
+        const inferredPlan = inferPlanType(amount);
+        console.log('No trainer_profile_id in notes. Inferring from amount:', { amount, inferredPlan });
+
+        if (inferredPlan) {
+          planType = inferredPlan;
+          
+          // Find the most recent pending_payment subscription matching this plan type
+          const { data: pendingSub, error: pendingError } = await supabase
+            .from('trainer_platform_subscriptions')
+            .select('id, trainer_id')
+            .eq('status', 'pending_payment')
+            .eq('plan_type', inferredPlan)
+            .order('created_at', { ascending: false })
+            .limit(1)
+            .maybeSingle();
+
+          if (pendingError) {
+            console.error('Error finding pending subscription:', pendingError);
+          } else if (pendingSub) {
+            trainerProfileId = pendingSub.trainer_id;
+            console.log('Matched pending_payment subscription:', { 
+              subscriptionId: pendingSub.id, 
+              trainerId: trainerProfileId,
+              planType 
+            });
+          } else {
+            console.warn('No pending_payment subscription found for plan:', inferredPlan);
+          }
+        }
+      }
 
       console.log('Payment captured:', {
         razorpayPaymentId,
@@ -117,8 +158,8 @@ Deno.serve(async (req) => {
         planType,
       });
 
-      if (trainerProfileId) {
-        const durationDays = planType === 'annual' ? 365 : 30;
+      if (trainerProfileId && planType) {
+        const durationDays = planType === 'annual' ? 425 : 30; // Annual = 14 months (425 days)
 
         // Check for existing subscription
         const { data: existingSub } = await supabase
@@ -133,10 +174,10 @@ Deno.serve(async (req) => {
           // Update via server-side SQL date math
           const { error: updateError } = await supabase.rpc('renew_trainer_subscription_webhook', {
             p_subscription_id: existingSub.id,
-            p_plan_type: planType || 'monthly',
+            p_plan_type: planType,
             p_duration_days: durationDays,
             p_razorpay_payment_id: razorpayPaymentId,
-            p_razorpay_order_id: razorpayOrderId,
+            p_razorpay_order_id: razorpayOrderId || '',
           });
 
           if (updateError) {
@@ -148,10 +189,10 @@ Deno.serve(async (req) => {
           // Create via server-side SQL date math
           const { error: insertError } = await supabase.rpc('create_trainer_subscription_webhook', {
             p_trainer_id: trainerProfileId,
-            p_plan_type: planType || 'monthly',
+            p_plan_type: planType,
             p_duration_days: durationDays,
             p_razorpay_payment_id: razorpayPaymentId,
-            p_razorpay_order_id: razorpayOrderId,
+            p_razorpay_order_id: razorpayOrderId || '',
           });
 
           if (insertError) {
@@ -160,6 +201,8 @@ Deno.serve(async (req) => {
           }
           console.log('New subscription created for trainer:', trainerProfileId);
         }
+      } else {
+        console.error('Could not resolve trainer or plan type for payment:', razorpayPaymentId);
       }
     }
 
