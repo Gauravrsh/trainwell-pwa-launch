@@ -1,7 +1,7 @@
 {
-  "name": "TrainWell",
-  "short_name": "TrainWell",
-  "description": "Your personal fitness companion - Transform your body with personalized workouts and coaching",
+  "name": "Vecto",
+  "short_name": "Vecto",
+  "description": "Performance with Direction — The accountability engine for independent fitness trainers",
   "start_url": "/",
   "display": "standalone",
   "orientation": "portrait",
@@ -10,25 +10,25 @@
   "categories": ["fitness", "health", "lifestyle"],
   "icons": [
     {
-      "src": "/icons/icon-192.png?v=20260122",
+      "src": "/icons/icon-192.png?v=20260406",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "/icons/icon-512-standard.png?v=20260122",
+      "src": "/icons/icon-512-standard.png?v=20260406",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "/icons/icon-maskable-192.png?v=20260122",
+      "src": "/icons/icon-maskable-192.png?v=20260406",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "maskable"
     },
     {
-      "src": "/icons/icon-maskable-512.png?v=20260122",
+      "src": "/icons/icon-maskable-512.png?v=20260406",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "maskable"

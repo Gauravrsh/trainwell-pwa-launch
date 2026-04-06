@@ -25,7 +25,7 @@ export default function ComparisonTable() {
           variants={fadeUp}
         >
           WhatsApp Coaching vs.{' '}
-          <span className="text-gradient">TrainWell</span>
+          <span className="text-gradient">Vecto</span>
         </motion.h2>
         <motion.p
           className="mx-auto mt-3 max-w-md text-center text-muted-foreground text-base sm:text-lg"
@@ -43,7 +43,7 @@ export default function ComparisonTable() {
           <div className="grid grid-cols-3 bg-secondary/50">
             <div className="p-3 sm:p-4 text-sm font-semibold text-muted-foreground" />
             <div className="p-3 sm:p-4 text-center font-semibold text-muted-foreground text-base">WhatsApp</div>
-            <div className="p-3 sm:p-4 text-center font-semibold text-primary text-base">TrainWell</div>
+            <div className="p-3 sm:p-4 text-center font-semibold text-primary text-base">Vecto</div>
           </div>
 
           {rows.map((row, i) => (

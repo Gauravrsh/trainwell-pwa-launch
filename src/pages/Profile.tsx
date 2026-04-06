@@ -52,7 +52,7 @@ export default function Profile() {
           <User className="w-12 h-12 text-primary" />
         </motion.div>
         <h1 className="text-xl font-bold text-foreground mb-1">
-          {profile?.full_name || user?.email || 'TrainWell User'}
+          {profile?.full_name || user?.email || 'Vecto User'}
         </h1>
         <p className="text-sm text-muted-foreground">
           {profile?.unique_id ? `ID: ${profile.unique_id}` : `Member since ${new Date().getFullYear()}`}

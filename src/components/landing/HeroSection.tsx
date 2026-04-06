@@ -41,7 +41,7 @@ export default function HeroSection() {
               className="mt-5 max-w-lg text-base text-muted-foreground sm:text-lg leading-relaxed"
               initial="hidden" animate="visible" variants={fadeUp} custom={1}
             >
-              Your clients pay you for results. Results come from consistency. Yes, just consistency! And you know it. TrainWell tracks every workout and every meal — <strong className="text-foreground">today, not tomorrow</strong>.
+              Your clients pay you for results. Results come from consistency. Yes, just consistency! And you know it. Vecto tracks every workout and every meal — <strong className="text-foreground">today, not tomorrow</strong>.
             </motion.p>
 
             <motion.div
