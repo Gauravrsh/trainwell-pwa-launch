@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
 import { z } from 'zod';
-import logoVecto from '@/assets/logo-vecto.png';
+
 
 const passwordSchema = z.string().min(6, 'Password must be at least 6 characters');
 
@@ -108,15 +108,14 @@ export default function ResetPassword() {
       >
         {/* Logo */}
         <div className="text-center mb-12">
-          <motion.div
+          <motion.h1
             initial={{ scale: 0.8 }}
             animate={{ scale: 1 }}
             transition={{ type: 'spring', stiffness: 200 }}
-            className="w-20 h-20 rounded-2xl overflow-hidden shadow-lg mb-6"
+            className="text-4xl font-bold text-foreground mb-2"
           >
-            <img src={logoVecto} alt="Vecto Logo" className="w-full h-full object-cover" />
-          </motion.div>
-          <h1 className="text-3xl font-bold text-foreground mb-2"><span className="text-primary">V</span>ECTO</h1>
+            <span className="text-primary">V</span>ECTO
+          </motion.h1>
           <p className="text-muted-foreground">Set your new password</p>
         </div>
 
