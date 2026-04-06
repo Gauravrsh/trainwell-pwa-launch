@@ -118,7 +118,7 @@ const SolutionSection = () => (
       <span className="text-primary">gets done.</span>
     </motion.h2>
     <motion.p variants={fadeUp} className="mt-6 text-lg text-muted-foreground leading-relaxed max-w-2xl">
-      TrainWell is a dead-simple tool that gets trainers and clients to log every workout and every meal, every single day. 
+      Vecto is a dead-simple tool that gets trainers and clients to log every workout and every meal, every single day. 
       The calendar becomes a mirror — showing up green or red. No hiding, no excuses.
     </motion.p>
 
@@ -161,7 +161,7 @@ const TriadSection = () => (
       <span className="text-muted-foreground">One mission.</span>
     </motion.h2>
     <motion.p variants={fadeUp} className="text-muted-foreground text-lg max-w-xl mb-12">
-      TrainWell isn't a solo act. It takes three complementary builders, each owning a pillar.
+      Vecto isn't a solo act. It takes three complementary builders, each owning a pillar.
     </motion.p>
 
     {/* Triangle layout */}
