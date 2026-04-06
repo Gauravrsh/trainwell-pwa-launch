@@ -16,7 +16,7 @@ import {
   PopoverTrigger,
 } from '@/components/ui/popover';
 import { indianCities } from '@/data/indianCities';
-import logoVecto from '@/assets/logo-vecto.png';
+
 
 interface ProfileSetupProps {
   role: 'trainer' | 'client';
@@ -210,14 +210,14 @@ const ProfileSetup = ({ role }: ProfileSetupProps) => {
       >
         {/* Header */}
         <div className="text-center mb-8">
-          <motion.div
+          <motion.h1
             initial={{ scale: 0.8, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             transition={{ delay: 0.1 }}
-            className="w-20 h-20 rounded-2xl overflow-hidden shadow-lg mx-auto mb-6"
+            className="text-3xl font-bold text-foreground mb-6"
           >
-            <img src={logoVecto} alt="Vecto Logo" className="w-full h-full object-cover" />
-          </motion.div>
+            <span className="text-primary">V</span>ECTO
+          </motion.h1>
           <h1 className="text-2xl font-bold text-foreground mb-2">
             Complete Your Profile
           </h1>

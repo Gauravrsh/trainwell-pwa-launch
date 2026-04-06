@@ -1,12 +1,10 @@
 import { Link } from 'react-router-dom';
-import logoVecto from '@/assets/logo-vecto.png';
 
 export default function LandingFooter() {
   return (
     <footer className="border-t border-border px-4 py-8">
       <div className="mx-auto flex max-w-5xl flex-col items-center gap-4 text-center sm:flex-row sm:justify-between sm:text-left">
-        <div className="flex items-center gap-2.5">
-          <img src={logoVecto} alt="Vecto Logo" className="w-10 h-10 rounded-xl" />
+        <div className="flex items-center">
           <div>
             <span className="text-lg font-bold tracking-tight"><span className="text-primary">V</span>ECTO</span>
             <p className="mt-1 text-xs text-muted-foreground">© {new Date().getFullYear()} Vecto. All rights reserved.</p>
