@@ -30,7 +30,8 @@ export const AppLayout = ({ children }: AppLayoutProps) => {
       )}
 
       <motion.main
-        className="flex-1 pb-20 safe-top"
+        className="flex-1 pb-20"
+        style={{ paddingTop: 'env(safe-area-inset-top, 0px)' }}
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ duration: 0.3 }}

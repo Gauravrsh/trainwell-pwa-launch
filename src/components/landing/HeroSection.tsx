@@ -14,7 +14,7 @@ const fadeUp = {
 
 export default function HeroSection() {
   return (
-    <section className="relative overflow-hidden px-4 pt-20 pb-16 sm:pt-28 sm:pb-24">
+    <section className="relative overflow-hidden px-4 pb-16 sm:pb-24" style={{ paddingTop: 'calc(5rem + env(safe-area-inset-top, 0px))' }}>
       {/* Glow */}
       <div className="pointer-events-none absolute -top-40 left-1/2 -translate-x-1/2 h-[500px] w-[700px] rounded-full bg-primary/8 blur-[140px]" />
 
