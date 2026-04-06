@@ -23,6 +23,7 @@ import Profile from "./pages/Profile";
 import Terms from "./pages/Terms";
 import Pitch from "./pages/Pitch";
 import NotFound from "./pages/NotFound";
+import IconReview from "./pages/IconReview";
 
 const queryClient = new QueryClient();
 
@@ -194,6 +195,7 @@ const AppRoutes = () => (
     />
     <Route path="/terms" element={<Terms />} />
     <Route path="/pitch" element={<Pitch />} />
+    <Route path="/icon-review" element={<IconReview />} />
     <Route path="*" element={<NotFound />} />
   </Routes>
 );
