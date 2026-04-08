@@ -1,0 +1,670 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VECTO — Command Center</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #0A0A0A;
+    --card: #111111;
+    --card-hover: #1A1A1A;
+    --neon: #9FFF2B;
+    --neon-dim: rgba(159,255,43,0.15);
+    --neon-glow: rgba(159,255,43,0.4);
+    --white: #FAFAFA;
+    --grey: #888888;
+    --grey-dark: #333333;
+    --radius: 12px;
+    --radius-sm: 8px;
+  }
+
+  body {
+    font-family: 'Inter', system-ui, sans-serif;
+    background: var(--bg);
+    color: var(--white);
+    min-height: 100vh;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .container {
+    max-width: 720px;
+    margin: 0 auto;
+    padding: 24px 16px 80px;
+  }
+
+  /* ── Header ── */
+  .header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 32px;
+  }
+  .wordmark {
+    font-size: 22px;
+    font-weight: 800;
+    letter-spacing: 3px;
+  }
+  .wordmark .v { color: var(--neon); }
+  .wordmark .ecto { color: var(--white); }
+  .screen-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--grey);
+    text-transform: uppercase;
+    letter-spacing: 2px;
+  }
+
+  /* ── Search / Command Line ── */
+  .search-wrap {
+    position: relative;
+    margin-bottom: 24px;
+  }
+  .search-input {
+    width: 100%;
+    background: var(--card);
+    border: 1px solid var(--grey-dark);
+    border-radius: var(--radius);
+    padding: 16px 20px 16px 48px;
+    font-size: 15px;
+    font-family: 'Inter', sans-serif;
+    color: var(--white);
+    outline: none;
+    transition: border-color .2s, box-shadow .2s;
+  }
+  .search-input::placeholder { color: var(--grey); }
+  .search-input:focus {
+    border-color: var(--neon);
+    box-shadow: 0 0 0 3px var(--neon-dim);
+  }
+  .search-icon {
+    position: absolute;
+    left: 18px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--grey);
+    pointer-events: none;
+    font-size: 16px;
+  }
+  .search-hint {
+    font-size: 11px;
+    color: var(--grey);
+    margin-top: 6px;
+    padding-left: 4px;
+    letter-spacing: 0.3px;
+  }
+  .search-hint kbd {
+    background: var(--card);
+    border: 1px solid var(--grey-dark);
+    border-radius: 4px;
+    padding: 1px 5px;
+    font-family: 'Inter', sans-serif;
+    font-size: 11px;
+    color: var(--neon);
+  }
+
+  /* ── Dropdown ── */
+  .dropdown {
+    position: absolute;
+    top: calc(100% + 4px);
+    left: 0; right: 0;
+    background: var(--card);
+    border: 1px solid var(--grey-dark);
+    border-radius: var(--radius-sm);
+    overflow: hidden;
+    z-index: 100;
+    display: none;
+    box-shadow: 0 12px 40px rgba(0,0,0,0.6);
+  }
+  .dropdown.show { display: block; }
+  .dropdown-item {
+    padding: 14px 20px;
+    cursor: pointer;
+    font-size: 14px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    transition: background .15s;
+    border-bottom: 1px solid #1A1A1A;
+  }
+  .dropdown-item:last-child { border-bottom: none; }
+  .dropdown-item:hover, .dropdown-item.active { background: var(--card-hover); }
+  .dropdown-item .proto-name { color: var(--neon); font-weight: 600; }
+  .dropdown-item .proto-meta { color: var(--grey); font-size: 12px; margin-left: auto; }
+
+  /* ── Directive Card ── */
+  .directive-card {
+    background: var(--card);
+    border: 1px solid var(--grey-dark);
+    border-radius: var(--radius);
+    margin-bottom: 24px;
+    overflow: hidden;
+    opacity: 0;
+    transform: translateY(12px);
+    transition: opacity .35s ease, transform .35s ease;
+    pointer-events: none;
+  }
+  .directive-card.visible {
+    opacity: 1;
+    transform: translateY(0);
+    pointer-events: all;
+  }
+  .directive-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 18px 20px;
+    border-bottom: 1px solid #1A1A1A;
+  }
+  .directive-name {
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--neon);
+    letter-spacing: 0.5px;
+  }
+  .directive-toggle {
+    background: none;
+    border: 1px solid var(--grey-dark);
+    border-radius: 6px;
+    color: var(--grey);
+    font-size: 12px;
+    padding: 4px 10px;
+    cursor: pointer;
+    font-family: 'Inter', sans-serif;
+    transition: color .2s, border-color .2s;
+  }
+  .directive-toggle:hover { color: var(--white); border-color: var(--grey); }
+  .directive-body { padding: 0 20px; }
+  .directive-body.collapsed { display: none; }
+  .exercise-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 13px 0;
+    border-bottom: 1px solid #1A1A1A;
+    font-size: 14px;
+  }
+  .exercise-row:last-child { border-bottom: none; }
+  .exercise-num { color: var(--grey); width: 24px; font-weight: 600; font-size: 13px; }
+  .exercise-name { flex: 1; color: var(--white); font-weight: 500; }
+  .exercise-rx { color: var(--neon); font-weight: 600; font-size: 13px; letter-spacing: 0.3px; }
+  .directive-footer {
+    padding: 14px 20px;
+    border-top: 1px solid #1A1A1A;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .directive-badge {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--neon);
+    letter-spacing: 0.5px;
+  }
+
+  /* ── Bulk Deployment ── */
+  .bulk-card {
+    background: var(--card);
+    border: 1px solid var(--grey-dark);
+    border-radius: var(--radius);
+    margin-bottom: 24px;
+  }
+  .bulk-title {
+    font-size: 12px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    color: var(--grey);
+    padding: 18px 20px 0;
+  }
+  .bulk-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0;
+  }
+  @media (max-width: 560px) {
+    .bulk-grid { grid-template-columns: 1fr; }
+    .bulk-left { border-right: none !important; border-bottom: 1px solid #1A1A1A; }
+  }
+  .bulk-left {
+    padding: 16px 20px 20px;
+    border-right: 1px solid #1A1A1A;
+  }
+  .bulk-right {
+    padding: 16px 20px 20px;
+  }
+  .bulk-section-label {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--neon);
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    margin-bottom: 12px;
+  }
+
+  /* Checkboxes */
+  .select-all-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding-bottom: 10px;
+    margin-bottom: 10px;
+    border-bottom: 1px solid #1A1A1A;
+  }
+  .client-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 7px 0;
+  }
+  .checkbox {
+    width: 18px; height: 18px;
+    border: 2px solid var(--grey-dark);
+    border-radius: 4px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: border-color .15s, background .15s;
+    flex-shrink: 0;
+  }
+  .checkbox.checked {
+    border-color: var(--neon);
+    background: var(--neon);
+  }
+  .checkbox.checked::after {
+    content: '✓';
+    font-size: 12px;
+    color: #0A0A0A;
+    font-weight: 700;
+  }
+  .client-name { font-size: 14px; color: var(--white); }
+  .select-all-label { font-size: 13px; color: var(--grey); font-weight: 600; }
+
+  /* Dropdowns */
+  .field-group { margin-bottom: 16px; }
+  .field-label {
+    font-size: 11px;
+    color: var(--grey);
+    margin-bottom: 6px;
+    font-weight: 500;
+  }
+  .field-select {
+    width: 100%;
+    background: var(--bg);
+    border: 1px solid var(--grey-dark);
+    border-radius: var(--radius-sm);
+    padding: 10px 14px;
+    font-size: 14px;
+    color: var(--white);
+    font-family: 'Inter', sans-serif;
+    cursor: pointer;
+    outline: none;
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='%23888' viewBox='0 0 16 16'%3E%3Cpath d='M1.5 5.5l6.5 6 6.5-6'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 14px center;
+    transition: border-color .2s;
+  }
+  .field-select:focus { border-color: var(--neon); }
+  .field-select option { background: var(--card); color: var(--white); }
+
+  /* Summary Line */
+  .bulk-summary {
+    padding: 14px 20px;
+    border-top: 1px solid #1A1A1A;
+    font-size: 13px;
+    color: var(--grey);
+    min-height: 46px;
+  }
+  .bulk-summary .hl { color: var(--neon); font-weight: 600; }
+
+  /* ── CTA ── */
+  .cta-section { text-align: center; }
+  .cta-btn {
+    width: 100%;
+    padding: 18px 24px;
+    background: var(--neon);
+    color: #0A0A0A;
+    font-family: 'Inter', sans-serif;
+    font-size: 16px;
+    font-weight: 800;
+    letter-spacing: 1px;
+    border: none;
+    border-radius: var(--radius);
+    cursor: pointer;
+    transition: box-shadow .3s, transform .15s;
+    position: relative;
+  }
+  .cta-btn:hover {
+    box-shadow: 0 0 30px var(--neon-glow), 0 0 60px rgba(159,255,43,0.15);
+    transform: translateY(-1px);
+  }
+  .cta-btn:active { transform: translateY(0); }
+  .cta-btn .arrow { margin-right: 8px; }
+  .cta-truth {
+    margin-top: 14px;
+    font-size: 13px;
+    color: var(--grey);
+    letter-spacing: 0.2px;
+  }
+  .cta-truth .hl { color: var(--neon); font-weight: 600; }
+
+  /* ── Success Toast ── */
+  .toast {
+    position: fixed;
+    bottom: 32px;
+    left: 50%;
+    transform: translateX(-50%) translateY(80px);
+    background: var(--card);
+    border: 1px solid var(--neon);
+    border-radius: var(--radius);
+    padding: 16px 28px;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--neon);
+    box-shadow: 0 0 30px var(--neon-dim);
+    opacity: 0;
+    transition: transform .4s ease, opacity .4s ease;
+    z-index: 200;
+    pointer-events: none;
+  }
+  .toast.show {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+</style>
+</head>
+<body>
+
+<div class="container">
+
+  <!-- Header -->
+  <div class="header">
+    <div class="wordmark"><span class="v">V</span><span class="ecto">ECTO</span></div>
+    <div class="screen-title">Command Center</div>
+  </div>
+
+  <!-- Loop A: Command Line -->
+  <div class="search-wrap">
+    <span class="search-icon">⌕</span>
+    <input class="search-input" id="searchInput" type="text" placeholder="Type @ for protocols, # for clients..." autocomplete="off">
+    <div class="dropdown" id="dropdown"></div>
+    <div class="search-hint">Use <kbd>@</kbd> to search protocols · <kbd>#</kbd> to mention clients</div>
+  </div>
+
+  <!-- Loop B: Directive Card -->
+  <div class="directive-card" id="directiveCard">
+    <div class="directive-header">
+      <div class="directive-name" id="directiveName"></div>
+      <button class="directive-toggle" id="directiveToggle">Collapse</button>
+    </div>
+    <div class="directive-body" id="directiveBody"></div>
+    <div class="directive-footer">
+      <div class="directive-badge" id="directiveBadge"></div>
+    </div>
+  </div>
+
+  <!-- Loop C: Bulk Deployment -->
+  <div class="bulk-card">
+    <div class="bulk-title">Bulk Deployment</div>
+    <div class="bulk-grid">
+      <div class="bulk-left">
+        <div class="bulk-section-label">Clients</div>
+        <div class="select-all-row">
+          <div class="checkbox" id="selectAll"></div>
+          <div class="select-all-label">Select All</div>
+        </div>
+        <div id="clientList"></div>
+      </div>
+      <div class="bulk-right">
+        <div class="bulk-section-label">Vector Direction</div>
+        <div class="field-group">
+          <div class="field-label">Frequency</div>
+          <select class="field-select" id="freqSelect">
+            <option value="Mondays">Mondays</option>
+            <option value="Tuesdays">Tuesdays</option>
+            <option value="Wednesdays">Wednesdays</option>
+            <option value="Thursdays">Thursdays</option>
+            <option value="Fridays">Fridays</option>
+            <option value="Saturdays">Saturdays</option>
+            <option value="Mon/Wed/Fri">Mon / Wed / Fri</option>
+            <option value="Tue/Thu/Sat">Tue / Thu / Sat</option>
+          </select>
+        </div>
+        <div class="field-group">
+          <div class="field-label">Duration</div>
+          <select class="field-select" id="durSelect">
+            <option value="1">1 Week</option>
+            <option value="2">2 Weeks</option>
+            <option value="4" selected>4 Weeks</option>
+            <option value="6">6 Weeks</option>
+            <option value="8">8 Weeks</option>
+          </select>
+        </div>
+      </div>
+    </div>
+    <div class="bulk-summary" id="bulkSummary"></div>
+  </div>
+
+  <!-- CTA -->
+  <div class="cta-section">
+    <button class="cta-btn" id="ctaBtn">
+      <span class="arrow">→</span> Execute <span id="ctaDuration">4-Week</span> Command
+    </button>
+    <div class="cta-truth" id="ctaTruth"></div>
+  </div>
+
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast">✓ Command deployed successfully.</div>
+
+<script>
+  // ── Mock Data ──
+  const protocols = [
+    { name: '@LowerBodyAlpha', exercises: [
+      { name: 'Lat Pull Down', rx: '3×10' },
+      { name: 'Seated Row', rx: '2×12' },
+      { name: 'Romanian Deadlift', rx: '3×8' },
+      { name: 'Leg Press', rx: '4×10' },
+    ]},
+    { name: '@Legs-Strength-Bhai', exercises: [
+      { name: 'Squat', rx: '5×5' },
+      { name: 'Front Squat', rx: '3×8' },
+      { name: 'Walking Lunge', rx: '3×12' },
+      { name: 'Leg Curl', rx: '3×10' },
+      { name: 'Standing Calf Raise', rx: '4×15' },
+    ]},
+    { name: '@LeanCut-Upper', exercises: [
+      { name: 'Bench Press', rx: '4×8' },
+      { name: 'Incline Dumbbell Press', rx: '3×10' },
+      { name: 'Cable Crossover', rx: '3×12' },
+      { name: 'Overhead Press', rx: '3×8' },
+      { name: 'Lateral Raise', rx: '3×15' },
+      { name: 'Tricep Pushdown', rx: '3×12' },
+    ]},
+    { name: '@PushDay-V2', exercises: [
+      { name: 'Bench Press', rx: '4×6' },
+      { name: 'Dumbbell Shoulder Press', rx: '3×10' },
+      { name: 'Incline Dumbbell Press', rx: '3×10' },
+      { name: 'Cable Fly', rx: '3×12' },
+      { name: 'Skull Crusher', rx: '3×10' },
+    ]},
+    { name: '@PullDay-V2', exercises: [
+      { name: 'Deadlift', rx: '3×5' },
+      { name: 'Barbell Row', rx: '4×8' },
+      { name: 'Lat Pulldown', rx: '3×10' },
+      { name: 'Face Pull', rx: '3×15' },
+      { name: 'Barbell Curl', rx: '3×10' },
+    ]},
+  ];
+
+  const clients = [
+    'Rahul M.', 'Arjun S.', 'Priya K.', 'Neha T.',
+    'Vikram J.', 'Sanya D.', 'Amit R.', 'Kavita P.'
+  ];
+
+  let selectedProtocol = null;
+  let clientChecked = new Array(clients.length).fill(false);
+
+  // ── Elements ──
+  const searchInput = document.getElementById('searchInput');
+  const dropdown = document.getElementById('dropdown');
+  const directiveCard = document.getElementById('directiveCard');
+  const directiveName = document.getElementById('directiveName');
+  const directiveBody = document.getElementById('directiveBody');
+  const directiveBadge = document.getElementById('directiveBadge');
+  const directiveToggle = document.getElementById('directiveToggle');
+  const selectAllBox = document.getElementById('selectAll');
+  const clientListEl = document.getElementById('clientList');
+  const freqSelect = document.getElementById('freqSelect');
+  const durSelect = document.getElementById('durSelect');
+  const bulkSummary = document.getElementById('bulkSummary');
+  const ctaBtn = document.getElementById('ctaBtn');
+  const ctaDuration = document.getElementById('ctaDuration');
+  const ctaTruth = document.getElementById('ctaTruth');
+  const toast = document.getElementById('toast');
+
+  // ── Render Clients ──
+  function renderClients() {
+    clientListEl.innerHTML = '';
+    clients.forEach((c, i) => {
+      const row = document.createElement('div');
+      row.className = 'client-row';
+      row.innerHTML = `<div class="checkbox ${clientChecked[i] ? 'checked' : ''}" data-idx="${i}"></div><div class="client-name">${c}</div>`;
+      row.querySelector('.checkbox').addEventListener('click', () => {
+        clientChecked[i] = !clientChecked[i];
+        renderClients();
+        updateSummary();
+      });
+      clientListEl.appendChild(row);
+    });
+    // sync select-all
+    const allChecked = clientChecked.every(Boolean);
+    selectAllBox.className = 'checkbox' + (allChecked ? ' checked' : '');
+  }
+
+  selectAllBox.addEventListener('click', () => {
+    const allChecked = clientChecked.every(Boolean);
+    clientChecked = clientChecked.map(() => !allChecked);
+    renderClients();
+    updateSummary();
+  });
+
+  renderClients();
+
+  // ── Search Logic ──
+  searchInput.addEventListener('input', () => {
+    const val = searchInput.value.trim();
+    if (val.startsWith('@') && val.length >= 1) {
+      const q = val.slice(1).toLowerCase();
+      const matches = protocols.filter(p => p.name.toLowerCase().includes(q));
+      if (matches.length) {
+        dropdown.innerHTML = matches.map((p, i) => {
+          const totalSets = p.exercises.reduce((s, e) => s + parseInt(e.rx), 0);
+          return `<div class="dropdown-item" data-idx="${protocols.indexOf(p)}">
+            <span class="proto-name">${p.name}</span>
+            <span class="proto-meta">${p.exercises.length} exercises</span>
+          </div>`;
+        }).join('');
+        dropdown.classList.add('show');
+        dropdown.querySelectorAll('.dropdown-item').forEach(item => {
+          item.addEventListener('click', () => {
+            selectProtocol(protocols[parseInt(item.dataset.idx)]);
+          });
+        });
+      } else {
+        dropdown.classList.remove('show');
+      }
+    } else if (val.startsWith('#')) {
+      const q = val.slice(1).toLowerCase();
+      const matches = clients.filter(c => c.toLowerCase().includes(q));
+      if (matches.length) {
+        dropdown.innerHTML = matches.map(c => `<div class="dropdown-item"><span class="proto-name">#${c}</span></div>`).join('');
+        dropdown.classList.add('show');
+      } else {
+        dropdown.classList.remove('show');
+      }
+    } else {
+      dropdown.classList.remove('show');
+    }
+  });
+
+  document.addEventListener('click', (e) => {
+    if (!e.target.closest('.search-wrap')) dropdown.classList.remove('show');
+  });
+
+  // ── Select Protocol ──
+  function selectProtocol(proto) {
+    selectedProtocol = proto;
+    searchInput.value = proto.name;
+    dropdown.classList.remove('show');
+
+    // Populate directive card
+    directiveName.textContent = proto.name;
+    directiveBody.innerHTML = proto.exercises.map((ex, i) => `
+      <div class="exercise-row">
+        <span class="exercise-num">${i + 1}.</span>
+        <span class="exercise-name">${ex.name}</span>
+        <span class="exercise-rx">${ex.rx}</span>
+      </div>
+    `).join('');
+    directiveBody.classList.remove('collapsed');
+    directiveToggle.textContent = 'Collapse';
+
+    const totalSets = proto.exercises.reduce((s, e) => {
+      const sets = parseInt(e.rx.split('×')[0]);
+      return s + (isNaN(sets) ? 0 : sets);
+    }, 0);
+    directiveBadge.textContent = `Directive: ${proto.exercises.length} exercises, ${totalSets} sets`;
+
+    directiveCard.classList.add('visible');
+    updateSummary();
+  }
+
+  // ── Directive Toggle ──
+  directiveToggle.addEventListener('click', () => {
+    const collapsed = directiveBody.classList.toggle('collapsed');
+    directiveToggle.textContent = collapsed ? 'Expand' : 'Collapse';
+  });
+
+  // ── Summary & CTA ──
+  function updateSummary() {
+    const count = clientChecked.filter(Boolean).length;
+    const freq = freqSelect.value;
+    const weeks = parseInt(durSelect.value);
+    const freqPerWeek = freq.includes('/') ? freq.split('/').length : 1;
+    const totalDirectives = count * weeks * freqPerWeek;
+
+    ctaDuration.textContent = `${weeks}-Week`;
+
+    if (count > 0 && selectedProtocol) {
+      bulkSummary.innerHTML = `Deploying to <span class="hl">${count} client${count > 1 ? 's' : ''}</span> × <span class="hl">${freq}</span> × <span class="hl">${weeks} week${weeks > 1 ? 's' : ''}</span>`;
+      ctaTruth.innerHTML = `This command generates <span class="hl">${totalDirectives} workout directives</span> across <span class="hl">${weeks} weeks</span>.`;
+      ctaBtn.style.opacity = '1';
+      ctaBtn.style.pointerEvents = 'auto';
+    } else {
+      bulkSummary.innerHTML = '<span style="color:var(--grey)">Select clients and a protocol to deploy.</span>';
+      ctaTruth.innerHTML = '';
+      ctaBtn.style.opacity = '0.4';
+      ctaBtn.style.pointerEvents = 'none';
+    }
+  }
+
+  freqSelect.addEventListener('change', updateSummary);
+  durSelect.addEventListener('change', updateSummary);
+  updateSummary();
+
+  // ── CTA Click ──
+  ctaBtn.addEventListener('click', () => {
+    toast.classList.add('show');
+    setTimeout(() => toast.classList.remove('show'), 2500);
+  });
+</script>
+
+</body>
+</html>
