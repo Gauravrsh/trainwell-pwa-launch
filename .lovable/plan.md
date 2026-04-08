@@ -1,54 +1,60 @@
 
-What I found
 
-- The draft file does exist in the codebase at `public/vecto-app-icon-draft.png`.
-- Sending the raw asset URL again is not a good review flow here:
-  - the preview domain is access-controlled
-  - the published domain currently does not expose that draft file reliably
-- So the problem is not that the file never existed; it is that the current way of sharing it is not dependable for your review.
+# Workout Command Center — Interactive HTML Mockup
 
-Updated plan
+## What we're building
+A standalone HTML file at `public/workout-command-mockup.html` — a high-fidelity interactive mockup of the trainer's workout assignment screen, following the Obsidian & Neon design language and the three UX loops described.
 
-1. Create a temporary public review page for the icon
-   - Add a simple route such as `/icon-review`
-   - Show the draft icon large, centered, and easy to inspect
-   - Also show it in realistic launcher-size mockups so you can judge actual app-icon behavior
+## Design System
+- **Background**: Obsidian black (#0A0A0A, #111111 cards)
+- **Action/Command color**: Vecto Neon (#9FFF2B / #BFFF00)
+- **Data text**: White (#FAFAFA)
+- **Secondary text**: Grey (#888888)
+- **Font**: Inter (Google Fonts)
+- **Border radius**: 12px cards, 8px inputs
+- **No external JS frameworks** — vanilla HTML/CSS/JS only
 
-2. Compare icon vs wordmark directly
-   - On the same review page, place the icon next to the live `VECTO` wordmark
-   - This lets you judge whether the standalone `V` uses the exact same letter construction as the `V` in `VECTO`
-   - Only scale and spacing will differ, not the letterform itself
+## Screen Layout (top to bottom)
 
-3. Preserve the branding rule everywhere else
-   - Keep all places where `VECTO` is already written as text-only
-   - Do not place the app icon beside the wordmark in nav, auth, splash, footer, etc.
-   - Reserve the icon for app-install and favicon surfaces only unless you explicitly approve other usage
+### 1. Header Bar
+- "VECTO" wordmark (lime V, white ECTO) top-left
+- Screen title: "Command Center" in white
 
-4. Get icon approval before replacing production app icons
-   - If needed, prepare 2-3 extremely close variants of the same `V` with only padding/centering changes
-   - No alternate logo concepts, no decorative icon-plus-wordmark combinations
+### 2. Loop A — The Command Line Search Bar
+- Full-width search input with placeholder: `Type @ for protocols, # for clients...`
+- On typing `@L`, show a dropdown with mock suggestions: `@LowerBodyAlpha`, `@Legs-Strength-Bhai`, `@LeanCut-Upper`
+- Interactive: typing filters suggestions, clicking one populates the Directive Card below
 
-5. After approval, apply only to icon surfaces
-   - Replace:
-     - `public/icons/icon-192.png`
-     - `public/icons/icon-512-standard.png`
-     - `public/icons/icon-maskable-192.png`
-     - `public/icons/icon-maskable-512.png`
-     - favicon / Apple touch icon if used
-   - Do not alter wordmark placements
+### 3. Loop B — The Directive Card
+- Initially hidden/empty state
+- On protocol selection, animates in showing:
+  - Protocol name in neon green
+  - Minimalist exercise list: `1. Lat Pull Down | 3×10`, `2. Seated Row | 2×12`, etc.
+  - Context label: `Directive: 4 exercises, 12 sets` in neon green
+  - Collapse/expand toggle
 
-6. Verify end-to-end after publish
-   - Open the review route on phone and desktop
-   - Confirm the chosen icon looks correct at small size
-   - Then test install behavior on Android browsers and iPhone home-screen save flow
+### 4. Loop C — Bulk Deployment Panel
+- Two-column layout within a card:
+  - **Left: Client Selection** — Checkboxes with mock client names, "Select All" toggle
+  - **Right: Vector Direction** — Dropdowns for Frequency (Mon/Tue/Wed...) and Duration (1-8 weeks)
+- Updates a live summary line: `"Deploying to 4 clients × Mondays × 4 weeks"`
 
-Technical details
+### 5. The Elite Jester CTA
+- Full-width glowing neon green button: `[→] Execute 4-Week Command`
+- Glow/pulse animation on hover
+- Below: truth-teller text: `"This command generates 32 workout directives across 4 weeks."`
+- Click triggers a brief success animation/toast
 
-- The app wordmark is currently text-based, not image-based, which is correct for your rule:
-  - `src/components/landing/LandingNav.tsx`
-  - `src/components/SplashScreen.tsx`
-- The base font stack currently uses Inter:
-  - `src/index.css` sets `font-family: 'Inter', ...`
-  - `tailwind.config.ts` sets `fontFamily.sans` to Inter
-- That means the approved app icon should be derived from the same live wordmark glyph logic, not from a separate stylized mark.
-- The existing draft file path is `public/vecto-app-icon-draft.png`, but I would stop relying on raw static-file links and instead expose a dedicated review URL so you get one stable clickable page.
+## Interactivity (vanilla JS)
+- Search filtering and dropdown selection
+- Directive card populate/animate on selection
+- Client checkboxes with select-all logic
+- Dynamic summary text updates based on selections
+- CTA button click → success state
+
+## File
+- `public/workout-command-mockup.html` — single self-contained file
+- Accessible at preview URL: `/workout-command-mockup.html`
+
+## No changes to React codebase
+
