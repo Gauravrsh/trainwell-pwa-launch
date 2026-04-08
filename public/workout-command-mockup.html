@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>VECTO — Command Center</title>
+<title>VECTO — Command Center & Lab</title>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -20,6 +20,7 @@
     --grey-dark: #333333;
     --radius: 12px;
     --radius-sm: 8px;
+    --danger: #FF4444;
   }
 
   body {
@@ -41,7 +42,7 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
-    margin-bottom: 32px;
+    margin-bottom: 24px;
   }
   .wordmark {
     font-size: 22px;
@@ -57,6 +58,34 @@
     text-transform: uppercase;
     letter-spacing: 2px;
   }
+
+  /* ── Tabs ── */
+  .tabs {
+    display: flex;
+    gap: 0;
+    margin-bottom: 28px;
+    border-bottom: 1px solid var(--grey-dark);
+  }
+  .tab {
+    padding: 12px 20px;
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--grey);
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    transition: color .2s, border-color .2s;
+    user-select: none;
+  }
+  .tab:hover { color: var(--white); }
+  .tab.active {
+    color: var(--neon);
+    border-bottom-color: var(--neon);
+  }
+
+  .tab-content { display: none; }
+  .tab-content.active { display: block; }
 
   /* ── Search / Command Line ── */
   .search-wrap {
@@ -118,6 +147,8 @@
     z-index: 100;
     display: none;
     box-shadow: 0 12px 40px rgba(0,0,0,0.6);
+    max-height: 260px;
+    overflow-y: auto;
   }
   .dropdown.show { display: block; }
   .dropdown-item {
@@ -191,6 +222,11 @@
   .exercise-num { color: var(--grey); width: 24px; font-weight: 600; font-size: 13px; }
   .exercise-name { flex: 1; color: var(--white); font-weight: 500; }
   .exercise-rx { color: var(--neon); font-weight: 600; font-size: 13px; letter-spacing: 0.3px; }
+  .exercise-remove {
+    background: none; border: none; color: var(--grey); cursor: pointer;
+    font-size: 16px; padding: 0 0 0 12px; transition: color .15s;
+  }
+  .exercise-remove:hover { color: var(--danger); }
   .directive-footer {
     padding: 14px 20px;
     border-top: 1px solid #1A1A1A;
@@ -284,7 +320,7 @@
   .client-name { font-size: 14px; color: var(--white); }
   .select-all-label { font-size: 13px; color: var(--grey); font-weight: 600; }
 
-  /* Dropdowns */
+  /* Dropdowns / Selects */
   .field-group { margin-bottom: 16px; }
   .field-label {
     font-size: 11px;
@@ -344,6 +380,10 @@
     transform: translateY(-1px);
   }
   .cta-btn:active { transform: translateY(0); }
+  .cta-btn:disabled, .cta-btn[disabled] {
+    opacity: 0.4;
+    pointer-events: none;
+  }
   .cta-btn .arrow { margin-right: 8px; }
   .cta-truth {
     margin-top: 14px;
@@ -371,11 +411,283 @@
     transition: transform .4s ease, opacity .4s ease;
     z-index: 200;
     pointer-events: none;
+    white-space: nowrap;
   }
   .toast.show {
     opacity: 1;
     transform: translateX(-50%) translateY(0);
   }
+
+  /* ══════════════════════════════════════
+     COMMAND LAB STYLES
+     ══════════════════════════════════════ */
+
+  /* Vault Protocol List */
+  .vault-list { margin-bottom: 24px; }
+  .vault-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 20px;
+    background: var(--card);
+    border: 1px solid var(--grey-dark);
+    border-radius: var(--radius);
+    margin-bottom: 8px;
+    cursor: pointer;
+    transition: border-color .2s, background .15s;
+  }
+  .vault-item:hover { border-color: var(--grey); background: var(--card-hover); }
+  .vault-item.editing { border-color: var(--neon); }
+  .vault-item-name { color: var(--neon); font-weight: 700; font-size: 15px; }
+  .vault-item-meta { color: var(--grey); font-size: 12px; }
+  .vault-item-right { display: flex; align-items: center; gap: 12px; }
+  .vault-item-badge {
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--neon);
+    background: var(--neon-dim);
+    padding: 3px 8px;
+    border-radius: 4px;
+  }
+
+  /* New Protocol Button */
+  .new-proto-btn {
+    width: 100%;
+    padding: 16px;
+    background: transparent;
+    border: 2px dashed var(--grey-dark);
+    border-radius: var(--radius);
+    color: var(--grey);
+    font-family: 'Inter', sans-serif;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: border-color .2s, color .2s;
+    margin-bottom: 28px;
+    letter-spacing: 0.5px;
+  }
+  .new-proto-btn:hover { border-color: var(--neon); color: var(--neon); }
+
+  /* Protocol Builder Card */
+  .builder-card {
+    background: var(--card);
+    border: 1px solid var(--neon);
+    border-radius: var(--radius);
+    margin-bottom: 24px;
+    overflow: hidden;
+    display: none;
+  }
+  .builder-card.active { display: block; animation: slideIn .3s ease; }
+  @keyframes slideIn {
+    from { opacity: 0; transform: translateY(12px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .builder-header {
+    padding: 18px 20px;
+    border-bottom: 1px solid #1A1A1A;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .builder-header-left {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .builder-step-badge {
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    color: var(--neon);
+  }
+  .builder-close {
+    background: none; border: none; color: var(--grey); cursor: pointer;
+    font-size: 20px; transition: color .15s;
+  }
+  .builder-close:hover { color: var(--white); }
+
+  .builder-section {
+    padding: 20px;
+    border-bottom: 1px solid #1A1A1A;
+  }
+  .builder-section:last-child { border-bottom: none; }
+
+  .builder-input {
+    width: 100%;
+    background: var(--bg);
+    border: 1px solid var(--grey-dark);
+    border-radius: var(--radius-sm);
+    padding: 12px 16px;
+    font-size: 15px;
+    font-family: 'Inter', sans-serif;
+    color: var(--white);
+    outline: none;
+    transition: border-color .2s, box-shadow .2s;
+  }
+  .builder-input::placeholder { color: var(--grey); }
+  .builder-input:focus {
+    border-color: var(--neon);
+    box-shadow: 0 0 0 3px var(--neon-dim);
+  }
+  .builder-input.name-input {
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--neon);
+  }
+
+  /* Exercise builder rows */
+  .builder-exercises { min-height: 40px; }
+  .builder-ex-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 0;
+    border-bottom: 1px solid #1A1A1A;
+    animation: slideIn .25s ease;
+  }
+  .builder-ex-row:last-child { border-bottom: none; }
+  .builder-ex-num { color: var(--grey); font-weight: 600; font-size: 13px; width: 24px; flex-shrink: 0; }
+  .builder-ex-name { flex: 1; color: var(--white); font-weight: 500; font-size: 14px; }
+  .builder-ex-sets, .builder-ex-reps {
+    width: 52px;
+    background: var(--bg);
+    border: 1px solid var(--grey-dark);
+    border-radius: 6px;
+    padding: 6px 8px;
+    font-size: 13px;
+    font-family: 'Inter', sans-serif;
+    color: var(--white);
+    text-align: center;
+    outline: none;
+    transition: border-color .2s;
+  }
+  .builder-ex-sets:focus, .builder-ex-reps:focus { border-color: var(--neon); }
+  .builder-ex-x { color: var(--grey); font-size: 12px; }
+  .builder-ex-remove {
+    background: none; border: none; color: var(--grey-dark); cursor: pointer;
+    font-size: 18px; padding: 0 4px; transition: color .15s;
+  }
+  .builder-ex-remove:hover { color: var(--danger); }
+
+  /* Exercise search inside builder */
+  .ex-search-wrap { position: relative; margin-top: 12px; }
+  .ex-search-input {
+    width: 100%;
+    background: var(--bg);
+    border: 1px solid var(--grey-dark);
+    border-radius: var(--radius-sm);
+    padding: 10px 14px 10px 36px;
+    font-size: 13px;
+    font-family: 'Inter', sans-serif;
+    color: var(--white);
+    outline: none;
+    transition: border-color .2s;
+  }
+  .ex-search-input::placeholder { color: var(--grey); }
+  .ex-search-input:focus { border-color: var(--neon); }
+  .ex-search-icon {
+    position: absolute; left: 12px; top: 50%; transform: translateY(-50%);
+    color: var(--grey); font-size: 14px; pointer-events: none;
+  }
+  .ex-dropdown {
+    position: absolute;
+    top: calc(100% + 4px);
+    left: 0; right: 0;
+    background: var(--card);
+    border: 1px solid var(--grey-dark);
+    border-radius: var(--radius-sm);
+    max-height: 200px;
+    overflow-y: auto;
+    z-index: 50;
+    display: none;
+    box-shadow: 0 8px 30px rgba(0,0,0,0.5);
+  }
+  .ex-dropdown.show { display: block; }
+  .ex-dropdown-item {
+    padding: 10px 16px;
+    font-size: 13px;
+    color: var(--white);
+    cursor: pointer;
+    transition: background .1s;
+    border-bottom: 1px solid #1A1A1A;
+  }
+  .ex-dropdown-item:last-child { border-bottom: none; }
+  .ex-dropdown-item:hover { background: var(--card-hover); color: var(--neon); }
+
+  /* Directive note textarea */
+  .directive-textarea {
+    width: 100%;
+    background: var(--bg);
+    border: 1px solid var(--grey-dark);
+    border-radius: var(--radius-sm);
+    padding: 12px 16px;
+    font-size: 13px;
+    font-family: 'Inter', sans-serif;
+    color: var(--white);
+    outline: none;
+    resize: vertical;
+    min-height: 80px;
+    transition: border-color .2s;
+    line-height: 1.5;
+  }
+  .directive-textarea::placeholder { color: var(--grey); }
+  .directive-textarea:focus { border-color: var(--neon); }
+
+  /* Builder footer / lock button */
+  .builder-footer {
+    padding: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+  }
+  .builder-summary {
+    font-size: 12px;
+    color: var(--grey);
+  }
+  .builder-summary .hl { color: var(--neon); font-weight: 600; }
+  .lock-btn {
+    padding: 12px 28px;
+    background: var(--neon);
+    color: #0A0A0A;
+    font-family: 'Inter', sans-serif;
+    font-size: 14px;
+    font-weight: 800;
+    letter-spacing: 0.5px;
+    border: none;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    transition: box-shadow .3s, transform .15s;
+    white-space: nowrap;
+  }
+  .lock-btn:hover {
+    box-shadow: 0 0 20px var(--neon-glow);
+    transform: translateY(-1px);
+  }
+  .lock-btn:disabled { opacity: 0.4; pointer-events: none; }
+
+  /* Section labels in builder */
+  .section-label {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--neon);
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    margin-bottom: 12px;
+  }
+
+  /* Empty state */
+  .empty-state {
+    text-align: center;
+    padding: 40px 20px;
+    color: var(--grey);
+    font-size: 14px;
+  }
+  .empty-state-icon { font-size: 32px; margin-bottom: 12px; opacity: 0.4; }
 </style>
 </head>
 <body>
@@ -385,133 +697,251 @@
   <!-- Header -->
   <div class="header">
     <div class="wordmark"><span class="v">V</span><span class="ecto">ECTO</span></div>
-    <div class="screen-title">Command Center</div>
+    <div class="screen-title" id="screenTitle">Command Center</div>
   </div>
 
-  <!-- Loop A: Command Line -->
-  <div class="search-wrap">
-    <span class="search-icon">⌕</span>
-    <input class="search-input" id="searchInput" type="text" placeholder="Type @ for protocols, # for clients..." autocomplete="off">
-    <div class="dropdown" id="dropdown"></div>
-    <div class="search-hint">Use <kbd>@</kbd> to search protocols · <kbd>#</kbd> to mention clients</div>
+  <!-- Tabs -->
+  <div class="tabs">
+    <div class="tab active" data-tab="center">Command Center</div>
+    <div class="tab" data-tab="lab">Command Lab</div>
   </div>
 
-  <!-- Loop B: Directive Card -->
-  <div class="directive-card" id="directiveCard">
-    <div class="directive-header">
-      <div class="directive-name" id="directiveName"></div>
-      <button class="directive-toggle" id="directiveToggle">Collapse</button>
+  <!-- ══════════════════════════════════════
+       TAB 1: COMMAND CENTER (Assignment)
+       ══════════════════════════════════════ -->
+  <div class="tab-content active" id="tab-center">
+
+    <!-- Loop A: Command Line -->
+    <div class="search-wrap">
+      <span class="search-icon">⌕</span>
+      <input class="search-input" id="searchInput" type="text" placeholder="Type @ for protocols, # for clients..." autocomplete="off">
+      <div class="dropdown" id="dropdown"></div>
+      <div class="search-hint">Use <kbd>@</kbd> to search protocols · <kbd>#</kbd> to mention clients</div>
     </div>
-    <div class="directive-body" id="directiveBody"></div>
-    <div class="directive-footer">
-      <div class="directive-badge" id="directiveBadge"></div>
-    </div>
-  </div>
 
-  <!-- Loop C: Bulk Deployment -->
-  <div class="bulk-card">
-    <div class="bulk-title">Bulk Deployment</div>
-    <div class="bulk-grid">
-      <div class="bulk-left">
-        <div class="bulk-section-label">Clients</div>
-        <div class="select-all-row">
-          <div class="checkbox" id="selectAll"></div>
-          <div class="select-all-label">Select All</div>
-        </div>
-        <div id="clientList"></div>
+    <!-- Loop B: Directive Card -->
+    <div class="directive-card" id="directiveCard">
+      <div class="directive-header">
+        <div class="directive-name" id="directiveName"></div>
+        <button class="directive-toggle" id="directiveToggle">Collapse</button>
       </div>
-      <div class="bulk-right">
-        <div class="bulk-section-label">Vector Direction</div>
-        <div class="field-group">
-          <div class="field-label">Frequency</div>
-          <select class="field-select" id="freqSelect">
-            <option value="Mondays">Mondays</option>
-            <option value="Tuesdays">Tuesdays</option>
-            <option value="Wednesdays">Wednesdays</option>
-            <option value="Thursdays">Thursdays</option>
-            <option value="Fridays">Fridays</option>
-            <option value="Saturdays">Saturdays</option>
-            <option value="Mon/Wed/Fri">Mon / Wed / Fri</option>
-            <option value="Tue/Thu/Sat">Tue / Thu / Sat</option>
-          </select>
-        </div>
-        <div class="field-group">
-          <div class="field-label">Duration</div>
-          <select class="field-select" id="durSelect">
-            <option value="1">1 Week</option>
-            <option value="2">2 Weeks</option>
-            <option value="4" selected>4 Weeks</option>
-            <option value="6">6 Weeks</option>
-            <option value="8">8 Weeks</option>
-          </select>
-        </div>
+      <div class="directive-body" id="directiveBody"></div>
+      <div class="directive-footer">
+        <div class="directive-badge" id="directiveBadge"></div>
       </div>
     </div>
-    <div class="bulk-summary" id="bulkSummary"></div>
+
+    <!-- Loop C: Bulk Deployment -->
+    <div class="bulk-card">
+      <div class="bulk-title">Bulk Deployment</div>
+      <div class="bulk-grid">
+        <div class="bulk-left">
+          <div class="bulk-section-label">Clients</div>
+          <div class="select-all-row">
+            <div class="checkbox" id="selectAll"></div>
+            <div class="select-all-label">Select All</div>
+          </div>
+          <div id="clientList"></div>
+        </div>
+        <div class="bulk-right">
+          <div class="bulk-section-label">Vector Direction</div>
+          <div class="field-group">
+            <div class="field-label">Frequency</div>
+            <select class="field-select" id="freqSelect">
+              <option value="Mondays">Mondays</option>
+              <option value="Tuesdays">Tuesdays</option>
+              <option value="Wednesdays">Wednesdays</option>
+              <option value="Thursdays">Thursdays</option>
+              <option value="Fridays">Fridays</option>
+              <option value="Saturdays">Saturdays</option>
+              <option value="Mon/Wed/Fri">Mon / Wed / Fri</option>
+              <option value="Tue/Thu/Sat">Tue / Thu / Sat</option>
+            </select>
+          </div>
+          <div class="field-group">
+            <div class="field-label">Duration</div>
+            <select class="field-select" id="durSelect">
+              <option value="1">1 Week</option>
+              <option value="2">2 Weeks</option>
+              <option value="4" selected>4 Weeks</option>
+              <option value="6">6 Weeks</option>
+              <option value="8">8 Weeks</option>
+            </select>
+          </div>
+        </div>
+      </div>
+      <div class="bulk-summary" id="bulkSummary"></div>
+    </div>
+
+    <!-- CTA -->
+    <div class="cta-section">
+      <button class="cta-btn" id="ctaBtn" disabled>
+        <span class="arrow">→</span> Execute <span id="ctaDuration">4-Week</span> Command
+      </button>
+      <div class="cta-truth" id="ctaTruth"></div>
+    </div>
+
   </div>
 
-  <!-- CTA -->
-  <div class="cta-section">
-    <button class="cta-btn" id="ctaBtn">
-      <span class="arrow">→</span> Execute <span id="ctaDuration">4-Week</span> Command
-    </button>
-    <div class="cta-truth" id="ctaTruth"></div>
+  <!-- ══════════════════════════════════════
+       TAB 2: COMMAND LAB (Protocol Creation)
+       ══════════════════════════════════════ -->
+  <div class="tab-content" id="tab-lab">
+
+    <!-- Vault: Existing Protocols -->
+    <div class="vault-list" id="vaultList"></div>
+
+    <!-- New Protocol Button -->
+    <button class="new-proto-btn" id="newProtoBtn">＋ New Protocol</button>
+
+    <!-- Protocol Builder -->
+    <div class="builder-card" id="builderCard">
+      <div class="builder-header">
+        <div class="builder-header-left">
+          <div class="builder-step-badge">Protocol Builder</div>
+        </div>
+        <button class="builder-close" id="builderClose">✕</button>
+      </div>
+
+      <!-- Step 1: Name -->
+      <div class="builder-section">
+        <div class="section-label">Protocol Handle</div>
+        <input class="builder-input name-input" id="protoNameInput" type="text" placeholder="@YourProtocolName" autocomplete="off">
+      </div>
+
+      <!-- Step 2: Exercises -->
+      <div class="builder-section">
+        <div class="section-label">Exercises</div>
+        <div class="builder-exercises" id="builderExercises"></div>
+        <div class="ex-search-wrap">
+          <span class="ex-search-icon">⌕</span>
+          <input class="ex-search-input" id="exSearchInput" type="text" placeholder="Search exercises... e.g. Squat, Bench Press" autocomplete="off">
+          <div class="ex-dropdown" id="exDropdown"></div>
+        </div>
+      </div>
+
+      <!-- Step 3: Directive Note -->
+      <div class="builder-section">
+        <div class="section-label">Directive Note (Sage's Wisdom)</div>
+        <textarea class="directive-textarea" id="protoDirectiveNote" placeholder="e.g. Focus on the eccentric phase. If bar speed drops, reduce weight by 5kg."></textarea>
+      </div>
+
+      <!-- Footer: Lock & Save -->
+      <div class="builder-footer">
+        <div class="builder-summary" id="builderSummary">Add exercises to begin.</div>
+        <button class="lock-btn" id="lockBtn" disabled>🔒 Lock Protocol</button>
+      </div>
+    </div>
+
   </div>
 
 </div>
 
 <!-- Toast -->
-<div class="toast" id="toast">✓ Command deployed successfully.</div>
+<div class="toast" id="toast"></div>
 
 <script>
-  // ── Mock Data ──
-  const protocols = [
-    { name: '@LowerBodyAlpha', exercises: [
-      { name: 'Lat Pull Down', rx: '3×10' },
-      { name: 'Seated Row', rx: '2×12' },
-      { name: 'Romanian Deadlift', rx: '3×8' },
-      { name: 'Leg Press', rx: '4×10' },
-    ]},
-    { name: '@Legs-Strength-Bhai', exercises: [
-      { name: 'Squat', rx: '5×5' },
-      { name: 'Front Squat', rx: '3×8' },
-      { name: 'Walking Lunge', rx: '3×12' },
-      { name: 'Leg Curl', rx: '3×10' },
-      { name: 'Standing Calf Raise', rx: '4×15' },
-    ]},
-    { name: '@LeanCut-Upper', exercises: [
-      { name: 'Bench Press', rx: '4×8' },
-      { name: 'Incline Dumbbell Press', rx: '3×10' },
-      { name: 'Cable Crossover', rx: '3×12' },
-      { name: 'Overhead Press', rx: '3×8' },
-      { name: 'Lateral Raise', rx: '3×15' },
-      { name: 'Tricep Pushdown', rx: '3×12' },
-    ]},
-    { name: '@PushDay-V2', exercises: [
-      { name: 'Bench Press', rx: '4×6' },
-      { name: 'Dumbbell Shoulder Press', rx: '3×10' },
-      { name: 'Incline Dumbbell Press', rx: '3×10' },
-      { name: 'Cable Fly', rx: '3×12' },
-      { name: 'Skull Crusher', rx: '3×10' },
-    ]},
-    { name: '@PullDay-V2', exercises: [
-      { name: 'Deadlift', rx: '3×5' },
-      { name: 'Barbell Row', rx: '4×8' },
-      { name: 'Lat Pulldown', rx: '3×10' },
-      { name: 'Face Pull', rx: '3×15' },
-      { name: 'Barbell Curl', rx: '3×10' },
-    ]},
+  // ══════════════════════════════════════
+  // EXERCISE DATABASE (100 exercises)
+  // ══════════════════════════════════════
+  const exerciseDB = [
+    "Bench Press","Incline Bench Press","Decline Bench Press","Dumbbell Bench Press",
+    "Incline Dumbbell Press","Dumbbell Flyes","Cable Crossover","Chest Dips","Push-Ups",
+    "Machine Chest Press","Pec Deck Fly","Landmine Press",
+    "Deadlift","Barbell Row","Dumbbell Row","Lat Pulldown","Pull-Ups","Chin-Ups",
+    "Seated Cable Row","T-Bar Row","Face Pull","Straight Arm Pulldown","Rack Pull",
+    "Hyperextension","Pendlay Row","Meadows Row",
+    "Overhead Press","Military Press","Dumbbell Shoulder Press","Arnold Press",
+    "Lateral Raise","Front Raise","Rear Delt Fly","Upright Row","Shrugs",
+    "Cable Lateral Raise","Barbell Shrugs","Seated Dumbbell Press",
+    "Barbell Curl","Dumbbell Curl","Hammer Curl","Preacher Curl","Concentration Curl",
+    "Cable Curl","Incline Dumbbell Curl","EZ Bar Curl","Spider Curl","Reverse Curl",
+    "Tricep Pushdown","Skull Crusher","Close Grip Bench Press","Overhead Tricep Extension",
+    "Tricep Dips","Diamond Push-Ups","Cable Overhead Extension","Tricep Kickback",
+    "Rope Pushdown","Bench Dips",
+    "Squat","Front Squat","Leg Press","Hack Squat","Leg Extension","Walking Lunge",
+    "Bulgarian Split Squat","Goblet Squat","Sissy Squat","Box Squat","Pistol Squat","Wall Sit",
+    "Romanian Deadlift","Stiff Leg Deadlift","Leg Curl","Seated Leg Curl","Good Morning",
+    "Glute Ham Raise","Nordic Curl","Single Leg Deadlift",
+    "Hip Thrust","Glute Bridge","Cable Kickback","Step Ups","Sumo Deadlift","Frog Pumps",
+    "Standing Calf Raise","Seated Calf Raise","Donkey Calf Raise","Calf Press on Leg Press",
+    "Plank","Hanging Leg Raise","Cable Crunch","Ab Wheel Rollout","Russian Twist",
+    "Woodchop","Dead Bug","Bicycle Crunch","Weighted Sit-Up","Mountain Climbers",
+    "Clean and Press","Power Clean","Snatch","Thruster","Farmer's Walk",
+    "Kettlebell Swing","Burpees","Turkish Get-Up",
+    "Smith Machine Squat","Smith Machine Bench Press","Cable Fly",
+    "Machine Shoulder Press","Machine Curl","Machine Tricep Extension"
   ];
 
+  // ══════════════════════════════════════
+  // SHARED DATA
+  // ══════════════════════════════════════
   const clients = [
     'Rahul M.', 'Arjun S.', 'Priya K.', 'Neha T.',
     'Vikram J.', 'Sanya D.', 'Amit R.', 'Kavita P.'
   ];
 
+  // The Vault — all protocols live here
+  let vault = [
+    { name: '@LowerBodyAlpha', exercises: [
+      { name: 'Lat Pull Down', sets: 3, reps: 10 },
+      { name: 'Seated Row', sets: 2, reps: 12 },
+      { name: 'Romanian Deadlift', sets: 3, reps: 8 },
+      { name: 'Leg Press', sets: 4, reps: 10 },
+    ], note: 'Focus on controlled negatives. Rest 90s between sets.' },
+    { name: '@Legs-Strength-Bhai', exercises: [
+      { name: 'Squat', sets: 5, reps: 5 },
+      { name: 'Front Squat', sets: 3, reps: 8 },
+      { name: 'Walking Lunge', sets: 3, reps: 12 },
+      { name: 'Leg Curl', sets: 3, reps: 10 },
+      { name: 'Standing Calf Raise', sets: 4, reps: 15 },
+    ], note: '' },
+    { name: '@LeanCut-Upper', exercises: [
+      { name: 'Bench Press', sets: 4, reps: 8 },
+      { name: 'Incline Dumbbell Press', sets: 3, reps: 10 },
+      { name: 'Cable Crossover', sets: 3, reps: 12 },
+      { name: 'Overhead Press', sets: 3, reps: 8 },
+      { name: 'Lateral Raise', sets: 3, reps: 15 },
+      { name: 'Tricep Pushdown', sets: 3, reps: 12 },
+    ], note: 'Superset lateral raise + tricep pushdown.' },
+    { name: '@PushDay-V2', exercises: [
+      { name: 'Bench Press', sets: 4, reps: 6 },
+      { name: 'Dumbbell Shoulder Press', sets: 3, reps: 10 },
+      { name: 'Incline Dumbbell Press', sets: 3, reps: 10 },
+      { name: 'Cable Fly', sets: 3, reps: 12 },
+      { name: 'Skull Crusher', sets: 3, reps: 10 },
+    ], note: '' },
+    { name: '@PullDay-V2', exercises: [
+      { name: 'Deadlift', sets: 3, reps: 5 },
+      { name: 'Barbell Row', sets: 4, reps: 8 },
+      { name: 'Lat Pulldown', sets: 3, reps: 10 },
+      { name: 'Face Pull', sets: 3, reps: 15 },
+      { name: 'Barbell Curl', sets: 3, reps: 10 },
+    ], note: 'Warm up with band pull-aparts before rows.' },
+  ];
+
+  // ══════════════════════════════════════
+  // TAB SWITCHING
+  // ══════════════════════════════════════
+  const tabs = document.querySelectorAll('.tab');
+  const screenTitle = document.getElementById('screenTitle');
+  tabs.forEach(tab => {
+    tab.addEventListener('click', () => {
+      tabs.forEach(t => t.classList.remove('active'));
+      tab.classList.add('active');
+      document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+      document.getElementById('tab-' + tab.dataset.tab).classList.add('active');
+      screenTitle.textContent = tab.dataset.tab === 'center' ? 'Command Center' : 'Command Lab';
+      if (tab.dataset.tab === 'lab') renderVault();
+    });
+  });
+
+  // ══════════════════════════════════════
+  // COMMAND CENTER (TAB 1)
+  // ══════════════════════════════════════
   let selectedProtocol = null;
   let clientChecked = new Array(clients.length).fill(false);
 
-  // ── Elements ──
   const searchInput = document.getElementById('searchInput');
   const dropdown = document.getElementById('dropdown');
   const directiveCard = document.getElementById('directiveCard');
@@ -529,7 +959,6 @@
   const ctaTruth = document.getElementById('ctaTruth');
   const toast = document.getElementById('toast');
 
-  // ── Render Clients ──
   function renderClients() {
     clientListEl.innerHTML = '';
     clients.forEach((c, i) => {
@@ -543,7 +972,6 @@
       });
       clientListEl.appendChild(row);
     });
-    // sync select-all
     const allChecked = clientChecked.every(Boolean);
     selectAllBox.className = 'checkbox' + (allChecked ? ' checked' : '');
   }
@@ -557,16 +985,15 @@
 
   renderClients();
 
-  // ── Search Logic ──
+  // Search Logic — pulls from vault
   searchInput.addEventListener('input', () => {
     const val = searchInput.value.trim();
     if (val.startsWith('@') && val.length >= 1) {
       const q = val.slice(1).toLowerCase();
-      const matches = protocols.filter(p => p.name.toLowerCase().includes(q));
+      const matches = vault.filter(p => p.name.toLowerCase().includes(q));
       if (matches.length) {
-        dropdown.innerHTML = matches.map((p, i) => {
-          const totalSets = p.exercises.reduce((s, e) => s + parseInt(e.rx), 0);
-          return `<div class="dropdown-item" data-idx="${protocols.indexOf(p)}">
+        dropdown.innerHTML = matches.map(p => {
+          return `<div class="dropdown-item" data-name="${p.name}">
             <span class="proto-name">${p.name}</span>
             <span class="proto-meta">${p.exercises.length} exercises</span>
           </div>`;
@@ -574,7 +1001,8 @@
         dropdown.classList.add('show');
         dropdown.querySelectorAll('.dropdown-item').forEach(item => {
           item.addEventListener('click', () => {
-            selectProtocol(protocols[parseInt(item.dataset.idx)]);
+            const proto = vault.find(p => p.name === item.dataset.name);
+            if (proto) selectProtocol(proto);
           });
         });
       } else {
@@ -596,43 +1024,40 @@
 
   document.addEventListener('click', (e) => {
     if (!e.target.closest('.search-wrap')) dropdown.classList.remove('show');
+    if (!e.target.closest('.ex-search-wrap')) {
+      const exDd = document.getElementById('exDropdown');
+      if (exDd) exDd.classList.remove('show');
+    }
   });
 
-  // ── Select Protocol ──
   function selectProtocol(proto) {
     selectedProtocol = proto;
     searchInput.value = proto.name;
     dropdown.classList.remove('show');
 
-    // Populate directive card
     directiveName.textContent = proto.name;
     directiveBody.innerHTML = proto.exercises.map((ex, i) => `
       <div class="exercise-row">
         <span class="exercise-num">${i + 1}.</span>
         <span class="exercise-name">${ex.name}</span>
-        <span class="exercise-rx">${ex.rx}</span>
+        <span class="exercise-rx">${ex.sets}×${ex.reps}</span>
       </div>
     `).join('');
     directiveBody.classList.remove('collapsed');
     directiveToggle.textContent = 'Collapse';
 
-    const totalSets = proto.exercises.reduce((s, e) => {
-      const sets = parseInt(e.rx.split('×')[0]);
-      return s + (isNaN(sets) ? 0 : sets);
-    }, 0);
+    const totalSets = proto.exercises.reduce((s, e) => s + e.sets, 0);
     directiveBadge.textContent = `Directive: ${proto.exercises.length} exercises, ${totalSets} sets`;
 
     directiveCard.classList.add('visible');
     updateSummary();
   }
 
-  // ── Directive Toggle ──
   directiveToggle.addEventListener('click', () => {
     const collapsed = directiveBody.classList.toggle('collapsed');
     directiveToggle.textContent = collapsed ? 'Expand' : 'Collapse';
   });
 
-  // ── Summary & CTA ──
   function updateSummary() {
     const count = clientChecked.filter(Boolean).length;
     const freq = freqSelect.value;
@@ -645,13 +1070,11 @@
     if (count > 0 && selectedProtocol) {
       bulkSummary.innerHTML = `Deploying to <span class="hl">${count} client${count > 1 ? 's' : ''}</span> × <span class="hl">${freq}</span> × <span class="hl">${weeks} week${weeks > 1 ? 's' : ''}</span>`;
       ctaTruth.innerHTML = `This command generates <span class="hl">${totalDirectives} workout directives</span> across <span class="hl">${weeks} weeks</span>.`;
-      ctaBtn.style.opacity = '1';
-      ctaBtn.style.pointerEvents = 'auto';
+      ctaBtn.disabled = false;
     } else {
       bulkSummary.innerHTML = '<span style="color:var(--grey)">Select clients and a protocol to deploy.</span>';
       ctaTruth.innerHTML = '';
-      ctaBtn.style.opacity = '0.4';
-      ctaBtn.style.pointerEvents = 'none';
+      ctaBtn.disabled = true;
     }
   }
 
@@ -659,11 +1082,193 @@
   durSelect.addEventListener('change', updateSummary);
   updateSummary();
 
-  // ── CTA Click ──
   ctaBtn.addEventListener('click', () => {
+    showToast('✓ Command deployed successfully.');
+  });
+
+  function showToast(msg) {
+    toast.textContent = msg;
     toast.classList.add('show');
     setTimeout(() => toast.classList.remove('show'), 2500);
+  }
+
+  // ══════════════════════════════════════
+  // COMMAND LAB (TAB 2)
+  // ══════════════════════════════════════
+  const vaultListEl = document.getElementById('vaultList');
+  const newProtoBtn = document.getElementById('newProtoBtn');
+  const builderCard = document.getElementById('builderCard');
+  const builderClose = document.getElementById('builderClose');
+  const protoNameInput = document.getElementById('protoNameInput');
+  const builderExercises = document.getElementById('builderExercises');
+  const exSearchInput = document.getElementById('exSearchInput');
+  const exDropdown = document.getElementById('exDropdown');
+  const protoDirectiveNote = document.getElementById('protoDirectiveNote');
+  const builderSummary = document.getElementById('builderSummary');
+  const lockBtn = document.getElementById('lockBtn');
+
+  let builderExList = []; // { name, sets, reps }
+  let editingIndex = -1; // -1 = new, >=0 = editing existing vault item
+
+  function renderVault() {
+    vaultListEl.innerHTML = '';
+    if (vault.length === 0) {
+      vaultListEl.innerHTML = '<div class="empty-state"><div class="empty-state-icon">⚡</div>No protocols in the Vault yet.<br>Create your first protocol below.</div>';
+      return;
+    }
+    vault.forEach((p, i) => {
+      const totalSets = p.exercises.reduce((s, e) => s + e.sets, 0);
+      const div = document.createElement('div');
+      div.className = 'vault-item';
+      div.innerHTML = `
+        <div>
+          <div class="vault-item-name">${p.name}</div>
+          <div class="vault-item-meta">${p.exercises.length} exercises · ${totalSets} sets${p.note ? ' · Has directive' : ''}</div>
+        </div>
+        <div class="vault-item-right">
+          <div class="vault-item-badge">Locked</div>
+        </div>
+      `;
+      div.addEventListener('click', () => openBuilderForEdit(i));
+      vaultListEl.appendChild(div);
+    });
+  }
+
+  function openBuilderForEdit(idx) {
+    editingIndex = idx;
+    const proto = vault[idx];
+    protoNameInput.value = proto.name;
+    builderExList = proto.exercises.map(e => ({ ...e }));
+    protoDirectiveNote.value = proto.note || '';
+    renderBuilderExercises();
+    updateBuilderSummary();
+    builderCard.classList.add('active');
+    newProtoBtn.style.display = 'none';
+  }
+
+  newProtoBtn.addEventListener('click', () => {
+    editingIndex = -1;
+    protoNameInput.value = '@';
+    builderExList = [];
+    protoDirectiveNote.value = '';
+    renderBuilderExercises();
+    updateBuilderSummary();
+    builderCard.classList.add('active');
+    newProtoBtn.style.display = 'none';
+    protoNameInput.focus();
   });
+
+  builderClose.addEventListener('click', () => {
+    builderCard.classList.remove('active');
+    newProtoBtn.style.display = '';
+  });
+
+  // Ensure @ prefix
+  protoNameInput.addEventListener('input', () => {
+    if (!protoNameInput.value.startsWith('@')) {
+      protoNameInput.value = '@' + protoNameInput.value.replace(/^@*/, '');
+    }
+    updateBuilderSummary();
+  });
+
+  // Exercise search in builder
+  exSearchInput.addEventListener('input', () => {
+    const q = exSearchInput.value.trim().toLowerCase();
+    if (q.length < 1) { exDropdown.classList.remove('show'); return; }
+    const already = new Set(builderExList.map(e => e.name.toLowerCase()));
+    const matches = exerciseDB.filter(e => e.toLowerCase().includes(q) && !already.has(e.toLowerCase())).slice(0, 8);
+    if (matches.length) {
+      exDropdown.innerHTML = matches.map(e => `<div class="ex-dropdown-item">${e}</div>`).join('');
+      exDropdown.classList.add('show');
+      exDropdown.querySelectorAll('.ex-dropdown-item').forEach(item => {
+        item.addEventListener('click', () => {
+          builderExList.push({ name: item.textContent, sets: 3, reps: 10 });
+          renderBuilderExercises();
+          updateBuilderSummary();
+          exSearchInput.value = '';
+          exDropdown.classList.remove('show');
+          exSearchInput.focus();
+        });
+      });
+    } else {
+      exDropdown.classList.remove('show');
+    }
+  });
+
+  function renderBuilderExercises() {
+    builderExercises.innerHTML = '';
+    builderExList.forEach((ex, i) => {
+      const row = document.createElement('div');
+      row.className = 'builder-ex-row';
+      row.innerHTML = `
+        <span class="builder-ex-num">${i + 1}.</span>
+        <span class="builder-ex-name">${ex.name}</span>
+        <input class="builder-ex-sets" type="number" min="1" max="20" value="${ex.sets}" data-idx="${i}" data-field="sets">
+        <span class="builder-ex-x">×</span>
+        <input class="builder-ex-reps" type="number" min="1" max="100" value="${ex.reps}" data-idx="${i}" data-field="reps">
+        <button class="builder-ex-remove" data-idx="${i}">✕</button>
+      `;
+      builderExercises.appendChild(row);
+    });
+
+    // Event delegation
+    builderExercises.querySelectorAll('.builder-ex-sets, .builder-ex-reps').forEach(inp => {
+      inp.addEventListener('change', () => {
+        const idx = parseInt(inp.dataset.idx);
+        const field = inp.dataset.field;
+        builderExList[idx][field] = Math.max(1, parseInt(inp.value) || 1);
+        updateBuilderSummary();
+      });
+    });
+    builderExercises.querySelectorAll('.builder-ex-remove').forEach(btn => {
+      btn.addEventListener('click', () => {
+        builderExList.splice(parseInt(btn.dataset.idx), 1);
+        renderBuilderExercises();
+        updateBuilderSummary();
+      });
+    });
+  }
+
+  function updateBuilderSummary() {
+    const count = builderExList.length;
+    const totalSets = builderExList.reduce((s, e) => s + e.sets, 0);
+    const name = protoNameInput.value.trim();
+    const valid = count > 0 && name.length > 1;
+    lockBtn.disabled = !valid;
+
+    if (count === 0) {
+      builderSummary.innerHTML = 'Add exercises to begin.';
+    } else {
+      builderSummary.innerHTML = `<span class="hl">${count} exercises</span> · <span class="hl">${totalSets} total sets</span>`;
+    }
+  }
+
+  // Lock Protocol
+  lockBtn.addEventListener('click', () => {
+    const name = protoNameInput.value.trim();
+    if (!name || builderExList.length === 0) return;
+
+    const proto = {
+      name: name,
+      exercises: builderExList.map(e => ({ ...e })),
+      note: protoDirectiveNote.value.trim()
+    };
+
+    if (editingIndex >= 0) {
+      vault[editingIndex] = proto;
+      showToast('✓ Protocol updated in the Vault.');
+    } else {
+      vault.push(proto);
+      showToast('✓ Protocol locked & saved to the Vault.');
+    }
+
+    builderCard.classList.remove('active');
+    newProtoBtn.style.display = '';
+    renderVault();
+  });
+
+  // Initial vault render
+  renderVault();
 </script>
 
 </body>
