@@ -1,10 +1,10 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { TrendingUp, AlertTriangle, BarChart3, Scale } from 'lucide-react';
+import { TrendingUp, AlertTriangle, BarChart3, Scale, Footprints } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useProfile } from '@/hooks/useProfile';
 import { useProgressData } from '@/hooks/useProgressData';
-import { ActionChart, OutcomeChart, DateRangeFilter, ClientSelector } from '@/components/progress';
+import { ActionChart, OutcomeChart, DateRangeFilter, ClientSelector, StepsChart } from '@/components/progress';
 import { differenceInDays } from 'date-fns';
 
 export default function Progress() {
@@ -157,6 +157,36 @@ export default function Progress() {
               </div>
             ) : (
               <ActionChart data={data} />
+            )}
+          </CardContent>
+        </Card>
+      </motion.div>
+
+      {/* Steps Chart */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.22 }}
+        className="mb-6"
+      >
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base font-medium flex items-center gap-2">
+              <Footprints className="w-4 h-4 text-emerald-500" />
+              Steps
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="p-2 sm:p-4">
+            {loading ? (
+              <div className="h-64 flex items-center justify-center">
+                <div className="w-8 h-8 border-4 border-primary/30 border-t-primary rounded-full animate-spin" />
+              </div>
+            ) : error ? (
+              <div className="h-64 flex items-center justify-center text-muted-foreground">
+                Failed to load data
+              </div>
+            ) : (
+              <StepsChart data={data} />
             )}
           </CardContent>
         </Card>
