@@ -1,62 +1,28 @@
 
 
-## Plan: Add "Log Steps" Feature
+## Plan: Add Steps Chart to Progress Page
 
-### Overview
-Add a step count logging tile for clients alongside Log Workout and Log Food. Steps will be stored as one entry per day (overwritable), converted to estimated calories (~0.04 cal/step) for the daily burn calculation, and displayed as a separate metric in Progress charts.
+Based on the Samsung Health reference screenshot, create a dedicated Steps card in the Progress page.
 
-### 1. Database: New `step_logs` table
+### New component: `src/components/progress/StepsChart.tsx`
 
-```sql
-CREATE TABLE public.step_logs (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  client_id uuid NOT NULL,
-  logged_date date NOT NULL DEFAULT CURRENT_DATE,
-  step_count integer NOT NULL,
-  estimated_calories integer GENERATED ALWAYS AS (ROUND(step_count * 0.04)) STORED,
-  created_at timestamptz DEFAULT now(),
-  updated_at timestamptz DEFAULT now(),
-  UNIQUE (client_id, logged_date)
-);
-```
+A card containing:
+1. **Bar chart** — daily step bars over the selected date range. Green bars for days with steps logged, gray for no data. A dashed green reference line at the 10,000 target.
+2. **Latest day summary** — large "7,923 steps" style display for the most recent logged day.
+3. **Progress bar** — green fill showing steps vs 10,000 target (hardcoded default for now).
+4. **Derived metrics row** — two stats separated by dividers: estimated **km** (`steps × 0.0008`) and estimated **kcal** (`steps × 0.04`). Skipping "floors" since we don't track that.
 
-RLS policies mirroring `food_logs`: clients can CRUD own rows, trainers can read client rows.
-
-### 2. UI: Third tile in client action sheet
-
-Update `Calendar.tsx` client action sheet from a 2-column to a 3-column grid:
-- **Log Workout** (Dumbbell icon)
-- **Log Food** (Utensils icon)  
-- **Log Steps** (Footprints icon) — new tile
-
-The Log Steps tile opens a simple inline input (no modal needed): numeric text field + "Log Steps" CTA button. If a log already exists for that date, pre-fill the value and allow overwrite.
-
-Same pattern applied to `ClientDashboard.tsx` — add steps as a third daily task.
-
-### 3. Progress integration
-
-Update `useProgressData.tsx`:
-- Fetch from `step_logs` table in the parallel query batch
-- Add `steps: number | null` and `stepCalories: number` to `DailyProgress` interface
-- Add step-based calories to `totalExpenditure`: `BMR + workout_burnt + step_estimated_calories`
-
-Update `ActionChart.tsx`:
-- Include step calories in the expenditure bar (stacked or combined)
-- Show steps in tooltip
-
-Update `OutcomeChart.tsx` or add a new steps trend line — **waiting on your screenshot** for the exact Progress UI treatment before implementing this part.
-
-### 4. Files changed
+### Updated files
 
 | File | Change |
 |------|--------|
-| Migration SQL | New `step_logs` table + RLS |
-| `src/pages/Calendar.tsx` | 3-col grid, steps tile, log handler |
-| `src/components/dashboard/ClientDashboard.tsx` | Steps task tile + query |
-| `src/hooks/useProgressData.tsx` | Fetch steps, add to expenditure |
-| `src/components/progress/ActionChart.tsx` | Steps in tooltip + burn calc |
-| `src/integrations/supabase/types.ts` | Auto-updated |
+| `src/components/progress/StepsChart.tsx` | New component |
+| `src/components/progress/index.ts` | Export StepsChart |
+| `src/pages/Progress.tsx` | Render StepsChart card between Action and Outcome charts, with Footprints icon header |
 
-### Waiting on you
-You mentioned you'll share a screenshot for how steps should appear in Progress. I'll hold off building until you share that. Everything else above is ready to implement.
+### Design
+- Dark card matching existing Action/Outcome chart cards
+- Emerald/green color for bars and progress bar (consistent with the reference)
+- Gray bars and muted text for no-data days
+- No database or hook changes needed — `useProgressData` already returns `steps` and `stepCalories`
 
