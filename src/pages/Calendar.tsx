@@ -963,17 +963,17 @@ const Calendar = () => {
 
                   {/* Action Buttons - Edit mode */}
                   {canEdit && (
-                    <div className="grid grid-cols-2 gap-3">
+                    <div className="grid grid-cols-3 gap-3">
                       <motion.button
                         whileTap={{ scale: 0.95 }}
                         onClick={() => setShowWorkoutModal(true)}
-                        className="flex flex-col items-center gap-3 p-6 rounded-2xl bg-card border-2 border-border hover:border-primary/50 transition-colors"
+                        className="flex flex-col items-center gap-2 p-4 rounded-2xl bg-card border-2 border-border hover:border-primary/50 transition-colors"
                       >
-                        <div className="w-14 h-14 rounded-full bg-primary/20 flex items-center justify-center">
-                          <Dumbbell className="w-7 h-7 text-primary" />
+                        <div className="w-12 h-12 rounded-full bg-primary/20 flex items-center justify-center">
+                          <Dumbbell className="w-6 h-6 text-primary" />
                         </div>
                         <div className="text-center">
-                          <p className="font-semibold text-foreground">Log Workout</p>
+                          <p className="font-semibold text-foreground text-sm">Log Workout</p>
                           <p className="text-xs text-muted-foreground">Track exercises</p>
                         </div>
                       </motion.button>
@@ -981,38 +981,91 @@ const Calendar = () => {
                       <motion.button
                         whileTap={{ scale: 0.95 }}
                         onClick={() => setShowFoodModal(true)}
-                        className="flex flex-col items-center gap-3 p-6 rounded-2xl bg-card border-2 border-border hover:border-primary/50 transition-colors"
+                        className="flex flex-col items-center gap-2 p-4 rounded-2xl bg-card border-2 border-border hover:border-primary/50 transition-colors"
                       >
-                        <div className="w-14 h-14 rounded-full bg-success/20 flex items-center justify-center">
-                          <Utensils className="w-7 h-7 text-success" />
+                        <div className="w-12 h-12 rounded-full bg-success/20 flex items-center justify-center">
+                          <Utensils className="w-6 h-6 text-success" />
                         </div>
                         <div className="text-center">
-                          <p className="font-semibold text-foreground">Log Food</p>
+                          <p className="font-semibold text-foreground text-sm">Log Food</p>
                           <p className="text-xs text-muted-foreground">Track nutrition</p>
+                        </div>
+                      </motion.button>
+
+                      <motion.button
+                        whileTap={{ scale: 0.95 }}
+                        onClick={() => {/* Steps handled inline below */}}
+                        className="flex flex-col items-center gap-2 p-4 rounded-2xl bg-card border-2 border-border hover:border-accent/50 transition-colors"
+                      >
+                        <div className="w-12 h-12 rounded-full bg-accent/20 flex items-center justify-center">
+                          <Footprints className="w-6 h-6 text-accent-foreground" />
+                        </div>
+                        <div className="text-center">
+                          <p className="font-semibold text-foreground text-sm">Log Steps</p>
+                          <p className="text-xs text-muted-foreground">{existingStepLog ? `${existingStepLog.step_count} steps` : 'Track steps'}</p>
                         </div>
                       </motion.button>
                     </div>
                   )}
 
+                  {/* Inline Step Logger */}
+                  {canEdit && (
+                    <div className="p-4 rounded-2xl bg-card border border-border">
+                      <div className="flex items-center gap-2 mb-3">
+                        <Footprints className="w-5 h-5 text-accent-foreground" />
+                        <span className="font-semibold text-foreground text-sm">
+                          {existingStepLog ? 'Update Steps' : 'Log Steps'}
+                        </span>
+                      </div>
+                      <div className="flex gap-2">
+                        <input
+                          type="number"
+                          inputMode="numeric"
+                          placeholder="Enter step count"
+                          value={stepCount}
+                          onChange={(e) => setStepCount(e.target.value)}
+                          className="flex-1 h-10 rounded-md border border-input bg-background px-3 py-2 text-base ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                        />
+                        <Button
+                          onClick={handleStepSave}
+                          disabled={stepLoading || !stepCount}
+                          size="default"
+                        >
+                          {stepLoading ? 'Saving...' : 'Log Steps'}
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+
                   {/* View-Only Buttons */}
                   {!canEdit && (
-                    <div className="grid grid-cols-2 gap-3">
-                      <div className="flex flex-col items-center gap-3 p-6 rounded-2xl bg-muted/50 border-2 border-border opacity-60">
-                        <div className="w-14 h-14 rounded-full bg-muted flex items-center justify-center">
-                          <Dumbbell className="w-7 h-7 text-muted-foreground" />
+                    <div className="grid grid-cols-3 gap-3">
+                      <div className="flex flex-col items-center gap-2 p-4 rounded-2xl bg-muted/50 border-2 border-border opacity-60">
+                        <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center">
+                          <Dumbbell className="w-6 h-6 text-muted-foreground" />
                         </div>
                         <div className="text-center">
-                          <p className="font-semibold text-muted-foreground">Workout</p>
+                          <p className="font-semibold text-muted-foreground text-sm">Workout</p>
                           <p className="text-xs text-muted-foreground">{workout ? workout.status : 'No data'}</p>
                         </div>
                       </div>
 
-                      <div className="flex flex-col items-center gap-3 p-6 rounded-2xl bg-muted/50 border-2 border-border opacity-60">
-                        <div className="w-14 h-14 rounded-full bg-muted flex items-center justify-center">
-                          <Utensils className="w-7 h-7 text-muted-foreground" />
+                      <div className="flex flex-col items-center gap-2 p-4 rounded-2xl bg-muted/50 border-2 border-border opacity-60">
+                        <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center">
+                          <Utensils className="w-6 h-6 text-muted-foreground" />
                         </div>
                         <div className="text-center">
-                          <p className="font-semibold text-muted-foreground">Food</p>
+                          <p className="font-semibold text-muted-foreground text-sm">Food</p>
+                          <p className="text-xs text-muted-foreground">View only</p>
+                        </div>
+                      </div>
+
+                      <div className="flex flex-col items-center gap-2 p-4 rounded-2xl bg-muted/50 border-2 border-border opacity-60">
+                        <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center">
+                          <Footprints className="w-6 h-6 text-muted-foreground" />
+                        </div>
+                        <div className="text-center">
+                          <p className="font-semibold text-muted-foreground text-sm">Steps</p>
                           <p className="text-xs text-muted-foreground">View only</p>
                         </div>
                       </div>
