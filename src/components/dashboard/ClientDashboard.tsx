@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Dumbbell, Utensils, Check, Clock, Flame, Trophy, ChevronRight } from 'lucide-react';
+import { Dumbbell, Utensils, Check, Clock, Flame, Trophy, ChevronRight, Footprints } from 'lucide-react';
 import { useProfile } from '@/hooks/useProfile';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery } from '@tanstack/react-query';
@@ -17,6 +17,8 @@ export const ClientDashboard = () => {
   const queryClient = useQueryClient();
   const [showWorkoutModal, setShowWorkoutModal] = useState(false);
   const [showFoodModal, setShowFoodModal] = useState(false);
+  const [stepCount, setStepCount] = useState('');
+  const [stepLoading, setStepLoading] = useState(false);
 
   const today = format(new Date(), 'yyyy-MM-dd');
 
@@ -57,12 +59,62 @@ export const ClientDashboard = () => {
     enabled: !!profile,
   });
 
+  // Fetch today's step log
+  const { data: todayStepLog } = useQuery({
+    queryKey: ['today-steps', profile?.id, today],
+    queryFn: async () => {
+      if (!profile) return null;
+      const { data, error } = await supabase
+        .from('step_logs')
+        .select('*')
+        .eq('client_id', profile.id)
+        .eq('logged_date', today)
+        .maybeSingle();
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!profile,
+  });
+
   // Calculate totals
   const totalCalories = todayFoodLogs.reduce((sum, log) => sum + (log.calories || 0), 0);
   const totalProtein = todayFoodLogs.reduce((sum, log) => sum + (log.protein || 0), 0);
 
   const workoutComplete = todayWorkout?.status === 'completed';
   const hasFoodLogs = todayFoodLogs.length > 0;
+  const hasSteps = !!todayStepLog;
+
+  const handleStepSave = async () => {
+    if (!profile) return;
+    const count = parseInt(stepCount, 10);
+    if (isNaN(count) || count < 0) {
+      toast.error('Please enter a valid step count');
+      return;
+    }
+    setStepLoading(true);
+    try {
+      if (todayStepLog) {
+        const { error } = await supabase
+          .from('step_logs')
+          .update({ step_count: count })
+          .eq('id', todayStepLog.id);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase
+          .from('step_logs')
+          .insert({ client_id: profile.id, logged_date: today, step_count: count });
+        if (error) throw error;
+      }
+      toast.success('Steps logged!');
+      queryClient.invalidateQueries({ queryKey: ['today-steps'] });
+      setStepCount('');
+    } catch (error) {
+      logError('ClientDashboard.handleStepSave', error);
+      toast.error('Failed to save steps');
+    } finally {
+      setStepLoading(false);
+    }
+  };
 
   const handleWorkoutSave = async (exercises: { name: string; sets: number; reps: number; weight: number }[]) => {
     if (!profile) return;
