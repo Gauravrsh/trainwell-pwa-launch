@@ -18,6 +18,7 @@ import { useSubscriptionAccess } from '@/hooks/useSubscriptionAccess';
 import { SubscriptionEnforcementBanner } from '@/components/subscription/SubscriptionEnforcementBanner';
 import { PlanSelectionModal } from '@/components/subscription/PlanSelectionModal';
 import { useTrainerSubscription } from '@/hooks/useTrainerSubscription';
+import { usePushSubscription } from '@/hooks/usePushSubscription';
 
 interface Workout {
   id: string;
@@ -74,6 +75,17 @@ const Calendar = () => {
   // Subscription access for trainers
   const { isReadOnly: subscriptionReadOnly, reason: subscriptionReason } = useSubscriptionAccess();
   const { renewPlan, status } = useTrainerSubscription();
+  const { subscribe: subscribePush } = usePushSubscription();
+
+  // Prompt push permission once after first successful log
+  const pushPromptedRef = useRef(false);
+  const promptPushPermission = useCallback(() => {
+    if (pushPromptedRef.current) return;
+    if (Notification.permission === 'default') {
+      pushPromptedRef.current = true;
+      subscribePush();
+    }
+  }, [subscribePush]);
 
   const handleSelectPlan = async (planType: 'monthly' | 'annual') => {
     await renewPlan(planType);
@@ -736,6 +748,7 @@ const Calendar = () => {
       queryClient.invalidateQueries({ queryKey: ['workouts'] });
       setShowWorkoutModal(false);
       setShowClientActionSheet(false);
+      promptPushPermission();
     } catch (error) {
       logError('Calendar.handleWorkoutSave', error);
       toast.error('Failed to save workout');
@@ -776,6 +789,7 @@ const Calendar = () => {
       setShowFoodModal(false);
       setShowClientActionSheet(false);
       setShowTrainerActionSheet(false);
+      promptPushPermission();
     } catch (error) {
       logError('Calendar.handleFoodSave', error);
       toast.error('Failed to save food log');
@@ -827,6 +841,7 @@ const Calendar = () => {
       toast.success('Steps logged!');
       setExistingStepLog({ id: existingStepLog?.id || '', step_count: count });
       setShowStepModal(false);
+      promptPushPermission();
     } catch (error) {
       logError('Calendar.handleStepSave', error);
       toast.error('Failed to save steps');
