@@ -339,6 +339,32 @@ const ProfileSetup = ({ role }: ProfileSetupProps) => {
             </Popover>
           </div>
 
+          {/* Trainer-only fields */}
+          {role === 'trainer' && (
+            <div className="space-y-2">
+              <Label htmlFor="whatsapp" className="flex items-center gap-2">
+                <Phone className="w-4 h-4" />
+                WhatsApp Number
+              </Label>
+              <div className="flex items-center gap-2">
+                <span className="text-muted-foreground font-medium w-10">+91</span>
+                <Input
+                  id="whatsapp"
+                  type="text"
+                  inputMode="numeric"
+                  placeholder="10-digit number"
+                  value={whatsappNo}
+                  onChange={(e) => {
+                    const v = e.target.value.replace(/\D/g, '');
+                    if (v.length <= 10) setWhatsappNo(v);
+                  }}
+                  className="h-12 flex-1"
+                  maxLength={10}
+                />
+              </div>
+            </div>
+          )}
+
           {/* Client-only fields */}
           {role === 'client' && (
             <>
