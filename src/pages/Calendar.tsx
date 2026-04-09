@@ -75,6 +75,17 @@ const Calendar = () => {
   // Subscription access for trainers
   const { isReadOnly: subscriptionReadOnly, reason: subscriptionReason } = useSubscriptionAccess();
   const { renewPlan, status } = useTrainerSubscription();
+  const { subscribe: subscribePush } = usePushSubscription();
+
+  // Prompt push permission once after first successful log
+  const pushPromptedRef = useRef(false);
+  const promptPushPermission = useCallback(() => {
+    if (pushPromptedRef.current) return;
+    if (Notification.permission === 'default') {
+      pushPromptedRef.current = true;
+      subscribePush();
+    }
+  }, [subscribePush]);
 
   const handleSelectPlan = async (planType: 'monthly' | 'annual') => {
     await renewPlan(planType);
