@@ -1,7 +1,7 @@
 import { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { format, addDays, subDays, startOfDay, isSameDay, isAfter, isBefore, differenceInDays, getDaysInMonth, startOfMonth } from 'date-fns';
-import { ChevronLeft, ChevronRight, Plus, Dumbbell, Check, Clock, X, AlertCircle, Utensils, UserPlus, Share2, Eye } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Plus, Dumbbell, Check, Clock, X, AlertCircle, Utensils, UserPlus, Share2, Eye, Footprints } from 'lucide-react';
 import { useProfile } from '@/hooks/useProfile';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -57,6 +57,9 @@ const Calendar = () => {
   const [clientHasLogged, setClientHasLogged] = useState(false);
   const [clientTrainerExercises, setClientTrainerExercises] = useState<{ name: string; sets: { weight: number; reps: number }[] }[]>([]);
   const [showPlanModal, setShowPlanModal] = useState(false);
+  const [stepCount, setStepCount] = useState('');
+  const [stepLoading, setStepLoading] = useState(false);
+  const [existingStepLog, setExistingStepLog] = useState<{ id: string; step_count: number } | null>(null);
 
   // Subscription access for trainers
   const { isReadOnly: subscriptionReadOnly, reason: subscriptionReason } = useSubscriptionAccess();
@@ -558,6 +561,65 @@ const Calendar = () => {
     } catch (error) {
       logError('Calendar.handleFoodSave', error);
       toast.error('Failed to save food log');
+    }
+  };
+
+  // Fetch existing step log when action sheet opens
+  const fetchStepLog = async (date: Date) => {
+    if (!profile) return;
+    const dateStr = format(date, 'yyyy-MM-dd');
+    const { data, error } = await supabase
+      .from('step_logs')
+      .select('id, step_count')
+      .eq('client_id', profile.id)
+      .eq('logged_date', dateStr)
+      .maybeSingle();
+    
+    if (!error && data) {
+      setExistingStepLog(data);
+      setStepCount(String(data.step_count));
+    } else {
+      setExistingStepLog(null);
+      setStepCount('');
+    }
+  };
+
+  const handleStepSave = async () => {
+    if (!profile || !selectedDate) return;
+    const count = parseInt(stepCount, 10);
+    if (isNaN(count) || count < 0) {
+      toast.error('Please enter a valid step count');
+      return;
+    }
+
+    setStepLoading(true);
+    try {
+      const dateStr = format(selectedDate, 'yyyy-MM-dd');
+      
+      if (existingStepLog) {
+        const { error } = await supabase
+          .from('step_logs')
+          .update({ step_count: count })
+          .eq('id', existingStepLog.id);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase
+          .from('step_logs')
+          .insert({
+            client_id: profile.id,
+            logged_date: dateStr,
+            step_count: count,
+          });
+        if (error) throw error;
+      }
+
+      toast.success('Steps logged!');
+      setExistingStepLog({ id: existingStepLog?.id || '', step_count: count });
+    } catch (error) {
+      logError('Calendar.handleStepSave', error);
+      toast.error('Failed to save steps');
+    } finally {
+      setStepLoading(false);
     }
   };
 
