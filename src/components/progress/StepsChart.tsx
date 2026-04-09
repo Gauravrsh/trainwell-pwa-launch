@@ -76,7 +76,7 @@ export function StepsChart({ data }: StepsChartProps) {
       )}
 
       {/* Bar chart - always shown with axes */}
-      <div className="h-56">
+      <div className="h-56 relative">
         <ResponsiveContainer width="100%" height="100%">
           <BarChart data={chartData} margin={{ top: 5, right: 5, left: -20, bottom: 5 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.3} />
@@ -125,14 +125,16 @@ export function StepsChart({ data }: StepsChartProps) {
             />
           </BarChart>
         </ResponsiveContainer>
-      </div>
 
-      {/* Prompt when no data */}
-      {!hasAnySteps && (
-        <p className="text-center text-sm text-muted-foreground">
-          Start logging your daily steps to see trends here
-        </p>
-      )}
+        {/* Prompt when no data - overlaid on chart */}
+        {!hasAnySteps && (
+          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+            <p className="text-sm text-muted-foreground bg-card/80 px-3 py-1.5 rounded-md">
+              Start logging your daily steps to see trends here
+            </p>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
