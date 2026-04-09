@@ -1,24 +1,32 @@
 
 
-# Add React ErrorBoundary to App.tsx
+## Plan: Remove Number Input Spinners Globally
 
-## What
-Create a branded ErrorBoundary component and wrap `AppRoutes` in `App.tsx` to catch runtime crashes gracefully.
+The native browser spinner arrows on `<input type="number">` are tiny and awkward on mobile. The fix is a global CSS rule that hides them across all number inputs app-wide.
 
-## Files
+### What changes
 
-### 1. New: `src/components/ErrorBoundary.tsx`
-- Class component implementing `componentDidCatch` and `getDerivedStateFromError`
-- Fallback UI: Obsidian black background, Vecto branding
-  - "V" in neon green (#9FFF2B), "ECTO" in white
-  - Heading: "Uh! This shouldn't have happened"
-  - Subtext: brief apology in grey
-  - Full-width neon green "Reload" button calling `window.location.reload()`
-- Matches existing dark theme aesthetic
+**Single file: `src/index.css`**
 
-### 2. Edit: `src/App.tsx`
-- Import `ErrorBoundary`
-- Wrap `<AppRoutes />` inside `<ErrorBoundary>` (inside `AppContent`, around the routes render)
+Add CSS to hide the native number spinner in all browsers:
 
-Two files, minimal change, no dependencies added.
+```css
+/* Hide number input spinners */
+input[type="number"]::-webkit-outer-spin-button,
+input[type="number"]::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+input[type="number"] {
+  -moz-appearance: textfield;
+}
+```
+
+This covers:
+- DateRangeFilter (the 30 days field in Progress page)
+- All workout log modals (sets, reps, weight, calories)
+- Weight log, BMR log, payment amount
+- Training plan creation (sessions, price)
+
+No component changes needed — one global CSS rule handles everything.
 
