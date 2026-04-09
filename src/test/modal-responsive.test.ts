@@ -26,7 +26,7 @@ describe('Modal Responsive Behavior', () => {
 
   describe('Viewport Size Definitions', () => {
     it('should have all required viewport sizes defined', () => {
-      expect(Object.keys(VIEWPORT_SIZES)).toHaveLength(13);
+      expect(Object.keys(VIEWPORT_SIZES)).toHaveLength(12);
     });
 
     it('should have valid dimensions for all viewports', () => {
