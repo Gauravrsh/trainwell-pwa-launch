@@ -908,7 +908,7 @@ const Calendar = () => {
 
       {/* Client Action Sheet - Log Workout or Food */}
       {!isTrainer && (
-        <Sheet open={showClientActionSheet} onOpenChange={(open) => { setShowClientActionSheet(open); if (!open) setShowStepLogger(false); }}>
+        <Sheet open={showClientActionSheet} onOpenChange={setShowClientActionSheet}>
           <SheetContent side="bottom" className="rounded-t-3xl">
             <SheetHeader className="pb-4">
               <SheetTitle>
@@ -994,7 +994,7 @@ const Calendar = () => {
 
                       <motion.button
                         whileTap={{ scale: 0.95 }}
-                        onClick={() => setShowStepLogger(prev => !prev)}
+                        onClick={() => setShowStepModal(true)}
                         className="flex flex-col items-center gap-2 p-4 rounded-2xl bg-card border-2 border-border hover:border-primary/50 transition-colors"
                       >
                         <div className="w-12 h-12 rounded-full bg-primary/20 flex items-center justify-center">
@@ -1005,35 +1005,6 @@ const Calendar = () => {
                           <p className="text-xs text-muted-foreground">{existingStepLog ? `${existingStepLog.step_count} steps` : 'Track steps'}</p>
                         </div>
                       </motion.button>
-                    </div>
-                  )}
-
-                  {/* Step Logger - shown when tile is tapped */}
-                  {canEdit && showStepLogger && (
-                    <div className="p-4 rounded-2xl bg-card border border-border">
-                      <div className="flex items-center gap-2 mb-3">
-                        <Footprints className="w-5 h-5 text-primary" />
-                        <span className="font-semibold text-foreground text-sm">
-                          {existingStepLog ? 'Update Steps' : 'Log Steps'}
-                        </span>
-                      </div>
-                      <div className="flex gap-2">
-                        <input
-                          type="number"
-                          inputMode="numeric"
-                          placeholder="Enter step count"
-                          value={stepCount}
-                          onChange={(e) => setStepCount(e.target.value)}
-                          className="flex-1 h-10 rounded-md border border-input bg-background px-3 py-2 text-base ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                        />
-                        <Button
-                          onClick={handleStepSave}
-                          disabled={stepLoading || !stepCount}
-                          size="default"
-                        >
-                          {stepLoading ? 'Saving...' : 'Log Steps'}
-                        </Button>
-                      </div>
                     </div>
                   )}
 
