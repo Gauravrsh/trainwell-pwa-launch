@@ -228,30 +228,15 @@ export const ClientDashboard = () => {
         >
           <div className="relative">
             <svg className="w-32 h-32 -rotate-90">
-              <circle
-                cx="64"
-                cy="64"
-                r="56"
-                stroke="currentColor"
-                strokeWidth="8"
-                fill="none"
-                className="text-muted/30"
-              />
-              <circle
-                cx="64"
-                cy="64"
-                r="56"
-                stroke="currentColor"
-                strokeWidth="8"
-                fill="none"
-                strokeDasharray={`${(workoutComplete && hasFoodLogs ? 100 : workoutComplete || hasFoodLogs ? 50 : 0) * 3.52} 352`}
-                strokeLinecap="round"
-                className="text-primary transition-all duration-500"
+              <circle cx="64" cy="64" r="56" stroke="currentColor" strokeWidth="8" fill="none" className="text-muted/30" />
+              <circle cx="64" cy="64" r="56" stroke="currentColor" strokeWidth="8" fill="none"
+                strokeDasharray={`${(((workoutComplete ? 1 : 0) + (hasFoodLogs ? 1 : 0) + (hasSteps ? 1 : 0)) / 3 * 100) * 3.52} 352`}
+                strokeLinecap="round" className="text-primary transition-all duration-500"
               />
             </svg>
             <div className="absolute inset-0 flex flex-col items-center justify-center">
               <span className="text-3xl font-bold text-foreground">
-                {(workoutComplete ? 1 : 0) + (hasFoodLogs ? 1 : 0)}/2
+                {(workoutComplete ? 1 : 0) + (hasFoodLogs ? 1 : 0) + (hasSteps ? 1 : 0)}/3
               </span>
               <span className="text-xs text-muted-foreground">Tasks</span>
             </div>
@@ -265,6 +250,10 @@ export const ClientDashboard = () => {
             <div className="flex items-center gap-2">
               <div className={`w-3 h-3 rounded-full ${hasFoodLogs ? 'bg-success' : 'bg-muted'}`} />
               <span className="text-sm text-muted-foreground">Nutrition</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className={`w-3 h-3 rounded-full ${hasSteps ? 'bg-success' : 'bg-muted'}`} />
+              <span className="text-sm text-muted-foreground">Steps</span>
             </div>
           </div>
         </motion.div>
@@ -391,6 +380,66 @@ export const ClientDashboard = () => {
               {hasFoodLogs ? 'Add Another Meal' : 'Log Food'}
             </Button>
           </motion.div>
+
+          {/* Steps Task */}
+          <motion.div
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ delay: 0.25 }}
+            className={`p-4 rounded-2xl border-2 transition-colors ${
+              hasSteps
+                ? 'bg-success/5 border-success/30'
+                : 'bg-card border-border'
+            }`}
+          >
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-3">
+                <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${
+                  hasSteps ? 'bg-success/20' : 'bg-accent/20'
+                }`}>
+                  {hasSteps ? (
+                    <Check className="w-6 h-6 text-success" />
+                  ) : (
+                    <Footprints className="w-6 h-6 text-accent-foreground" />
+                  )}
+                </div>
+                <div>
+                  <p className="font-semibold text-foreground">
+                    {hasSteps ? 'Steps Logged!' : 'Log Your Steps'}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    {hasSteps
+                      ? `${todayStepLog.step_count.toLocaleString()} steps`
+                      : 'No steps logged yet'}
+                  </p>
+                </div>
+              </div>
+              {hasSteps && (
+                <div className="w-6 h-6 rounded-full bg-success flex items-center justify-center">
+                  <Check className="w-4 h-4 text-success-foreground" />
+                </div>
+              )}
+            </div>
+
+            <div className="flex gap-2">
+              <input
+                type="number"
+                inputMode="numeric"
+                placeholder={hasSteps ? String(todayStepLog.step_count) : 'Enter step count'}
+                value={stepCount}
+                onChange={(e) => setStepCount(e.target.value)}
+                className="flex-1 h-10 rounded-md border border-input bg-background px-3 py-2 text-base ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+              />
+              <Button
+                onClick={handleStepSave}
+                disabled={stepLoading || !stepCount}
+                variant={hasSteps ? "outline" : "default"}
+              >
+                <Footprints className="w-4 h-4 mr-2" />
+                {hasSteps ? 'Update' : 'Log Steps'}
+              </Button>
+            </div>
+          </motion.div>
         </div>
       </div>
 
@@ -403,13 +452,13 @@ export const ClientDashboard = () => {
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.25 }}
+          transition={{ delay: 0.3 }}
           className="grid grid-cols-3 gap-3"
         >
           <div className="bg-card rounded-2xl p-4 text-center border border-border">
-            <Clock className="w-5 h-5 text-primary mx-auto mb-2" />
-            <p className="text-2xl font-bold text-foreground">0</p>
-            <p className="text-xs text-muted-foreground">Minutes</p>
+            <Footprints className="w-5 h-5 text-primary mx-auto mb-2" />
+            <p className="text-2xl font-bold text-foreground">{hasSteps ? todayStepLog.step_count.toLocaleString() : '0'}</p>
+            <p className="text-xs text-muted-foreground">Steps</p>
           </div>
           <div className="bg-card rounded-2xl p-4 text-center border border-border">
             <Flame className="w-5 h-5 text-primary mx-auto mb-2" />
@@ -419,7 +468,7 @@ export const ClientDashboard = () => {
           <div className="bg-card rounded-2xl p-4 text-center border border-border">
             <Trophy className="w-5 h-5 text-primary mx-auto mb-2" />
             <p className="text-2xl font-bold text-foreground">
-              {(workoutComplete ? 1 : 0) + (hasFoodLogs ? 1 : 0)}
+              {(workoutComplete ? 1 : 0) + (hasFoodLogs ? 1 : 0) + (hasSteps ? 1 : 0)}
             </p>
             <p className="text-xs text-muted-foreground">Tasks Done</p>
           </div>
