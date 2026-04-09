@@ -1,7 +1,7 @@
 import { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { format, addDays, subDays, startOfDay, isSameDay, isAfter, isBefore, differenceInDays, getDaysInMonth, startOfMonth } from 'date-fns';
-import { ChevronLeft, ChevronRight, Plus, Dumbbell, Check, Clock, X, AlertCircle, Utensils, UserPlus, Share2, Eye, Footprints } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Plus, Dumbbell, Check, Clock, X, AlertCircle, Utensils, UserPlus, Share2, Eye, Footprints, CalendarOff, UserX, Palmtree } from 'lucide-react';
 import { useProfile } from '@/hooks/useProfile';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -44,12 +44,20 @@ interface Client {
   full_name?: string | null;
 }
 
+interface DayMark {
+  id: string;
+  client_id: string;
+  mark_date: string;
+  mark_type: 'trainer_leave' | 'client_leave' | 'holiday';
+}
+
 const Calendar = () => {
   const { profile, isTrainer } = useProfile();
   const queryClient = useQueryClient();
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [showClientSheet, setShowClientSheet] = useState(false);
   const [showClientActionSheet, setShowClientActionSheet] = useState(false);
+  const [showTrainerActionSheet, setShowTrainerActionSheet] = useState(false);
   const [showWorkoutModal, setShowWorkoutModal] = useState(false);
   const [showTrainerWorkoutModal, setShowTrainerWorkoutModal] = useState(false);
   const [showFoodModal, setShowFoodModal] = useState(false);
@@ -61,6 +69,7 @@ const Calendar = () => {
   const [stepLoading, setStepLoading] = useState(false);
   const [existingStepLog, setExistingStepLog] = useState<{ id: string; step_count: number } | null>(null);
   const [showStepModal, setShowStepModal] = useState(false);
+  const [dayMarkLoading, setDayMarkLoading] = useState(false);
 
   // Subscription access for trainers
   const { isReadOnly: subscriptionReadOnly, reason: subscriptionReason } = useSubscriptionAccess();
@@ -111,7 +120,6 @@ const Calendar = () => {
     queryFn: async () => {
       if (!profile) return [];
       
-      // Use secure RPC that returns only non-sensitive client data
       const { data, error } = await supabase.rpc('get_trainer_clients');
       
       if (error) throw error;
@@ -138,6 +146,24 @@ const Calendar = () => {
     enabled: !!selectedClientId && isTrainer,
   });
 
+  // Fetch day marks for selected client (trainer view) or own marks (client view)
+  const { data: dayMarks = [] } = useQuery({
+    queryKey: ['day-marks', isTrainer ? selectedClientId : profile?.id],
+    queryFn: async () => {
+      const clientId = isTrainer ? selectedClientId : profile?.id;
+      if (!clientId) return [];
+      
+      const { data, error } = await supabase
+        .from('day_marks')
+        .select('*')
+        .eq('client_id', clientId);
+      
+      if (error) throw error;
+      return data as DayMark[];
+    },
+    enabled: !!(isTrainer ? selectedClientId : profile?.id),
+  });
+
   // Generate all dates to display (previous cycle + current cycle + future)
   const allDates = useMemo(() => {
     const dates: { date: Date; section: 'past' | 'current' | 'future' }[] = [];
@@ -158,14 +184,13 @@ const Calendar = () => {
       });
     }
     
-    // Future - only the immediate next calendar month (e.g., if current is Jan, show Feb)
+    // Future - only the immediate next calendar month
     const currentMonth = today.getMonth();
     const currentYear = today.getFullYear();
     const nextMonth = currentMonth + 1;
     const nextMonthYear = nextMonth > 11 ? currentYear + 1 : currentYear;
     const nextMonthNormalized = nextMonth > 11 ? 0 : nextMonth;
     
-    // Get all days in the next calendar month
     const nextMonthStart = new Date(nextMonthYear, nextMonthNormalized, 1);
     const nextMonthEnd = new Date(nextMonthYear, nextMonthNormalized + 1, 0);
     const daysInNextMonth = nextMonthEnd.getDate();
@@ -184,11 +209,14 @@ const Calendar = () => {
     return workoutList.find(w => isSameDay(new Date(w.date), date));
   };
 
+  const getDayMarkForDate = (date: Date): DayMark | undefined => {
+    return dayMarks.find(m => isSameDay(new Date(m.mark_date), date));
+  };
+
   const getStatusStyles = (status?: string) => {
     switch (status) {
       case 'completed':
         return {
-          // Responsive icon size: smaller on mobile, larger on desktop
           icon: <Check className="w-2.5 h-2.5 sm:w-3.5 sm:h-3.5" />,
           bg: 'bg-success',
           text: 'text-success-foreground',
@@ -216,11 +244,43 @@ const Calendar = () => {
     }
   };
 
+  const getDayMarkStyles = (markType: string) => {
+    switch (markType) {
+      case 'client_leave':
+        return {
+          label: 'CL',
+          cellBg: 'bg-destructive/20 border-destructive/40',
+          chipBg: 'bg-destructive',
+          chipText: 'text-destructive-foreground',
+        };
+      case 'trainer_leave':
+        return {
+          label: 'TL',
+          cellBg: 'bg-muted border-muted-foreground/30',
+          chipBg: 'bg-muted-foreground/50',
+          chipText: 'text-muted-foreground',
+        };
+      case 'holiday':
+        return {
+          label: 'HL',
+          cellBg: 'bg-muted border-muted-foreground/30',
+          chipBg: 'bg-muted-foreground/50',
+          chipText: 'text-muted-foreground',
+        };
+      default:
+        return null;
+    }
+  };
+
   // Check if a date is within the editable window (T-7 days)
   const isDateEditable = (date: Date): boolean => {
     const daysDiff = differenceInDays(today, date);
-    // Editable if: today or in the past up to 7 days, or future dates
     return daysDiff <= 7 && daysDiff >= 0 || isAfter(date, today);
+  };
+
+  // Check if a date is today or future (for trainer day marks)
+  const isDateTodayOrFuture = (date: Date): boolean => {
+    return isSameDay(date, today) || isAfter(date, today);
   };
 
   const handleDateClick = async (date: Date) => {
@@ -232,50 +292,8 @@ const Calendar = () => {
         return;
       }
       
-      // Fetch existing exercises for this date
-      const workout = getWorkoutForDate(date, clientWorkouts);
-      if (workout) {
-        const { data: exercises, error } = await supabase
-          .from('exercises')
-          .select('*')
-          .eq('workout_id', workout.id);
-        
-        if (!error && exercises) {
-          // Check if client has logged actual values
-          const hasActualValues = exercises.some(ex => 
-            ex.actual_sets !== null || ex.actual_reps !== null || ex.actual_weight !== null
-          );
-          setClientHasLogged(hasActualValues);
-          
-          // Group exercises by name with their sets (only trainer-planned sets)
-          const exerciseMap = new Map<string, { weight: number; reps: number }[]>();
-          exercises.forEach(ex => {
-            const name = ex.exercise_name.trim();
-            const isPlannedSet =
-              ex.recommended_sets !== null ||
-              ex.recommended_reps !== null ||
-              ex.recommended_weight !== null;
-
-            if (!name || !isPlannedSet) return;
-
-            const sets = exerciseMap.get(name) || [];
-            sets.push({
-              weight: ex.recommended_weight ?? 0,
-              reps: ex.recommended_reps ?? 0,
-            });
-            exerciseMap.set(name, sets);
-          });
-          
-          setExistingExercises(
-            Array.from(exerciseMap.entries()).map(([name, sets]) => ({ name, sets }))
-          );
-        }
-      } else {
-        setExistingExercises([]);
-        setClientHasLogged(false);
-      }
-      
-      setShowTrainerWorkoutModal(true);
+      // Show the trainer action sheet instead of jumping to workout modal
+      setShowTrainerActionSheet(true);
     } else {
       // Client view - fetch trainer-assigned exercises for this date
       const workout = getWorkoutForDate(date);
@@ -286,7 +304,6 @@ const Calendar = () => {
           .eq('workout_id', workout.id);
         
         if (!error && exercises) {
-          // Group exercises by name with their recommended sets (ignore client-only logged rows)
           const exerciseMap = new Map<string, { weight: number; reps: number }[]>();
           exercises.forEach(ex => {
             const name = ex.exercise_name.trim();
@@ -321,26 +338,227 @@ const Calendar = () => {
     }
   };
 
+  // Handler for when trainer clicks "Log Workout" from the action sheet
+  const handleTrainerLogWorkout = async () => {
+    if (!selectedDate || !selectedClientId) return;
+    
+    const workout = getWorkoutForDate(selectedDate, clientWorkouts);
+    if (workout) {
+      const { data: exercises, error } = await supabase
+        .from('exercises')
+        .select('*')
+        .eq('workout_id', workout.id);
+      
+      if (!error && exercises) {
+        const hasActualValues = exercises.some(ex => 
+          ex.actual_sets !== null || ex.actual_reps !== null || ex.actual_weight !== null
+        );
+        setClientHasLogged(hasActualValues);
+        
+        const exerciseMap = new Map<string, { weight: number; reps: number }[]>();
+        exercises.forEach(ex => {
+          const name = ex.exercise_name.trim();
+          const isPlannedSet =
+            ex.recommended_sets !== null ||
+            ex.recommended_reps !== null ||
+            ex.recommended_weight !== null;
+
+          if (!name || !isPlannedSet) return;
+
+          const sets = exerciseMap.get(name) || [];
+          sets.push({
+            weight: ex.recommended_weight ?? 0,
+            reps: ex.recommended_reps ?? 0,
+          });
+          exerciseMap.set(name, sets);
+        });
+        
+        setExistingExercises(
+          Array.from(exerciseMap.entries()).map(([name, sets]) => ({ name, sets }))
+        );
+      }
+    } else {
+      setExistingExercises([]);
+      setClientHasLogged(false);
+    }
+    
+    setShowTrainerActionSheet(false);
+    setShowTrainerWorkoutModal(true);
+  };
+
+  // Handler for when trainer clicks "Log Food" from the action sheet
+  const handleTrainerLogFood = () => {
+    setShowTrainerActionSheet(false);
+    setShowFoodModal(true);
+  };
+
+  // Handler for day marks (TL/CL/HL)
+  const handleDayMark = async (markType: 'trainer_leave' | 'client_leave' | 'holiday') => {
+    if (!selectedDate || !selectedClientId || !profile) return;
+    
+    if (!isDateTodayOrFuture(selectedDate)) {
+      toast.error('Day marks can only be set for today or future dates');
+      return;
+    }
+
+    setDayMarkLoading(true);
+    try {
+      const dateStr = format(selectedDate, 'yyyy-MM-dd');
+      const existingMark = getDayMarkForDate(selectedDate);
+
+      // If same mark exists, remove it (toggle off)
+      if (existingMark && existingMark.mark_type === markType) {
+        // Reverse the effect before deleting
+        await reverseDayMarkEffect(existingMark);
+        
+        const { error } = await supabase
+          .from('day_marks')
+          .delete()
+          .eq('id', existingMark.id);
+        if (error) throw error;
+        
+        toast.success('Day mark removed');
+      } else {
+        // If different mark exists, reverse its effect and delete it first
+        if (existingMark) {
+          await reverseDayMarkEffect(existingMark);
+          
+          const { error: delError } = await supabase
+            .from('day_marks')
+            .delete()
+            .eq('id', existingMark.id);
+          if (delError) throw delError;
+        }
+
+        // Insert new mark
+        const { error } = await supabase
+          .from('day_marks')
+          .insert({
+            trainer_id: profile.id,
+            client_id: selectedClientId,
+            mark_date: dateStr,
+            mark_type: markType,
+          });
+        if (error) throw error;
+
+        // Apply the effect
+        await applyDayMarkEffect(markType, selectedClientId);
+
+        const labels: Record<string, string> = {
+          trainer_leave: 'Trainer Leave',
+          client_leave: 'Client Leave',
+          holiday: 'Holiday',
+        };
+        toast.success(`${labels[markType]} marked`);
+      }
+
+      queryClient.invalidateQueries({ queryKey: ['day-marks', selectedClientId] });
+      queryClient.invalidateQueries({ queryKey: ['client-workouts', selectedClientId] });
+      setShowTrainerActionSheet(false);
+    } catch (error) {
+      logError('Calendar.handleDayMark', error);
+      toast.error('Failed to set day mark');
+    } finally {
+      setDayMarkLoading(false);
+    }
+  };
+
+  // Apply session impact for a day mark
+  const applyDayMarkEffect = async (markType: string, clientId: string) => {
+    if (markType === 'client_leave') {
+      // CL: increment missed_sessions on active plan
+      const { data: plan } = await supabase
+        .from('client_training_plans')
+        .select('id, missed_sessions')
+        .eq('client_id', clientId)
+        .eq('status', 'active')
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      
+      if (plan) {
+        await supabase
+          .from('client_training_plans')
+          .update({ missed_sessions: (plan.missed_sessions || 0) + 1 })
+          .eq('id', plan.id);
+      }
+    } else if (markType === 'trainer_leave') {
+      // TL: extend end_date of active plan by 1 day
+      const { data: plan } = await supabase
+        .from('client_training_plans')
+        .select('id, end_date')
+        .eq('client_id', clientId)
+        .eq('status', 'active')
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      
+      if (plan) {
+        const newEndDate = format(addDays(new Date(plan.end_date), 1), 'yyyy-MM-dd');
+        await supabase
+          .from('client_training_plans')
+          .update({ end_date: newEndDate })
+          .eq('id', plan.id);
+      }
+    }
+    // HL: no plan changes
+  };
+
+  // Reverse the effect of a day mark (when removing/changing)
+  const reverseDayMarkEffect = async (mark: DayMark) => {
+    if (mark.mark_type === 'client_leave') {
+      const { data: plan } = await supabase
+        .from('client_training_plans')
+        .select('id, missed_sessions')
+        .eq('client_id', mark.client_id)
+        .eq('status', 'active')
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      
+      if (plan && (plan.missed_sessions || 0) > 0) {
+        await supabase
+          .from('client_training_plans')
+          .update({ missed_sessions: (plan.missed_sessions || 0) - 1 })
+          .eq('id', plan.id);
+      }
+    } else if (mark.mark_type === 'trainer_leave') {
+      const { data: plan } = await supabase
+        .from('client_training_plans')
+        .select('id, end_date')
+        .eq('client_id', mark.client_id)
+        .eq('status', 'active')
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      
+      if (plan) {
+        const newEndDate = format(subDays(new Date(plan.end_date), 1), 'yyyy-MM-dd');
+        await supabase
+          .from('client_training_plans')
+          .update({ end_date: newEndDate })
+          .eq('id', plan.id);
+      }
+    }
+  };
+
   const handleTrainerWorkoutSave = async (exercises: { name: string; sets: { weight: number; reps: number }[] }[]) => {
     if (!selectedClientId || !selectedDate) return;
 
     try {
       const dateStr = format(selectedDate, 'yyyy-MM-dd');
       
-      // Check if workout exists for this date
       const existingWorkout = getWorkoutForDate(selectedDate, clientWorkouts);
       let workoutId: string;
       
       if (existingWorkout) {
         workoutId = existingWorkout.id;
         
-        // Delete existing exercises for this workout
         await supabase
           .from('exercises')
           .delete()
           .eq('workout_id', workoutId);
       } else {
-        // Create new workout
         const { data: newWorkout, error: workoutError } = await supabase
           .from('workouts')
           .insert({
@@ -355,7 +573,6 @@ const Calendar = () => {
         workoutId = newWorkout.id;
       }
 
-      // Insert exercises with recommended values (each set as a separate row)
       const normalizedExercises = exercises
         .map(ex => ({ ...ex, name: ex.name.trim() }))
         .filter(ex => ex.name.length > 0);
@@ -364,7 +581,7 @@ const Calendar = () => {
         ex.sets.map(set => ({
           workout_id: workoutId,
           exercise_name: ex.name,
-          recommended_sets: 1, // Each row represents one set
+          recommended_sets: 1,
           recommended_reps: set.reps,
           recommended_weight: set.weight,
         }))
@@ -424,7 +641,6 @@ const Calendar = () => {
         workoutId = newWorkout.id;
       }
 
-      // Remove any previous client-only log rows for this workout (these caused duplicate/blank sets in UI)
       const { error: cleanupError } = await supabase
         .from('exercises')
         .delete()
@@ -432,7 +648,6 @@ const Calendar = () => {
         .is('recommended_sets', null);
       if (cleanupError) throw cleanupError;
 
-      // Fetch trainer-planned rows (if any) so we can update them with actual values instead of inserting duplicates
       const { data: plannedRows, error: plannedError } = await supabase
         .from('exercises')
         .select('id, exercise_name, recommended_sets, created_at')
@@ -460,7 +675,6 @@ const Calendar = () => {
       const updates: { id: string; sets: number; reps: number; weight: number }[] = [];
       const inserts: { workout_id: string; exercise_name: string; actual_sets: number; actual_reps: number; actual_weight: number }[] = [];
 
-      // Update planned rows first (best UX: client fills in the trainer plan)
       for (const [name, planned] of plannedByName.entries()) {
         const actual = actualByName.get(name) || [];
 
@@ -469,7 +683,6 @@ const Calendar = () => {
           updates.push({ id: planned[i].id, ...actual[i] });
         }
 
-        // Extra actual sets beyond the plan become additional rows
         for (let i = count; i < actual.length; i++) {
           inserts.push({
             workout_id: workoutId,
@@ -483,7 +696,6 @@ const Calendar = () => {
         actualByName.delete(name);
       }
 
-      // Any remaining exercises were client-added (no trainer plan) — insert them
       for (const [name, actual] of actualByName.entries()) {
         actual.forEach(set => {
           inserts.push({
@@ -496,7 +708,6 @@ const Calendar = () => {
         });
       }
 
-      // Apply updates
       if (updates.length > 0) {
         const results = await Promise.all(
           updates.map(u =>
@@ -514,7 +725,6 @@ const Calendar = () => {
         if (updateError) throw updateError;
       }
 
-      // Insert extras/client-only rows
       if (inserts.length > 0) {
         const { error: exerciseError } = await supabase
           .from('exercises')
@@ -540,13 +750,17 @@ const Calendar = () => {
     carbs: number;
     fat: number;
   }) => {
-    if (!profile || !selectedDate) return;
+    if (!selectedDate) return;
+    
+    // For trainer view, use selectedClientId; for client view, use profile.id
+    const clientId = isTrainer ? selectedClientId : profile?.id;
+    if (!clientId) return;
 
     try {
       const { error } = await supabase
         .from('food_logs')
         .insert({
-          client_id: profile.id,
+          client_id: clientId,
           logged_date: format(selectedDate, 'yyyy-MM-dd'),
           meal_type: data.mealType,
           raw_text: data.rawText,
@@ -561,6 +775,7 @@ const Calendar = () => {
       toast.success('Food logged successfully!');
       setShowFoodModal(false);
       setShowClientActionSheet(false);
+      setShowTrainerActionSheet(false);
     } catch (error) {
       logError('Calendar.handleFoodSave', error);
       toast.error('Failed to save food log');
@@ -663,7 +878,6 @@ const Calendar = () => {
       if (lastAutoScrollKeyRef.current === scrollKey) return;
       lastAutoScrollKeyRef.current = scrollKey;
 
-      // Wait for layout + framer-motion initial positioning to settle.
       requestAnimationFrame(() => {
         requestAnimationFrame(() => {
           centerScrollToNode(node);
@@ -828,11 +1042,26 @@ const Calendar = () => {
                   {/* Date Cells */}
                   {sectionDates.map(({ date }) => {
                     const workout = getWorkoutForDate(date, displayWorkouts);
+                    const dayMark = getDayMarkForDate(date);
                     const isToday = isSameDay(date, today);
                     const isPast = isBefore(date, today);
                     const hasWorkout = !!workout;
                     const isSelected = selectedDate && isSameDay(date, selectedDate);
                     const statusStyles = getStatusStyles(workout?.status);
+                    const markStyles = dayMark ? getDayMarkStyles(dayMark.mark_type) : null;
+
+                    // Day marks take visual priority over workout status
+                    const cellBgClass = isToday
+                      ? 'bg-primary text-primary-foreground ring-2 ring-primary ring-offset-2 ring-offset-background border-primary'
+                      : isSelected
+                        ? 'bg-secondary ring-2 ring-primary/50 border-primary/50'
+                        : markStyles
+                          ? markStyles.cellBg
+                          : hasWorkout && statusStyles
+                            ? statusStyles.cellBg
+                            : isPast && section === 'past'
+                              ? 'bg-muted/50 text-muted-foreground border-transparent'
+                              : 'bg-card hover:bg-secondary text-foreground border-transparent hover:border-border';
 
                     return (
                       <motion.button
@@ -843,31 +1072,40 @@ const Calendar = () => {
                         className={`
                           relative aspect-square rounded-xl flex flex-col items-center justify-center
                           transition-all duration-200 text-sm font-medium border-2
-                          ${isToday 
-                            ? 'bg-primary text-primary-foreground ring-2 ring-primary ring-offset-2 ring-offset-background border-primary' 
-                            : isSelected
-                              ? 'bg-secondary ring-2 ring-primary/50 border-primary/50'
-                              : hasWorkout && statusStyles
-                                ? statusStyles.cellBg
-                                : isPast && section === 'past'
-                                  ? 'bg-muted/50 text-muted-foreground border-transparent'
-                                  : 'bg-card hover:bg-secondary text-foreground border-transparent hover:border-border'
-                          }
+                          ${cellBgClass}
                         `}
                       >
-                        <span className={`${isToday ? 'font-bold' : ''} ${hasWorkout && !isToday ? 'mb-0.5' : ''}`}>
+                        <span className={`${isToday ? 'font-bold' : ''} ${(hasWorkout || dayMark) && !isToday ? 'mb-0.5' : ''}`}>
                           {format(date, 'd')}
                         </span>
                         
-                        {/* Workout Status Indicator - Responsive dot size */}
-                        {hasWorkout && statusStyles && !isToday && (
+                        {/* Day Mark Chip - takes priority over workout status */}
+                        {dayMark && markStyles && !isToday && (
+                          <div className={`absolute bottom-0.5 sm:bottom-1 rounded-full px-1 py-0.5 ${markStyles.chipBg}`}>
+                            <span className={`text-[8px] sm:text-[9px] font-bold ${markStyles.chipText}`}>
+                              {markStyles.label}
+                            </span>
+                          </div>
+                        )}
+
+                        {/* Day mark on today */}
+                        {dayMark && markStyles && isToday && (
+                          <div className="absolute bottom-0.5">
+                            <span className="text-[8px] font-bold text-primary-foreground">
+                              {markStyles.label}
+                            </span>
+                          </div>
+                        )}
+                        
+                        {/* Workout Status Indicator - only if no day mark */}
+                        {!dayMark && hasWorkout && statusStyles && !isToday && (
                           <div className={`absolute bottom-0.5 sm:bottom-1 rounded-full p-0.5 sm:p-1 ${statusStyles.bg} ${statusStyles.text}`}>
                             {statusStyles.icon}
                           </div>
                         )}
                         
-                        {/* Workout indicator on today */}
-                        {hasWorkout && isToday && (
+                        {/* Workout indicator on today - only if no day mark */}
+                        {!dayMark && hasWorkout && isToday && (
                           <div className="absolute bottom-1">
                             <Dumbbell className="w-3 h-3 text-primary-foreground" />
                           </div>
@@ -899,12 +1137,178 @@ const Calendar = () => {
                     </div>
                     <span className="text-xs text-muted-foreground">Pending</span>
                   </div>
+                  {/* Day mark legends - show for trainers or if marks exist */}
+                  {(isTrainer || dayMarks.length > 0) && (
+                    <>
+                      <div className="flex items-center gap-1.5">
+                        <div className="w-5 h-5 rounded-full bg-muted-foreground/50 flex items-center justify-center">
+                          <span className="text-[8px] font-bold text-muted-foreground">TL</span>
+                        </div>
+                        <span className="text-xs text-muted-foreground">Trainer Leave</span>
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        <div className="w-5 h-5 rounded-full bg-destructive flex items-center justify-center">
+                          <span className="text-[8px] font-bold text-destructive-foreground">CL</span>
+                        </div>
+                        <span className="text-xs text-muted-foreground">Client Leave</span>
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        <div className="w-5 h-5 rounded-full bg-muted-foreground/50 flex items-center justify-center">
+                          <span className="text-[8px] font-bold text-muted-foreground">HL</span>
+                        </div>
+                        <span className="text-xs text-muted-foreground">Holiday</span>
+                      </div>
+                    </>
+                  )}
                 </div>
               )}
             </motion.div>
           );
         })}
       </div>
+
+      {/* Trainer Action Sheet */}
+      {isTrainer && (
+        <Sheet open={showTrainerActionSheet} onOpenChange={setShowTrainerActionSheet}>
+          <SheetContent side="bottom" className="rounded-t-3xl">
+            <SheetHeader className="pb-4">
+              <SheetTitle>
+                {selectedDate && (
+                  <span className="flex items-center gap-2">
+                    <Dumbbell className="w-5 h-5 text-primary" />
+                    {format(selectedDate, 'EEEE, MMMM d')}
+                  </span>
+                )}
+              </SheetTitle>
+            </SheetHeader>
+            
+            {(() => {
+              const canMark = selectedDate ? isDateTodayOrFuture(selectedDate) : false;
+              const existingMark = selectedDate ? getDayMarkForDate(selectedDate) : null;
+
+              return (
+                <div className="space-y-4">
+                  {/* Existing day mark indicator */}
+                  {existingMark && (
+                    <div className={`p-3 rounded-xl border ${
+                      existingMark.mark_type === 'client_leave' 
+                        ? 'bg-destructive/10 border-destructive/30' 
+                        : 'bg-muted border-muted-foreground/30'
+                    }`}>
+                      <p className="text-sm font-medium text-foreground">
+                        {existingMark.mark_type === 'trainer_leave' && '🏖️ Trainer Leave marked'}
+                        {existingMark.mark_type === 'client_leave' && '🚫 Client Leave marked'}
+                        {existingMark.mark_type === 'holiday' && '🎉 Holiday marked'}
+                      </p>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Tap the same button below to remove this mark.
+                      </p>
+                    </div>
+                  )}
+
+                  {/* Primary Actions */}
+                  <div className="grid grid-cols-2 gap-3">
+                    <motion.button
+                      whileTap={{ scale: 0.95 }}
+                      onClick={handleTrainerLogWorkout}
+                      disabled={subscriptionReadOnly}
+                      className="flex flex-col items-center gap-2 p-4 rounded-2xl bg-card border-2 border-border hover:border-primary/50 transition-colors disabled:opacity-50"
+                    >
+                      <div className="w-12 h-12 rounded-full bg-primary/20 flex items-center justify-center">
+                        <Dumbbell className="w-6 h-6 text-primary" />
+                      </div>
+                      <div className="text-center">
+                        <p className="font-semibold text-foreground text-sm">Log Workout</p>
+                        <p className="text-xs text-muted-foreground">Plan exercises</p>
+                      </div>
+                    </motion.button>
+
+                    <motion.button
+                      whileTap={{ scale: 0.95 }}
+                      onClick={handleTrainerLogFood}
+                      disabled={subscriptionReadOnly}
+                      className="flex flex-col items-center gap-2 p-4 rounded-2xl bg-card border-2 border-border hover:border-primary/50 transition-colors disabled:opacity-50"
+                    >
+                      <div className="w-12 h-12 rounded-full bg-success/20 flex items-center justify-center">
+                        <Utensils className="w-6 h-6 text-success" />
+                      </div>
+                      <div className="text-center">
+                        <p className="font-semibold text-foreground text-sm">Log Food</p>
+                        <p className="text-xs text-muted-foreground">Track nutrition</p>
+                      </div>
+                    </motion.button>
+                  </div>
+
+                  {/* Day Mark Actions - smaller buttons */}
+                  {canMark && !subscriptionReadOnly && (
+                    <div className="space-y-2">
+                      <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">Day Status</p>
+                      <div className="grid grid-cols-3 gap-2">
+                        <Button
+                          variant={existingMark?.mark_type === 'trainer_leave' ? 'default' : 'outline'}
+                          size="sm"
+                          onClick={() => handleDayMark('trainer_leave')}
+                          disabled={dayMarkLoading}
+                          className={`text-xs h-10 ${
+                            existingMark?.mark_type === 'trainer_leave'
+                              ? 'bg-muted-foreground/50 hover:bg-muted-foreground/60 text-foreground'
+                              : 'border-muted-foreground/30 text-muted-foreground hover:bg-muted'
+                          }`}
+                        >
+                          <CalendarOff className="w-3.5 h-3.5 mr-1" />
+                          TL
+                        </Button>
+                        <Button
+                          variant={existingMark?.mark_type === 'client_leave' ? 'destructive' : 'outline'}
+                          size="sm"
+                          onClick={() => handleDayMark('client_leave')}
+                          disabled={dayMarkLoading}
+                          className={`text-xs h-10 ${
+                            existingMark?.mark_type !== 'client_leave'
+                              ? 'border-destructive/50 text-destructive hover:bg-destructive/10'
+                              : ''
+                          }`}
+                        >
+                          <UserX className="w-3.5 h-3.5 mr-1" />
+                          CL
+                        </Button>
+                        <Button
+                          variant={existingMark?.mark_type === 'holiday' ? 'default' : 'outline'}
+                          size="sm"
+                          onClick={() => handleDayMark('holiday')}
+                          disabled={dayMarkLoading}
+                          className={`text-xs h-10 ${
+                            existingMark?.mark_type === 'holiday'
+                              ? 'bg-muted-foreground/50 hover:bg-muted-foreground/60 text-foreground'
+                              : 'border-muted-foreground/30 text-muted-foreground hover:bg-muted'
+                          }`}
+                        >
+                          <Palmtree className="w-3.5 h-3.5 mr-1" />
+                          HL
+                        </Button>
+                      </div>
+                      <div className="text-[10px] text-muted-foreground space-y-0.5">
+                        <p><span className="font-medium">TL</span> = Trainer Leave (session shifts ahead)</p>
+                        <p><span className="font-medium">CL</span> = Client Leave (session consumed)</p>
+                        <p><span className="font-medium">HL</span> = Holiday (no impact)</p>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Past date notice for day marks */}
+                  {!canMark && (
+                    <div className="p-3 rounded-xl bg-muted border border-border">
+                      <p className="text-xs text-muted-foreground">
+                        Day marks can only be set for today or future dates.
+                      </p>
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
+          </SheetContent>
+        </Sheet>
+      )}
 
       {/* Client Action Sheet - Log Workout or Food */}
       {!isTrainer && (
@@ -923,10 +1327,31 @@ const Calendar = () => {
             
             {(() => {
               const workout = selectedDate ? getWorkoutForDate(selectedDate) : null;
+              const dayMark = selectedDate ? getDayMarkForDate(selectedDate) : null;
               const canEdit = selectedDate ? isDateEditable(selectedDate) : false;
               
               return (
                 <div className="space-y-4">
+                  {/* Day mark notice for clients */}
+                  {dayMark && (
+                    <div className={`p-4 rounded-xl border ${
+                      dayMark.mark_type === 'client_leave' 
+                        ? 'bg-destructive/10 border-destructive/30' 
+                        : 'bg-muted border-muted-foreground/30'
+                    }`}>
+                      <p className="font-semibold text-foreground text-sm">
+                        {dayMark.mark_type === 'trainer_leave' && '🏖️ Trainer Leave'}
+                        {dayMark.mark_type === 'client_leave' && '🚫 Client Leave'}
+                        {dayMark.mark_type === 'holiday' && '🎉 Holiday'}
+                      </p>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        {dayMark.mark_type === 'trainer_leave' && 'Your trainer is on leave. Session validity extended.'}
+                        {dayMark.mark_type === 'client_leave' && 'Marked as your leave. Session counted.'}
+                        {dayMark.mark_type === 'holiday' && 'Holiday. No session scheduled.'}
+                      </p>
+                    </div>
+                  )}
+
                   {/* View-Only Notice for old dates */}
                   {!canEdit && (
                     <div className="p-4 rounded-xl bg-muted border border-border">

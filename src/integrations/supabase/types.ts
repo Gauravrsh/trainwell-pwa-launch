@@ -98,6 +98,48 @@ export type Database = {
           },
         ]
       }
+      day_marks: {
+        Row: {
+          client_id: string
+          created_at: string | null
+          id: string
+          mark_date: string
+          mark_type: string
+          trainer_id: string
+        }
+        Insert: {
+          client_id: string
+          created_at?: string | null
+          id?: string
+          mark_date: string
+          mark_type: string
+          trainer_id: string
+        }
+        Update: {
+          client_id?: string
+          created_at?: string | null
+          id?: string
+          mark_date?: string
+          mark_type?: string
+          trainer_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "day_marks_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "day_marks_trainer_id_fkey"
+            columns: ["trainer_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       exercises: {
         Row: {
           actual_reps: number | null
