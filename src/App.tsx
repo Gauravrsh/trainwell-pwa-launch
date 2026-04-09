@@ -9,6 +9,7 @@ import { useProfile } from "@/hooks/useProfile";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { AnimatePresence } from "framer-motion";
 import SplashScreen from "@/components/SplashScreen";
+import ErrorBoundary from "@/components/ErrorBoundary";
 import Auth from "./pages/Auth";
 import ResetPassword from "./pages/ResetPassword";
 import RoleSelection from "./pages/RoleSelection";
@@ -232,7 +233,7 @@ const AppContent = () => {
       <AnimatePresence mode="wait">
         {showSplash && <SplashScreen key="splash" />}
       </AnimatePresence>
-      {!showSplash && <AppRoutes />}
+      {!showSplash && <ErrorBoundary><AppRoutes /></ErrorBoundary>}
     </>
   );
 };
