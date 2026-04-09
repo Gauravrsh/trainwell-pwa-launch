@@ -825,6 +825,11 @@ const Calendar = () => {
                     </div>
                   ))}
                   
+                  {/* Empty spacer cells for day-of-week offset */}
+                  {Array.from({ length: sectionDates[0]?.date.getDay() ?? 0 }).map((_, i) => (
+                    <div key={`spacer-${i}`} />
+                  ))}
+                  
                   {/* Date Cells */}
                   {sectionDates.map(({ date }) => {
                     const workout = getWorkoutForDate(date, displayWorkouts);
