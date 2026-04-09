@@ -748,6 +748,7 @@ const Calendar = () => {
       queryClient.invalidateQueries({ queryKey: ['workouts'] });
       setShowWorkoutModal(false);
       setShowClientActionSheet(false);
+      promptPushPermission();
     } catch (error) {
       logError('Calendar.handleWorkoutSave', error);
       toast.error('Failed to save workout');
@@ -788,6 +789,7 @@ const Calendar = () => {
       setShowFoodModal(false);
       setShowClientActionSheet(false);
       setShowTrainerActionSheet(false);
+      promptPushPermission();
     } catch (error) {
       logError('Calendar.handleFoodSave', error);
       toast.error('Failed to save food log');
@@ -839,6 +841,7 @@ const Calendar = () => {
       toast.success('Steps logged!');
       setExistingStepLog({ id: existingStepLog?.id || '', step_count: count });
       setShowStepModal(false);
+      promptPushPermission();
     } catch (error) {
       logError('Calendar.handleStepSave', error);
       toast.error('Failed to save steps');
