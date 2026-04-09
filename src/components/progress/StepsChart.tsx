@@ -1,6 +1,5 @@
 import { useMemo } from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ReferenceLine, ResponsiveContainer } from 'recharts';
-import { Footprints } from 'lucide-react';
 import { Progress } from '@/components/ui/progress';
 import { DailyProgress } from '@/hooks/useProgressData';
 import { format, parseISO } from 'date-fns';
@@ -22,6 +21,8 @@ export function StepsChart({ data }: StepsChartProps) {
     [data]
   );
 
+  const hasAnySteps = data.some(d => d.steps !== null);
+
   const latestLogged = useMemo(() => {
     for (let i = data.length - 1; i >= 0; i--) {
       if (data[i].steps !== null) return data[i];
@@ -34,53 +35,47 @@ export function StepsChart({ data }: StepsChartProps) {
   const estimatedKm = (latestSteps * 0.0008).toFixed(1);
   const estimatedKcal = Math.round(latestSteps * 0.04);
 
-  if (!data.some(d => d.steps !== null)) {
-    return (
-      <div className="h-64 flex flex-col items-center justify-center text-muted-foreground">
-        <Footprints className="w-12 h-12 mb-2 opacity-50" />
-        <p>No steps data</p>
-        <p className="text-sm">Start logging your daily steps</p>
-      </div>
-    );
-  }
-
   return (
     <div className="space-y-4">
       {/* Latest day summary */}
-      <div className="flex items-center justify-between">
-        <div>
-          <p className="text-3xl font-bold text-foreground">
-            {latestSteps.toLocaleString()}
-          </p>
-          <p className="text-xs text-muted-foreground">
-            {latestLogged ? format(parseISO(latestLogged.date), 'dd MMM yyyy') : '—'}
-          </p>
-        </div>
-        <div className="text-right text-xs text-muted-foreground">
-          <span>Goal: {STEP_TARGET.toLocaleString()}</span>
-        </div>
-      </div>
+      {hasAnySteps && (
+        <>
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-3xl font-bold text-foreground">
+                {latestSteps.toLocaleString()}
+              </p>
+              <p className="text-xs text-muted-foreground">
+                {latestLogged ? format(parseISO(latestLogged.date), 'dd MMM yyyy') : '—'}
+              </p>
+            </div>
+            <div className="text-right text-xs text-muted-foreground">
+              <span>Goal: {STEP_TARGET.toLocaleString()}</span>
+            </div>
+          </div>
 
-      {/* Progress bar */}
-      <Progress
-        value={progressPercent}
-        className="h-2 bg-muted"
-      />
+          {/* Progress bar */}
+          <Progress
+            value={progressPercent}
+            className="h-2 bg-muted"
+          />
 
-      {/* Derived metrics */}
-      <div className="flex items-center justify-around text-center">
-        <div>
-          <p className="text-lg font-semibold text-foreground">{estimatedKm}</p>
-          <p className="text-xs text-muted-foreground">km</p>
-        </div>
-        <div className="w-px h-8 bg-border" />
-        <div>
-          <p className="text-lg font-semibold text-foreground">{estimatedKcal}</p>
-          <p className="text-xs text-muted-foreground">kcal</p>
-        </div>
-      </div>
+          {/* Derived metrics */}
+          <div className="flex items-center justify-around text-center">
+            <div>
+              <p className="text-lg font-semibold text-foreground">{estimatedKm}</p>
+              <p className="text-xs text-muted-foreground">km</p>
+            </div>
+            <div className="w-px h-8 bg-border" />
+            <div>
+              <p className="text-lg font-semibold text-foreground">{estimatedKcal}</p>
+              <p className="text-xs text-muted-foreground">kcal</p>
+            </div>
+          </div>
+        </>
+      )}
 
-      {/* Bar chart */}
+      {/* Bar chart - always shown with axes */}
       <div className="h-56">
         <ResponsiveContainer width="100%" height="100%">
           <BarChart data={chartData} margin={{ top: 5, right: 5, left: -20, bottom: 5 }}>
@@ -89,14 +84,15 @@ export function StepsChart({ data }: StepsChartProps) {
               dataKey="label"
               tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 10 }}
               tickLine={false}
-              axisLine={false}
+              axisLine={{ stroke: 'hsl(var(--border))' }}
               interval="preserveStartEnd"
             />
             <YAxis
               tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 10 }}
               tickLine={false}
-              axisLine={false}
+              axisLine={{ stroke: 'hsl(var(--border))' }}
               tickFormatter={v => v >= 1000 ? `${(v / 1000).toFixed(0)}k` : v}
+              domain={hasAnySteps ? ['auto', 'auto'] : [0, 12000]}
             />
             <Tooltip
               contentStyle={{
@@ -130,6 +126,13 @@ export function StepsChart({ data }: StepsChartProps) {
           </BarChart>
         </ResponsiveContainer>
       </div>
+
+      {/* Prompt when no data */}
+      {!hasAnySteps && (
+        <p className="text-center text-sm text-muted-foreground">
+          Start logging your daily steps to see trends here
+        </p>
+      )}
     </div>
   );
 }
