@@ -60,6 +60,7 @@ const Calendar = () => {
   const [stepCount, setStepCount] = useState('');
   const [stepLoading, setStepLoading] = useState(false);
   const [existingStepLog, setExistingStepLog] = useState<{ id: string; step_count: number } | null>(null);
+  const [showStepLogger, setShowStepLogger] = useState(false);
 
   // Subscription access for trainers
   const { isReadOnly: subscriptionReadOnly, reason: subscriptionReason } = useSubscriptionAccess();
@@ -913,7 +914,7 @@ const Calendar = () => {
 
       {/* Client Action Sheet - Log Workout or Food */}
       {!isTrainer && (
-        <Sheet open={showClientActionSheet} onOpenChange={setShowClientActionSheet}>
+        <Sheet open={showClientActionSheet} onOpenChange={(open) => { setShowClientActionSheet(open); if (!open) setShowStepLogger(false); }}>
           <SheetContent side="bottom" className="rounded-t-3xl">
             <SheetHeader className="pb-4">
               <SheetTitle>
@@ -999,11 +1000,11 @@ const Calendar = () => {
 
                       <motion.button
                         whileTap={{ scale: 0.95 }}
-                        onClick={() => {/* Steps handled inline below */}}
-                        className="flex flex-col items-center gap-2 p-4 rounded-2xl bg-card border-2 border-border hover:border-accent/50 transition-colors"
+                        onClick={() => setShowStepLogger(prev => !prev)}
+                        className="flex flex-col items-center gap-2 p-4 rounded-2xl bg-card border-2 border-border hover:border-primary/50 transition-colors"
                       >
-                        <div className="w-12 h-12 rounded-full bg-accent/20 flex items-center justify-center">
-                          <Footprints className="w-6 h-6 text-accent-foreground" />
+                        <div className="w-12 h-12 rounded-full bg-primary/20 flex items-center justify-center">
+                          <Footprints className="w-6 h-6 text-primary" />
                         </div>
                         <div className="text-center">
                           <p className="font-semibold text-foreground text-sm">Log Steps</p>
@@ -1013,11 +1014,11 @@ const Calendar = () => {
                     </div>
                   )}
 
-                  {/* Inline Step Logger */}
-                  {canEdit && (
+                  {/* Step Logger - shown when tile is tapped */}
+                  {canEdit && showStepLogger && (
                     <div className="p-4 rounded-2xl bg-card border border-border">
                       <div className="flex items-center gap-2 mb-3">
-                        <Footprints className="w-5 h-5 text-accent-foreground" />
+                        <Footprints className="w-5 h-5 text-primary" />
                         <span className="font-semibold text-foreground text-sm">
                           {existingStepLog ? 'Update Steps' : 'Log Steps'}
                         </span>
