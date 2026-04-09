@@ -12,6 +12,8 @@ export interface DailyProgress {
   totalExpenditure: number;
   netDeficit: number;
   weight: number | null;
+  steps: number | null;
+  stepCalories: number;
   isMissed: boolean;
 }
 
@@ -50,7 +52,7 @@ export const useProgressData = (
       const endDateStr = format(endDate, 'yyyy-MM-dd');
 
       // Fetch all data in parallel
-      const [profileRes, foodLogsRes, workoutsRes, weightLogsRes] = await Promise.all([
+      const [profileRes, foodLogsRes, workoutsRes, weightLogsRes, stepLogsRes] = await Promise.all([
         supabase
           .from('profiles')
           .select('bmr, weight_kg')
@@ -75,12 +77,19 @@ export const useProgressData = (
           .gte('logged_date', startDateStr)
           .lte('logged_date', endDateStr)
           .order('logged_date', { ascending: true }),
+        supabase
+          .from('step_logs')
+          .select('logged_date, step_count, estimated_calories')
+          .eq('client_id', targetClientId)
+          .gte('logged_date', startDateStr)
+          .lte('logged_date', endDateStr),
       ]);
 
       if (profileRes.error) throw profileRes.error;
       if (foodLogsRes.error) throw foodLogsRes.error;
       if (workoutsRes.error) throw workoutsRes.error;
       if (weightLogsRes.error) throw weightLogsRes.error;
+      if (stepLogsRes.error) throw stepLogsRes.error;
 
       // Default BMR estimation if not set (Harris-Benedict rough estimate)
       const bmr = profileRes.data?.bmr || 1800;
@@ -105,6 +114,15 @@ export const useProgressData = (
         weightByDate[log.logged_date] = Number(log.weight_kg);
       });
 
+      // Map step logs by date
+      const stepsByDate: Record<string, { steps: number; calories: number }> = {};
+      stepLogsRes.data?.forEach((log) => {
+        stepsByDate[log.logged_date] = {
+          steps: log.step_count,
+          calories: log.estimated_calories || Math.round(log.step_count * 0.04),
+        };
+      });
+
       // Generate daily progress data
       const days = eachDayOfInterval({ start: startDate, end: endDate });
       const progressData: DailyProgress[] = days.map((day) => {
@@ -112,10 +130,13 @@ export const useProgressData = (
         const intake = foodByDate[dateStr] ?? null;
         const burnt = workoutsByDate[dateStr] ?? null;
         const weight = weightByDate[dateStr] ?? null;
+        const stepData = stepsByDate[dateStr];
+        const steps = stepData?.steps ?? null;
+        const stepCalories = stepData?.calories ?? 0;
         
-        const totalExpenditure = bmr + (burnt || 0);
+        const totalExpenditure = bmr + (burnt || 0) + stepCalories;
         const netDeficit = totalExpenditure - (intake || 0);
-        const isMissed = intake === null && burnt === null;
+        const isMissed = intake === null && burnt === null && steps === null;
 
         return {
           date: dateStr,
@@ -125,6 +146,8 @@ export const useProgressData = (
           totalExpenditure,
           netDeficit,
           weight,
+          steps,
+          stepCalories,
           isMissed,
         };
       });
