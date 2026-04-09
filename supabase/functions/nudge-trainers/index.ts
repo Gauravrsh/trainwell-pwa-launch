@@ -112,8 +112,8 @@ Deno.serve(async (req) => {
 
       const payload = {
         title: '100% logging not done',
-        body: 'Go to calendar to check which clients are yet to log',
-        data: { url: '/calendar' },
+        body: 'Remind your clients to log their workout, meals & steps for today',
+        data: { url: 'https://wa.me/?text=The%20day%20is%20still%20not%20over.%20We%20got%20work%20to%20be%20done.%20Please%20make%20sure%20all%20of%20your%20workout%20-%20meals%20-%20steps%20are%20logged%20for%20today.' },
       };
 
       for (const sub of subs) {

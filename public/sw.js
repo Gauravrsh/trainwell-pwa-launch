@@ -27,9 +27,15 @@ self.addEventListener('notificationclick', (event) => {
 
   const urlPath = event.notification.data?.url || '/calendar';
 
+  // External URLs (wa.me, https://) → open directly in new window
+  if (urlPath.startsWith('http')) {
+    event.waitUntil(clients.openWindow(urlPath));
+    return;
+  }
+
+  // Internal app paths → focus existing window or open new one
   event.waitUntil(
     clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
-      // Focus existing window if available
       for (const client of clientList) {
         if (client.url.includes(self.location.origin) && 'focus' in client) {
           client.focus();
@@ -37,7 +43,6 @@ self.addEventListener('notificationclick', (event) => {
           return;
         }
       }
-      // Open new window
       return clients.openWindow(urlPath);
     })
   );
