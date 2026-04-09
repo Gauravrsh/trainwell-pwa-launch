@@ -10,7 +10,7 @@ export default function LandingNav() {
         </Link>
         <div className="flex items-center gap-2">
           <Button asChild variant="ghost" size="sm" className="hidden sm:inline-flex">
-            <a href="#how-it-works">How It Works</a>
+            <Link to="/auth">Login</Link>
           </Button>
           <Button asChild size="sm" className="font-bold">
             <Link to="/auth">Start Free Trial</Link>

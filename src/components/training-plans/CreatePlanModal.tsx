@@ -159,11 +159,10 @@ export function CreatePlanModal({
           {/* Service Type */}
           <div className="space-y-2">
             <Label>Service Type</Label>
-            <div className="grid grid-cols-3 gap-2">
+            <div className="grid grid-cols-2 gap-3">
               {[
                 { value: 'workout', label: 'Workout', icon: Dumbbell, isBoth: false },
-                { value: 'nutrition', label: 'Nutrition', icon: Utensils, isBoth: false },
-                { value: 'both', label: 'Both', icon: null, isBoth: true },
+                { value: 'both', label: 'Workout & Nutrition', icon: null, isBoth: true },
               ].map(option => (
                 <motion.button
                   key={option.value}
