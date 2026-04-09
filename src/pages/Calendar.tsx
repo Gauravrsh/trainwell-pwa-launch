@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button';
 import { ClientWorkoutLogModal } from '@/components/modals/ClientWorkoutLogModal';
 import { TrainerWorkoutLogModal } from '@/components/modals/TrainerWorkoutLogModal';
 import { FoodLogModal } from '@/components/modals/FoodLogModal';
+import { StepLogModal } from '@/components/modals/StepLogModal';
 import { ClientFilter } from '@/components/calendar/ClientFilter';
 import { toast } from 'sonner';
 import { logError } from '@/lib/errorUtils';
@@ -57,10 +58,9 @@ const Calendar = () => {
   const [clientHasLogged, setClientHasLogged] = useState(false);
   const [clientTrainerExercises, setClientTrainerExercises] = useState<{ name: string; sets: { weight: number; reps: number }[] }[]>([]);
   const [showPlanModal, setShowPlanModal] = useState(false);
-  const [stepCount, setStepCount] = useState('');
   const [stepLoading, setStepLoading] = useState(false);
   const [existingStepLog, setExistingStepLog] = useState<{ id: string; step_count: number } | null>(null);
-  const [showStepLogger, setShowStepLogger] = useState(false);
+  const [showStepModal, setShowStepModal] = useState(false);
 
   // Subscription access for trainers
   const { isReadOnly: subscriptionReadOnly, reason: subscriptionReason } = useSubscriptionAccess();
@@ -580,20 +580,13 @@ const Calendar = () => {
     
     if (!error && data) {
       setExistingStepLog(data);
-      setStepCount(String(data.step_count));
     } else {
       setExistingStepLog(null);
-      setStepCount('');
     }
   };
 
-  const handleStepSave = async () => {
+  const handleStepSave = async (count: number) => {
     if (!profile || !selectedDate) return;
-    const count = parseInt(stepCount, 10);
-    if (isNaN(count) || count < 0) {
-      toast.error('Please enter a valid step count');
-      return;
-    }
 
     setStepLoading(true);
     try {
@@ -618,6 +611,7 @@ const Calendar = () => {
 
       toast.success('Steps logged!');
       setExistingStepLog({ id: existingStepLog?.id || '', step_count: count });
+      setShowStepModal(false);
     } catch (error) {
       logError('Calendar.handleStepSave', error);
       toast.error('Failed to save steps');
