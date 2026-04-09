@@ -914,7 +914,7 @@ const Calendar = () => {
 
       {/* Client Action Sheet - Log Workout or Food */}
       {!isTrainer && (
-        <Sheet open={showClientActionSheet} onOpenChange={setShowClientActionSheet}>
+        <Sheet open={showClientActionSheet} onOpenChange={(open) => { setShowClientActionSheet(open); if (!open) setShowStepLogger(false); }}>
           <SheetContent side="bottom" className="rounded-t-3xl">
             <SheetHeader className="pb-4">
               <SheetTitle>
