@@ -1119,6 +1119,16 @@ const Calendar = () => {
         onSave={handleFoodSave}
       />
 
+      {/* Step Log Modal */}
+      <StepLogModal
+        open={showStepModal}
+        onOpenChange={setShowStepModal}
+        date={selectedDate}
+        existingStepLog={existingStepLog}
+        onSave={handleStepSave}
+        loading={stepLoading}
+      />
+
       {/* Plan Selection Modal for subscription renewal */}
       <PlanSelectionModal
         open={showPlanModal}
