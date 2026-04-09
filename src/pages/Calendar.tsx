@@ -314,6 +314,8 @@ const Calendar = () => {
         setClientTrainerExercises([]);
       }
       
+      // Fetch step log for the selected date
+      fetchStepLog(date);
       setShowClientActionSheet(true);
     }
   };
