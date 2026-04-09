@@ -1,82 +1,87 @@
+## Plan: Two-Layer Daily Nudge System (Client 9 AM + Trainer 9:30 AM)
+
+### Overview
+
+Two scheduled cron jobs check daily logging compliance and send push notifications:
+
+1. **9:00 PM IST** — Notify clients who haven't logged all three (workout, food, steps) for today
+2. **9:30 PM IST** — Notify trainers whose clients still have incomplete logs
+
+### Current State
+
+- `push_subscriptions` table exists but has **no service worker, no VAPID keys, and no push-sending code** anywhere in the codebase
+- The existing `generate-expiry-notifications` edge function is a good pattern to follow (maintenance-token-secured cron job)
+
+### What Needs to Be Built
+
+**1. Push notification infrastructure (prerequisite)**
+
+This is the biggest piece. Web Push requires:
+
+- **VAPID key pair** — generate once, store public key in frontend code, private key as a secret
+- **Service worker** (`public/sw.js`) — listens for `push` events, shows the notification, handles `notificationclick` to open `/calendar`
+- **Frontend permission flow** — prompt client to allow notifications (after first successful log, or on calendar page), save subscription to `push_subscriptions` table
+- **Edge function helper** — `send-push-notification` utility that reads `push_subscriptions` and fires `web-push` calls
+
+**2. Edge function:** `nudge-clients` **(9 PM IST cron)**
+
+- Secured with `MAINTENANCE_TOKEN` (same pattern as expiry notifications)
+- Query: For each client with an active trainer, check today's date against `workouts`, `food_logs`, `step_logs`
+- Build a list of missing items per client (e.g. "Workout, Steps")
+- For each defaulter, fetch their `push_subscriptions` and send:
+  - **Title**: "Hey, something is pending"
+  - **Body**: "Workout/Meal/Steps are yet to be logged for the day" (dynamically lists only missing items)
+  - **CTA**: "Log Now" → opens `/calendar?date=YYYY-MM-DD`
+
+**3. Edge function:** `nudge-trainers` **(9:30 PM IST cron)**
+
+- Same security pattern
+- Query: For each trainer with active subscription, check if ANY of their clients still have incomplete logs (workout OR food OR steps missing)
+- If yes, send push to the trainer:
+  - **Title**: "100% logging not done"
+  - **Body**: "Go to calendar to check which clients are yet to log"
+  - **CTA**: "Go to Calendar" → opens `/calendar`
+
+**4. Cron jobs (pg_cron + pg_net)**
+
+Two scheduled HTTP calls:
+
+- `nudge-clients` at `30 3 * * *` ( 9:00 PM IST)
+- `nudge-trainers` at `0 4 * * *` ( 9:30 PM IST)
+
+**5. Service worker click handling**
+
+When user clicks the notification:
+
+- Client notification → `navigateClients.openWindow('/calendar?date=2026-04-09')`
+- Trainer notification → `navigateClients.openWindow('/calendar')`
+
+### Files to Create/Modify
 
 
-## Plan: Add Trainer Leave / Client Leave / Holiday to Trainer Calendar
+| File                                         | Change                                                         |
+| -------------------------------------------- | -------------------------------------------------------------- |
+| `public/sw.js`                               | New — service worker for push events + notification click      |
+| `src/hooks/usePushSubscription.tsx`          | New — request permission, register SW, save subscription to DB |
+| `src/pages/Calendar.tsx`                     | Trigger push permission prompt (once, after first log)         |
+| `supabase/functions/nudge-clients/index.ts`  | New — 9 PM check + send push to defaulting clients             |
+| `supabase/functions/nudge-trainers/index.ts` | New — 9:30 PM check + send push to trainers                    |
+| Secret: `VAPID_PUBLIC_KEY`                   | New — needed for web-push                                      |
+| Secret: `VAPID_PRIVATE_KEY`                  | New — needed for web-push                                      |
+| pg_cron SQL (via insert tool)                | Two cron schedules                                             |
 
-### What changes
 
-**1. Database migration** — Add three new values to the `session_status` enum and create a new `day_marks` table to store TL/CL/HL per client per date (independent of plan_sessions, since a mark can exist even without a session).
+### Key Design Decisions
 
-```sql
--- New table for trainer day marks (TL, CL, HL)
-CREATE TABLE public.day_marks (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  trainer_id uuid NOT NULL,
-  client_id uuid NOT NULL,
-  mark_date date NOT NULL,
-  mark_type text NOT NULL CHECK (mark_type IN ('trainer_leave', 'client_leave', 'holiday')),
-  created_at timestamptz DEFAULT now(),
-  UNIQUE (client_id, mark_date)
-);
+- **No in-app inbox for this nudge** — these are pure push notifications, not stored. The calendar itself is the "inbox" showing red/green status.
+- **IST-only timing** — hardcoded UTC offsets since all users are Indian market. 9 PM IST = , 9:30 PM IST.
+- **"Clients with an active trainer"** — only nudge clients who have a `trainer_id` set (they're in an active coaching relationship).
+- **Deduplication** — the cron runs daily; if a client already logged everything by 9 PM, they get no notification. No need for a dedup table since push is fire-and-forget.
+- **Graceful degradation** — if a client hasn't granted push permission, nothing happens. No fallback channel for now.
 
-ALTER TABLE public.day_marks ENABLE ROW LEVEL SECURITY;
+### Risks and Caveats
 
--- RLS: Trainers can CRUD marks for their clients
-CREATE POLICY "Trainers can view client day marks" ON public.day_marks
-  FOR SELECT TO authenticated
-  USING (is_trainer_of_client(auth.uid(), client_id));
-
-CREATE POLICY "Trainers can insert client day marks" ON public.day_marks
-  FOR INSERT TO authenticated
-  WITH CHECK (
-    trainer_id = get_user_profile_id(auth.uid())
-    AND is_trainer_of_client(auth.uid(), client_id)
-    AND has_active_platform_subscription(get_user_profile_id(auth.uid()))
-  );
-
-CREATE POLICY "Trainers can delete client day marks" ON public.day_marks
-  FOR DELETE TO authenticated
-  USING (
-    trainer_id = get_user_profile_id(auth.uid())
-    AND has_active_platform_subscription(get_user_profile_id(auth.uid()))
-  );
-
--- Clients can view marks on their dates
-CREATE POLICY "Clients can view own day marks" ON public.day_marks
-  FOR SELECT TO authenticated
-  USING (client_id = get_user_profile_id(auth.uid()));
-```
-
-**2. Trainer action sheet** — When a trainer clicks a date, instead of jumping straight to the workout modal, show a bottom sheet (same pattern as the client action sheet) with:
-- **Log Workout** (large button, existing behavior)
-- **Log Food** (large button, opens FoodLogModal for the client)
-- Below those, a row of **three smaller buttons**: Trainer Leave, Client Leave, Holiday
-- Date rule: today and future only
-
-**3. Calendar chip rendering** — Fetch `day_marks` for the selected client alongside workouts. On the calendar grid:
-- **TL**: Show "TL" text on the chip in muted/dull color, cell background turns dull gray
-- **CL**: Show "CL" text on the chip in red, cell background turns red (same as missed/skipped)
-- **HL**: Show "HL" text on the chip in muted/dull color, cell background turns dull gray (same as TL)
-- Day marks take visual priority over workout status
-
-**4. Session impact logic** (save handler):
-- **CL**: Increment `missed_sessions` on the active `client_training_plan` for this client
-- **TL**: Extend the `end_date` of the active plan by 1 day
-- **HL**: No plan changes (already factored in)
-- Deleting/changing a mark reverses the effect
-
-**5. Legend update** — Add TL, CL, HL to the status legend below the current month section.
-
-**6. Fix runtime error** — The `showStepLogger` reference error will be cleaned up as part of the calendar refactor.
-
-### Files affected
-
-| File | Change |
-|------|--------|
-| Migration SQL | New `day_marks` table with RLS |
-| `src/pages/Calendar.tsx` | Add trainer action sheet, fetch day_marks, render chips, handle save/delete of marks, fix showStepLogger error |
-
-### Design notes
-- TL and HL share the same dull/muted visual treatment
-- CL uses destructive/red treatment (same as missed)
-- The three leave buttons are visually smaller than Log Workout / Log Food — compact row below the main actions
-- Marking a day removes any existing mark for that client+date (one mark per day per client)
+1. **iOS PWA limitations** — push notifications only work if the app is added to home screen on iOS 16.4+. Most Indian users are on Android where this works reliably.
+2. **VAPID keys** — need to be generated once and stored as secrets. Will walk you through this.
+3. **No "Remind me in 15 mins"** — per your simplified spec, this is a one-shot nudge. Clean and simple.
+4. **Service worker caching conflicts** — the SW will be minimal (push-only, no caching) to avoid the PWA preview issues documented in the project constraints.
