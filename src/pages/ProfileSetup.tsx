@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { User, Calendar, MapPin, Ruler, Scale, ChevronDown, Check } from 'lucide-react';
+import { User, Calendar, MapPin, Ruler, Scale, ChevronDown, Check, Phone } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -29,6 +29,7 @@ const ProfileSetup = ({ role }: ProfileSetupProps) => {
   const [city, setCity] = useState('');
   const [citySearch, setCitySearch] = useState('');
   const [cityOpen, setCityOpen] = useState(false);
+  const [whatsappNo, setWhatsappNo] = useState('');
   const [height, setHeight] = useState('');
   const [weight, setWeight] = useState('');
   
@@ -120,6 +121,13 @@ const ProfileSetup = ({ role }: ProfileSetupProps) => {
       return;
     }
 
+    if (role === 'trainer') {
+      if (!whatsappNo || !/^\d{10}$/.test(whatsappNo)) {
+        toast({ title: "Error", description: "Please enter a valid 10-digit WhatsApp number", variant: "destructive" });
+        return;
+      }
+    }
+
     if (role === 'client') {
       if (!height || parseInt(height) < 50 || parseInt(height) > 300) {
         toast({ title: "Error", description: "Please enter a valid height (50-300 cm)", variant: "destructive" });
@@ -140,6 +148,10 @@ const ProfileSetup = ({ role }: ProfileSetupProps) => {
         city: city,
         profile_complete: true,
       };
+
+      if (role === 'trainer') {
+        updateData.whatsapp_no = whatsappNo;
+      }
 
       if (role === 'client') {
         updateData.height_cm = parseInt(height);
@@ -195,6 +207,9 @@ const ProfileSetup = ({ role }: ProfileSetupProps) => {
 
   const isFormValid = () => {
     const baseValid = fullName.trim() && validateDob(dob) && city;
+    if (role === 'trainer') {
+      return baseValid && /^\d{10}$/.test(whatsappNo);
+    }
     if (role === 'client') {
       return baseValid && height && weight;
     }
