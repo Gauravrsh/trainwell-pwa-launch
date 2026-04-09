@@ -18,6 +18,7 @@ import { useSubscriptionAccess } from '@/hooks/useSubscriptionAccess';
 import { SubscriptionEnforcementBanner } from '@/components/subscription/SubscriptionEnforcementBanner';
 import { PlanSelectionModal } from '@/components/subscription/PlanSelectionModal';
 import { useTrainerSubscription } from '@/hooks/useTrainerSubscription';
+import { usePushSubscription } from '@/hooks/usePushSubscription';
 
 interface Workout {
   id: string;
