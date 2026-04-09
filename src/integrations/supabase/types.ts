@@ -443,6 +443,44 @@ export type Database = {
         }
         Relationships: []
       }
+      step_logs: {
+        Row: {
+          client_id: string
+          created_at: string | null
+          estimated_calories: number | null
+          id: string
+          logged_date: string
+          step_count: number
+          updated_at: string | null
+        }
+        Insert: {
+          client_id: string
+          created_at?: string | null
+          estimated_calories?: number | null
+          id?: string
+          logged_date?: string
+          step_count?: number
+          updated_at?: string | null
+        }
+        Update: {
+          client_id?: string
+          created_at?: string | null
+          estimated_calories?: number | null
+          id?: string
+          logged_date?: string
+          step_count?: number
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "step_logs_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       subscription_cycles: {
         Row: {
           client_id: string
