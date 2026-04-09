@@ -47,8 +47,13 @@ export const ActionChart = ({ data }: ActionChartProps) => {
               Intake: {dayData?.intake ?? 0} kcal
             </p>
             <p className="text-emerald-400">
-              Expenditure: {dayData?.totalExpenditure} kcal (BMR: {dayData?.bmr})
+              Expenditure: {dayData?.totalExpenditure} kcal (BMR: {dayData?.bmr}{dayData?.stepCalories > 0 ? ` + Steps: ${dayData.stepCalories}` : ''})
             </p>
+            {dayData?.steps !== null && dayData?.steps !== undefined && (
+              <p className="text-blue-400">
+                Steps: {dayData.steps.toLocaleString()} (~{dayData.stepCalories} kcal)
+              </p>
+            )}
             <p className={dayData?.netDeficit >= 0 ? 'text-lime-400' : 'text-amber-500'}>
               Net: {dayData?.netDeficit >= 0 ? 'Deficit' : 'Surplus'} {Math.abs(dayData?.netDeficit)} kcal
             </p>
