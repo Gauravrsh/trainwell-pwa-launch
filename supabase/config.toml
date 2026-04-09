@@ -8,3 +8,9 @@ verify_jwt = false
 
 [functions.razorpay-webhook]
 verify_jwt = false
+
+[functions.nudge-clients]
+verify_jwt = false
+
+[functions.nudge-trainers]
+verify_jwt = false
