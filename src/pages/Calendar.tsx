@@ -1203,6 +1203,14 @@ const Calendar = () => {
 
               return (
                 <div className="space-y-4">
+                  {subscriptionReadOnly && (
+                    <SubscriptionEnforcementBanner
+                      reason={subscriptionReason}
+                      onSelectPlan={() => setShowPlanModal(true)}
+                      compact
+                    />
+                  )}
+
                   {/* Existing day mark indicator */}
                   {existingMark && (
                     <div className={`p-3 rounded-xl border ${
@@ -1255,7 +1263,7 @@ const Calendar = () => {
                   </div>
 
                   {/* Day Mark Actions - smaller buttons */}
-                  {canMark && !subscriptionReadOnly && (
+                  {canMark && (
                     <div className="space-y-2">
                       <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">Day Status</p>
                       <div className="grid grid-cols-3 gap-2">
@@ -1263,7 +1271,7 @@ const Calendar = () => {
                           variant={existingMark?.mark_type === 'trainer_leave' ? 'default' : 'outline'}
                           size="sm"
                           onClick={() => handleDayMark('trainer_leave')}
-                          disabled={dayMarkLoading}
+                           disabled={dayMarkLoading || subscriptionReadOnly}
                           className={`text-xs h-10 ${
                             existingMark?.mark_type === 'trainer_leave'
                               ? 'bg-muted-foreground/50 hover:bg-muted-foreground/60 text-foreground'
@@ -1277,7 +1285,7 @@ const Calendar = () => {
                           variant={existingMark?.mark_type === 'client_leave' ? 'destructive' : 'outline'}
                           size="sm"
                           onClick={() => handleDayMark('client_leave')}
-                          disabled={dayMarkLoading}
+                           disabled={dayMarkLoading || subscriptionReadOnly}
                           className={`text-xs h-10 ${
                             existingMark?.mark_type !== 'client_leave'
                               ? 'border-destructive/50 text-destructive hover:bg-destructive/10'
@@ -1291,7 +1299,7 @@ const Calendar = () => {
                           variant={existingMark?.mark_type === 'holiday' ? 'default' : 'outline'}
                           size="sm"
                           onClick={() => handleDayMark('holiday')}
-                          disabled={dayMarkLoading}
+                           disabled={dayMarkLoading || subscriptionReadOnly}
                           className={`text-xs h-10 ${
                             existingMark?.mark_type === 'holiday'
                               ? 'bg-muted-foreground/50 hover:bg-muted-foreground/60 text-foreground'
@@ -1302,6 +1310,11 @@ const Calendar = () => {
                           HL
                         </Button>
                       </div>
+                      {subscriptionReadOnly && (
+                        <p className="text-[10px] text-muted-foreground">
+                          Select a plan to enable TL, CL, and HL day marks.
+                        </p>
+                      )}
                       <div className="text-[10px] text-muted-foreground space-y-0.5">
                         <p><span className="font-medium">TL</span> = Trainer Leave (session shifts ahead)</p>
                         <p><span className="font-medium">CL</span> = Client Leave (session consumed)</p>
