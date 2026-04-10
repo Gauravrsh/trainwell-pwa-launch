@@ -1185,7 +1185,7 @@ const Calendar = () => {
       {/* Trainer Action Sheet */}
       {isTrainer && (
         <Sheet open={showTrainerActionSheet} onOpenChange={setShowTrainerActionSheet}>
-          <SheetContent side="bottom" className="rounded-t-3xl">
+          <SheetContent side="bottom" className="rounded-t-3xl max-h-[85vh] overflow-y-auto">
             <SheetHeader className="pb-4">
               <SheetTitle>
                 {selectedDate && (
