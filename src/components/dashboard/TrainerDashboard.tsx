@@ -1,12 +1,12 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Users, Check, X, IndianRupee, Dumbbell, Utensils, ChevronRight, UserPlus, Share2 } from 'lucide-react';
+import { Users, Check, X, Dumbbell, Utensils, UserPlus, Share2 } from 'lucide-react';
 import { useProfile } from '@/hooks/useProfile';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery } from '@tanstack/react-query';
 import { format } from 'date-fns';
 import { Button } from '@/components/ui/button';
-import { PaymentRequestModal } from '@/components/modals/PaymentRequestModal';
+
 import { toast } from 'sonner';
 import { useSubscriptionAccess } from '@/hooks/useSubscriptionAccess';
 import { SubscriptionEnforcementBanner } from '@/components/subscription/SubscriptionEnforcementBanner';
@@ -22,9 +22,7 @@ interface ClientWithStatus {
 }
 
 export const TrainerDashboard = () => {
-  const { profile, paymentInfo } = useProfile();
-  const [selectedClient, setSelectedClient] = useState<ClientWithStatus | null>(null);
-  const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const { profile } = useProfile();
   const [showPlanModal, setShowPlanModal] = useState(false);
   
   const { isReadOnly, reason, loading } = useSubscriptionAccess();
@@ -83,10 +81,6 @@ export const TrainerDashboard = () => {
     c => c.workoutStatus === 'completed' && c.hasFoodToday
   ).length;
 
-  const handleRequestPayment = (client: ClientWithStatus) => {
-    setSelectedClient(client);
-    setShowPaymentModal(true);
-  };
 
   const handleInviteClient = () => {
     if (!profile?.unique_id) {
@@ -244,22 +238,6 @@ export const TrainerDashboard = () => {
                     </div>
                   </div>
 
-                  {/* Actions */}
-                  <div className="flex gap-2">
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="flex-1 border-primary/50 text-primary hover:bg-primary/10"
-                      onClick={() => handleRequestPayment(client)}
-                      disabled={isReadOnly}
-                    >
-                      <IndianRupee className="w-3.5 h-3.5 mr-1.5" />
-                      Request Payment
-                    </Button>
-                    <Button size="sm" variant="ghost">
-                      <ChevronRight className="w-4 h-4" />
-                    </Button>
-                  </div>
                 </motion.div>
               );
             })}
@@ -292,17 +270,6 @@ export const TrainerDashboard = () => {
           </motion.div>
         )}
       </div>
-
-      {/* Payment Modal */}
-      {selectedClient && (
-        <PaymentRequestModal
-          open={showPaymentModal}
-          onOpenChange={setShowPaymentModal}
-          clientName={`Client #${selectedClient.unique_id}`}
-          clientId={selectedClient.unique_id}
-          trainerVpa={paymentInfo?.vpa_address || ''}
-        />
-      )}
 
       {/* Plan Selection Modal */}
       <PlanSelectionModal
