@@ -57,7 +57,7 @@ export function CreatePlanModal({
 }: CreatePlanModalProps) {
   const [clientId, setClientId] = useState(preselectedClientId || '');
   const [planName, setPlanName] = useState('');
-  const [serviceType, setServiceType] = useState<ServiceType>('both');
+  const [serviceType] = useState<ServiceType>('workout');
   const [billingModel, setBillingModel] = useState<BillingModel>('prepaid');
   const [startDate, setStartDate] = useState<Date>(new Date());
   const [endDate, setEndDate] = useState<Date>(addDays(new Date(), 30));
