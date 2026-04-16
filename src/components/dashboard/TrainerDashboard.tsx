@@ -81,10 +81,6 @@ export const TrainerDashboard = () => {
     c => c.workoutStatus === 'completed' && c.hasFoodToday
   ).length;
 
-  const handleRequestPayment = (client: ClientWithStatus) => {
-    setSelectedClient(client);
-    setShowPaymentModal(true);
-  };
 
   const handleInviteClient = () => {
     if (!profile?.unique_id) {
