@@ -211,6 +211,21 @@ export function useTrainingPlans() {
   const completedPlans = plans.filter(p => ['completed', 'cancelled'].includes(p.status));
   const pausedPlans = plans.filter(p => p.status === 'paused');
 
+  // Mark payment as received (increment amount_paid)
+  const markAsPaid = useCallback(async (planId: string, amount: number) => {
+    // Get current plan to calculate new amount_paid
+    const plan = plans.find(p => p.id === planId);
+    if (!plan) throw new Error('Plan not found');
+    
+    const currentPaid = plan.amount_paid || 0;
+    const newPaid = currentPaid + amount;
+    
+    return updatePlanMutation.mutateAsync({
+      planId,
+      updates: { amount_paid: newPaid },
+    });
+  }, [plans, updatePlanMutation]);
+
   return {
     plans,
     activePlans,
@@ -228,6 +243,7 @@ export function useTrainingPlans() {
     resumePlan,
     cancelPlan,
     completePlan,
+    markAsPaid,
     getClientPlans,
     isCreating: createPlanMutation.isPending,
     isUpdating: updatePlanMutation.isPending,

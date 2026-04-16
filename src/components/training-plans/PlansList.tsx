@@ -6,7 +6,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { cn } from '@/lib/utils';
 import { PlanCard } from './PlanCard';
 import { CreatePlanModal } from './CreatePlanModal';
-import { useTrainingPlans, type CreatePlanData } from '@/hooks/useTrainingPlans';
+import { ManageBillingModal } from './ManageBillingModal';
+import { useTrainingPlans, type CreatePlanData, type TrainingPlanWithClient } from '@/hooks/useTrainingPlans';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery } from '@tanstack/react-query';
 import { useProfile } from '@/hooks/useProfile';
@@ -24,10 +25,12 @@ export function PlansList() {
   const { profile, isTrainer } = useProfile();
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showPlanModal, setShowPlanModal] = useState(false);
+  const [showBillingModal, setShowBillingModal] = useState(false);
+  const [selectedPlanForBilling, setSelectedPlanForBilling] = useState<TrainingPlanWithClient | null>(null);
   const [activeTab, setActiveTab] = useState('active');
 
   // Subscription access for trainers
-  const { isReadOnly, reason } = useSubscriptionAccess();
+  const { isReadOnly, reason, loading: subscriptionLoading } = useSubscriptionAccess();
   const { renewPlan, status } = useTrainerSubscription();
 
   const handleSelectPlan = async (planType: 'monthly' | 'annual') => {
@@ -49,7 +52,9 @@ export function PlansList() {
     cancelPlan,
     completePlan,
     deletePlan,
+    markAsPaid,
     isCreating,
+    isUpdating,
   } = useTrainingPlans();
 
   // Fetch clients for the create modal
@@ -101,10 +106,10 @@ export function PlansList() {
         >
           <div>
             <p className="text-muted-foreground text-sm font-medium mb-1">
-              Training Plans
+              Billing & Plans
             </p>
             <h1 className="text-2xl font-bold text-foreground">
-              Manage Plans
+              Manage Billing
             </h1>
           </div>
           <Button onClick={() => setShowCreateModal(true)} size="sm" className="gap-2" disabled={isReadOnly}>
@@ -115,7 +120,7 @@ export function PlansList() {
       </div>
 
       {/* Subscription Enforcement Banner */}
-      {isReadOnly && (
+      {!subscriptionLoading && isReadOnly && (
         <div className="px-4 mb-4">
           <SubscriptionEnforcementBanner
             reason={reason}
@@ -178,6 +183,10 @@ export function PlansList() {
                     onCancel={cancelPlan}
                     onComplete={completePlan}
                     onDelete={deletePlan}
+                    onRecordPayment={(p) => {
+                      setSelectedPlanForBilling(p);
+                      setShowBillingModal(true);
+                    }}
                   />
                 ))}
               </div>
@@ -227,6 +236,20 @@ export function PlansList() {
         isRenewal={status.hasSubscription}
         currentPlan={status.subscription?.plan_type}
       />
+
+      {/* Manage Billing Modal */}
+      {selectedPlanForBilling && (
+        <ManageBillingModal
+          open={showBillingModal}
+          onOpenChange={(open) => {
+            setShowBillingModal(open);
+            if (!open) setSelectedPlanForBilling(null);
+          }}
+          plan={selectedPlanForBilling}
+          onMarkAsPaid={markAsPaid}
+          isUpdating={isUpdating}
+        />
+      )}
     </div>
   );
 }

@@ -118,15 +118,8 @@ export default function Auth() {
       return;
     }
 
-    if (mode === 'signup') {
-      toast({
-        title: 'Account created!',
-        description: 'You can now sign in with your credentials.',
-      });
-      setMode('signin');
-    } else {
-      navigate('/');
-    }
+    // Both signup (auto-confirmed) and signin navigate directly
+    navigate('/');
   };
 
   const toggleMode = () => {

@@ -13,9 +13,10 @@ const errorMappings: Array<{ pattern: RegExp; message: string }> = [
   { pattern: /connection|timeout/i, message: 'Connection issue. Please check your internet and try again.' },
   { pattern: /permission denied/i, message: 'You do not have permission to perform this action.' },
   { pattern: /authentication required/i, message: 'Please sign in to continue.' },
-  { pattern: /User already registered/i, message: 'An account with this email already exists. Try signing in instead.' },
+  { pattern: /User already registered|already been registered|already exists/i, message: 'An account with this email already exists. Try signing in instead.' },
   { pattern: /Invalid login credentials/i, message: 'Invalid email or password. Please try again.' },
   { pattern: /Email not confirmed/i, message: 'Please confirm your email address before signing in.' },
+  { pattern: /email.*rate.*limit|too many.*request/i, message: 'Too many attempts. Please wait a few minutes and try again.' },
 ];
 
 /**

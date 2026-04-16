@@ -11,6 +11,17 @@ export function useSubscriptionAccess() {
 
   const loading = profileLoading || (isTrainer && subscriptionLoading);
 
+  // While loading, return safe defaults to prevent banner flash
+  if (loading) {
+    return {
+      loading: true,
+      hasAccess: true,
+      isReadOnly: false,
+      canInviteClients: false,
+      reason: null,
+    };
+  }
+
   // Clients always have full access (free to use)
   if (isClient) {
     return {
