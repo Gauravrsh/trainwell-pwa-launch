@@ -11,7 +11,7 @@ interface ManageBillingModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   plan: TrainingPlanWithClient;
-  onMarkAsPaid: (planId: string, amount: number) => Promise<void>;
+  onMarkAsPaid: (planId: string, amount: number) => Promise<unknown>;
   isUpdating: boolean;
 }
 
