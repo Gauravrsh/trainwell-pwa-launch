@@ -137,6 +137,11 @@ export function PlanCard({
               )}
               {plan.status === 'active' && (
                 <>
+                  <DropdownMenuItem onClick={() => onRecordPayment?.(plan)}>
+                    <Banknote className="w-4 h-4 mr-2" />
+                    Record Payment
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
                   <DropdownMenuItem onClick={() => onPause?.(plan.id)}>
                     <Pause className="w-4 h-4 mr-2" />
                     Pause Plan
@@ -144,6 +149,27 @@ export function PlanCard({
                   <DropdownMenuItem onClick={() => onComplete?.(plan.id)}>
                     <CheckCircle className="w-4 h-4 mr-2" />
                     Mark Complete
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem 
+                    onClick={() => onCancel?.(plan.id)}
+                    className="text-destructive focus:text-destructive"
+                  >
+                    <XCircle className="w-4 h-4 mr-2" />
+                    Cancel Plan
+                  </DropdownMenuItem>
+                </>
+              )}
+              {plan.status === 'paused' && (
+                <>
+                  <DropdownMenuItem onClick={() => onRecordPayment?.(plan)}>
+                    <Banknote className="w-4 h-4 mr-2" />
+                    Record Payment
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={() => onResume?.(plan.id)}>
+                    <Play className="w-4 h-4 mr-2" />
+                    Resume Plan
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem 
