@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { User, Settings, Bell, Shield, HelpCircle, LogOut, ChevronRight, FileText, Weight, AlertTriangle, Activity } from 'lucide-react';
+import { User, LogOut, ChevronRight, FileText, Weight, AlertTriangle, Activity } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useProfile } from '@/hooks/useProfile';
 import { useNavigate } from 'react-router-dom';
@@ -11,11 +11,7 @@ import { Button } from '@/components/ui/button';
 import { differenceInDays, format } from 'date-fns';
 
 const menuItems = [
-  { icon: Settings, label: 'Settings', href: '#' },
-  { icon: Bell, label: 'Notifications', href: '#' },
-  { icon: Shield, label: 'Privacy', href: '#' },
   { icon: FileText, label: 'Terms & Conditions', href: '/terms' },
-  { icon: HelpCircle, label: 'Help & Support', href: '#' },
 ];
 
 export default function Profile() {
@@ -136,9 +132,7 @@ export default function Profile() {
         className="mb-6"
       >
         <SubscriptionSection 
-          onNavigateToClientPlans={() => {
-            console.log('Navigate to client plans');
-          }}
+          onNavigateToClientPlans={() => navigate('/plans')}
         />
       </motion.div>
 

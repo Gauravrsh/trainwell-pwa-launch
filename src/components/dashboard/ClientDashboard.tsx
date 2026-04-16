@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Dumbbell, Utensils, Check, Clock, Flame, Trophy, ChevronRight, Footprints } from 'lucide-react';
+import { Dumbbell, Utensils, Check, Clock, Flame, Footprints } from 'lucide-react';
 import { useProfile } from '@/hooks/useProfile';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery } from '@tanstack/react-query';
@@ -453,7 +453,7 @@ export const ClientDashboard = () => {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.3 }}
-          className="grid grid-cols-3 gap-3"
+          className="grid grid-cols-2 gap-3"
         >
           <div className="bg-card rounded-2xl p-4 text-center border border-border">
             <Footprints className="w-5 h-5 text-primary mx-auto mb-2" />
@@ -464,13 +464,6 @@ export const ClientDashboard = () => {
             <Flame className="w-5 h-5 text-primary mx-auto mb-2" />
             <p className="text-2xl font-bold text-foreground">{totalCalories}</p>
             <p className="text-xs text-muted-foreground">Calories</p>
-          </div>
-          <div className="bg-card rounded-2xl p-4 text-center border border-border">
-            <Trophy className="w-5 h-5 text-primary mx-auto mb-2" />
-            <p className="text-2xl font-bold text-foreground">
-              {(workoutComplete ? 1 : 0) + (hasFoodLogs ? 1 : 0) + (hasSteps ? 1 : 0)}
-            </p>
-            <p className="text-xs text-muted-foreground">Tasks Done</p>
           </div>
         </motion.div>
       </div>

@@ -79,11 +79,6 @@ export function ClientSubscriptionView() {
           <div className="flex items-start justify-between mb-3">
             <div>
               <h3 className="font-semibold text-foreground">{activePlan.plan_name}</h3>
-              <p className="text-sm text-muted-foreground capitalize">
-                {activePlan.service_type === 'both' 
-                  ? 'Workout & Nutrition' 
-                  : activePlan.service_type}
-              </p>
             </div>
             <span className="px-3 py-1 bg-success/20 text-success text-xs font-medium rounded-full">
               Active
