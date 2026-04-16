@@ -121,11 +121,13 @@ const ProfileSetup = ({ role }: ProfileSetupProps) => {
       return;
     }
 
+    if (!whatsappNo || !/^\d{10}$/.test(whatsappNo)) {
+      toast({ title: "Error", description: "Please enter a valid 10-digit mobile number", variant: "destructive" });
+      return;
+    }
+
     if (role === 'trainer') {
-      if (!whatsappNo || !/^\d{10}$/.test(whatsappNo)) {
-        toast({ title: "Error", description: "Please enter a valid 10-digit WhatsApp number", variant: "destructive" });
-        return;
-      }
+      // Additional trainer validations if needed
     }
 
     if (role === 'client') {
@@ -147,10 +149,11 @@ const ProfileSetup = ({ role }: ProfileSetupProps) => {
         date_of_birth: parsedDob.toISOString().split('T')[0],
         city: city,
         profile_complete: true,
+        whatsapp_no: whatsappNo,
       };
 
       if (role === 'trainer') {
-        updateData.whatsapp_no = whatsappNo;
+        // trainer-specific fields if needed
       }
 
       if (role === 'client') {
@@ -206,10 +209,7 @@ const ProfileSetup = ({ role }: ProfileSetupProps) => {
   };
 
   const isFormValid = () => {
-    const baseValid = fullName.trim() && validateDob(dob) && city;
-    if (role === 'trainer') {
-      return baseValid && /^\d{10}$/.test(whatsappNo);
-    }
+    const baseValid = fullName.trim() && validateDob(dob) && city && /^\d{10}$/.test(whatsappNo);
     if (role === 'client') {
       return baseValid && height && weight;
     }
@@ -339,31 +339,32 @@ const ProfileSetup = ({ role }: ProfileSetupProps) => {
             </Popover>
           </div>
 
-          {/* Trainer-only fields */}
-          {role === 'trainer' && (
-            <div className="space-y-2">
-              <Label htmlFor="whatsapp" className="flex items-center gap-2">
-                <Phone className="w-4 h-4" />
-                WhatsApp Number
-              </Label>
-              <div className="flex items-center gap-2">
-                <span className="text-muted-foreground font-medium w-10">+91</span>
-                <Input
-                  id="whatsapp"
-                  type="text"
-                  inputMode="numeric"
-                  placeholder="10-digit number"
-                  value={whatsappNo}
-                  onChange={(e) => {
-                    const v = e.target.value.replace(/\D/g, '');
-                    if (v.length <= 10) setWhatsappNo(v);
-                  }}
-                  className="h-12 flex-1"
-                  maxLength={10}
-                />
-              </div>
+          {/* Mobile Number (both roles) */}
+          <div className="space-y-2">
+            <Label htmlFor="whatsapp" className="flex items-center gap-2">
+              <Phone className="w-4 h-4" />
+              Mobile Number
+            </Label>
+            <div className="flex items-center gap-2">
+              <span className="text-muted-foreground font-medium shrink-0 text-sm bg-secondary px-3 py-3 rounded-md border border-border">+91</span>
+              <Input
+                id="whatsapp"
+                type="text"
+                inputMode="numeric"
+                placeholder="10-digit number"
+                value={whatsappNo}
+                onChange={(e) => {
+                  const v = e.target.value.replace(/\D/g, '');
+                  if (v.length <= 10) setWhatsappNo(v);
+                }}
+                className="h-12 flex-1"
+                maxLength={10}
+              />
             </div>
-          )}
+            {whatsappNo.length > 0 && whatsappNo.length < 10 && (
+              <p className="text-xs text-destructive">Enter a valid 10-digit mobile number</p>
+            )}
+          </div>
 
           {/* Client-only fields */}
           {role === 'client' && (
