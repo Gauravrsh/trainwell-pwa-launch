@@ -27,7 +27,7 @@ export function PlansList() {
   const [activeTab, setActiveTab] = useState('active');
 
   // Subscription access for trainers
-  const { isReadOnly, reason } = useSubscriptionAccess();
+  const { isReadOnly, reason, loading: subscriptionLoading } = useSubscriptionAccess();
   const { renewPlan, status } = useTrainerSubscription();
 
   const handleSelectPlan = async (planType: 'monthly' | 'annual') => {
@@ -101,10 +101,10 @@ export function PlansList() {
         >
           <div>
             <p className="text-muted-foreground text-sm font-medium mb-1">
-              Training Plans
+              Billing & Plans
             </p>
             <h1 className="text-2xl font-bold text-foreground">
-              Manage Plans
+              Manage Billing
             </h1>
           </div>
           <Button onClick={() => setShowCreateModal(true)} size="sm" className="gap-2" disabled={isReadOnly}>
@@ -115,7 +115,7 @@ export function PlansList() {
       </div>
 
       {/* Subscription Enforcement Banner */}
-      {isReadOnly && (
+      {!subscriptionLoading && isReadOnly && (
         <div className="px-4 mb-4">
           <SubscriptionEnforcementBanner
             reason={reason}

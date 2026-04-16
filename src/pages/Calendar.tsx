@@ -73,7 +73,7 @@ const Calendar = () => {
   const [dayMarkLoading, setDayMarkLoading] = useState(false);
 
   // Subscription access for trainers
-  const { isReadOnly: subscriptionReadOnly, reason: subscriptionReason } = useSubscriptionAccess();
+  const { isReadOnly: subscriptionReadOnly, reason: subscriptionReason, loading: subscriptionLoading } = useSubscriptionAccess();
   const { renewPlan, status } = useTrainerSubscription();
   const { subscribe: subscribePush } = usePushSubscription();
 
@@ -934,7 +934,7 @@ const Calendar = () => {
       </div>
 
       {/* Subscription Enforcement Banner for Trainers */}
-      {isTrainer && subscriptionReadOnly && (
+      {isTrainer && !subscriptionLoading && subscriptionReadOnly && (
         <div className="px-4 py-2">
           <SubscriptionEnforcementBanner
             reason={subscriptionReason}

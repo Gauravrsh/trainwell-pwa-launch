@@ -27,7 +27,7 @@ export const TrainerDashboard = () => {
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [showPlanModal, setShowPlanModal] = useState(false);
   
-  const { isReadOnly, reason } = useSubscriptionAccess();
+  const { isReadOnly, reason, loading } = useSubscriptionAccess();
   const { renewPlan, status } = useTrainerSubscription();
 
   const handleSelectPlan = async (planType: 'monthly' | 'annual') => {
@@ -120,7 +120,7 @@ export const TrainerDashboard = () => {
       </div>
 
       {/* Subscription Enforcement Banner */}
-      {isReadOnly && (
+      {!loading && isReadOnly && (
         <div className="px-4 mb-4">
           <SubscriptionEnforcementBanner
             reason={reason}

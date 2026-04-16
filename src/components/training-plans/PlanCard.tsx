@@ -2,7 +2,6 @@ import { motion } from 'framer-motion';
 import { format, differenceInDays, isPast } from 'date-fns';
 import { 
   Dumbbell, 
-  Utensils, 
   Calendar, 
   IndianRupee, 
   Play, 
@@ -11,7 +10,8 @@ import {
   XCircle,
   MoreVertical,
   Trash2,
-  User
+  User,
+  Banknote
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -37,6 +37,7 @@ interface PlanCardProps {
   onComplete?: (planId: string) => void;
   onDelete?: (planId: string) => void;
   onViewDetails?: (plan: TrainingPlanWithClient) => void;
+  onRecordPayment?: (plan: TrainingPlanWithClient) => void;
 }
 
 const statusConfig: Record<TrainingPlanStatus, { label: string; color: string; icon: typeof Play }> = {
@@ -47,11 +48,6 @@ const statusConfig: Record<TrainingPlanStatus, { label: string; color: string; i
   cancelled: { label: 'Cancelled', color: 'bg-destructive/20 text-destructive', icon: XCircle },
 };
 
-const serviceLabels: Record<string, string> = {
-  workout: 'Training Plan',
-  nutrition: 'Nutrition Plan',
-  both: 'Training + Nutrition Plan',
-};
 
 export function PlanCard({
   plan,
@@ -62,10 +58,10 @@ export function PlanCard({
   onComplete,
   onDelete,
   onViewDetails,
+  onRecordPayment,
 }: PlanCardProps) {
   const status = statusConfig[plan.status];
   const StatusIcon = status.icon;
-  const serviceLabel = serviceLabels[plan.service_type] || 'Training Plan';
   
   const startDate = new Date(plan.start_date);
   const endDate = new Date(plan.end_date);
@@ -96,25 +92,12 @@ export function PlanCard({
       {/* Header */}
       <div className="flex items-start justify-between mb-3">
         <div className="flex items-center gap-3">
-          <div className={cn(
-            'w-10 h-10 rounded-xl flex items-center justify-center gap-1',
-            plan.service_type === 'nutrition' ? 'bg-orange-500/20' : 'bg-primary/20'
-          )}>
-            {plan.service_type === 'both' ? (
-              <>
-                <Dumbbell className="w-4 h-4 text-primary" />
-                <Utensils className="w-4 h-4 text-orange-500" />
-              </>
-            ) : plan.service_type === 'nutrition' ? (
-              <Utensils className="w-5 h-5 text-orange-500" />
-            ) : (
-              <Dumbbell className="w-5 h-5 text-primary" />
-            )}
+          <div className="w-10 h-10 rounded-xl flex items-center justify-center bg-primary/20">
+            <Dumbbell className="w-5 h-5 text-primary" />
           </div>
           <div>
             <h3 className="font-semibold text-foreground line-clamp-1">{plan.plan_name}</h3>
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <span className="px-2 py-0.5 bg-muted rounded-md text-xs">{serviceLabel}</span>
               <span className="flex items-center gap-1">
                 <User className="w-3.5 h-3.5" />
                 {clientName}
