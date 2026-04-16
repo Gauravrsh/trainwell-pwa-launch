@@ -95,7 +95,7 @@ export function CreatePlanModal({
 
     // Reset form
     setPlanName('');
-    setServiceType('both');
+    // serviceType kept as 'workout' default — no reset needed
     setBillingModel('prepaid');
     setStartDate(new Date());
     setEndDate(addDays(new Date(), 30));
@@ -156,39 +156,7 @@ export function CreatePlanModal({
             />
           </div>
 
-          {/* Service Type */}
-          <div className="space-y-2">
-            <Label>Service Type</Label>
-            <div className="grid grid-cols-2 gap-3">
-              {[
-                { value: 'workout', label: 'Workout', icon: Dumbbell, isBoth: false },
-                { value: 'both', label: 'Workout & Nutrition', icon: null, isBoth: true },
-              ].map(option => (
-                <motion.button
-                  key={option.value}
-                  type="button"
-                  whileTap={{ scale: 0.97 }}
-                  onClick={() => setServiceType(option.value as ServiceType)}
-                  className={cn(
-                    'p-3 rounded-xl border-2 flex flex-col items-center gap-1 transition-colors',
-                    serviceType === option.value
-                      ? 'border-primary bg-primary/10 text-primary'
-                      : 'border-border bg-card hover:border-primary/50'
-                  )}
-                >
-                  {option.isBoth ? (
-                    <div className="flex items-center gap-1.5">
-                      <Dumbbell className="w-5 h-5" />
-                      <Utensils className="w-5 h-5" />
-                    </div>
-                  ) : (
-                    <option.icon className="w-5 h-5" />
-                  )}
-                  <span className="text-xs font-medium">{option.label}</span>
-                </motion.button>
-              ))}
-            </div>
-          </div>
+          {/* Service Type removed from UI — defaults to 'workout' */}
 
           {/* Date Range */}
           <div className="grid grid-cols-2 gap-3">
