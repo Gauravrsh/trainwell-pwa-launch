@@ -85,7 +85,10 @@ export function useTrainerSubscription() {
   }, [fetchSubscription]);
 
   const getStatus = (): SubscriptionStatus => {
-    if (!subscription) {
+    // Treat orphan `pending_payment` rows (abandoned checkout, no webhook confirm)
+    // as "no subscription" so the trainer sees the Free / Upgrade onboarding,
+    // not a dead-end "Payment incomplete" wall.
+    if (!subscription || subscription.status === 'pending_payment') {
       return {
         hasSubscription: false,
         subscription: null,
