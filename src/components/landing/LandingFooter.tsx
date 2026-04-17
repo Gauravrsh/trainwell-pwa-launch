@@ -1,8 +1,9 @@
+import { forwardRef } from 'react';
 import { Link } from 'react-router-dom';
 
-export default function LandingFooter() {
+const LandingFooter = forwardRef<HTMLElement>((_, ref) => {
   return (
-    <footer className="border-t border-border px-4 py-8">
+    <footer ref={ref} className="border-t border-border px-4 py-8">
       <div className="mx-auto flex max-w-5xl flex-col items-center gap-4 text-center sm:flex-row sm:justify-between sm:text-left">
         <div className="flex items-center">
           <div>
@@ -20,4 +21,8 @@ export default function LandingFooter() {
       <p className="text-center text-xs text-muted-foreground mt-4">vecto.fit</p>
     </footer>
   );
-}
+});
+
+LandingFooter.displayName = 'LandingFooter';
+
+export default LandingFooter;

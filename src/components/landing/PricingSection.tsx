@@ -1,3 +1,4 @@
+import { forwardRef } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Check, ArrowRight, Sparkles } from 'lucide-react';
@@ -160,4 +161,8 @@ export default function PricingSection() {
       </div>
     </section>
   );
-}
+});
+
+PricingSection.displayName = 'PricingSection';
+
+export default PricingSection;
