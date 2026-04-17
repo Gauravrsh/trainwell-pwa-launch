@@ -30,12 +30,20 @@ export function PlansList() {
   const [activeTab, setActiveTab] = useState('active');
 
   // Subscription access for trainers
-  const { isReadOnly, reason, loading: subscriptionLoading } = useSubscriptionAccess();
+  const { isReadOnly, reason, loading: subscriptionLoading, isFree, freeClientsRemaining, canInviteClients } = useSubscriptionAccess();
   const { renewPlan, status } = useTrainerSubscription();
 
   const handleSelectPlan = async (planType: 'monthly' | 'annual') => {
     await renewPlan(planType);
     setShowPlanModal(false);
+  };
+
+  const handleNewPlanClick = () => {
+    if (isFree && !canInviteClients) {
+      setShowPlanModal(true);
+      return;
+    }
+    setShowCreateModal(true);
   };
 
   const {
