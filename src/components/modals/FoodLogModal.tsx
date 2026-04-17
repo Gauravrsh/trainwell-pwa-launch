@@ -1,9 +1,10 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Camera, Utensils, Loader2, Check, Plus, ImagePlus, Sparkles } from 'lucide-react';
+import { X, Camera, Utensils, Loader2, Check, Plus, ImagePlus, Sparkles, AlertTriangle } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
+import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { supabase } from '@/integrations/supabase/client';
@@ -70,6 +71,8 @@ export const FoodLogModal = ({ open, onOpenChange, onSave }: FoodLogModalProps) 
   const [analysis, setAnalysis] = useState<FoodAnalysis | null>(null);
   const [sessionMeals, setSessionMeals] = useState<SessionMeal[]>([]);
   const [showScrollHint, setShowScrollHint] = useState(false);
+  const [aiError, setAiError] = useState<{ code: string; message: string } | null>(null);
+  const [manualMacros, setManualMacros] = useState({ calories: '', protein: '', carbs: '', fat: '' });
   
   const cameraInputRef = useRef<HTMLInputElement>(null);
   const galleryInputRef = useRef<HTMLInputElement>(null);
@@ -77,6 +80,7 @@ export const FoodLogModal = ({ open, onOpenChange, onSave }: FoodLogModalProps) 
   const scrollAreaRef = useRef<HTMLDivElement>(null);
 
   const hasInput = !!(foodText.trim() || capturedImage);
+  const hasManualMacros = !!(manualMacros.calories || manualMacros.protein || manualMacros.carbs || manualMacros.fat);
 
   // Check if analysis results are visible
   const checkScrollVisibility = useCallback(() => {
@@ -157,6 +161,7 @@ export const FoodLogModal = ({ open, onOpenChange, onSave }: FoodLogModalProps) 
     }
 
     setIsAnalyzing(true);
+    setAiError(null);
     try {
       let imageBase64 = null;
       if (capturedImage) {
@@ -170,14 +175,43 @@ export const FoodLogModal = ({ open, onOpenChange, onSave }: FoodLogModalProps) 
         }
       });
 
-      if (error) throw error;
+      // Edge function returned a non-2xx — extract structured error if available
+      if (error) {
+        // supabase-js wraps non-2xx in FunctionsHttpError with .context.response
+        let code = 'AI_UNAVAILABLE';
+        let message = 'Unable to analyze food. Please enter macros manually below.';
+        try {
+          const ctx = (error as any)?.context;
+          if (ctx?.json) {
+            code = ctx.json.code || code;
+            message = ctx.json.error || message;
+          } else if (ctx?.response?.json) {
+            const body = await ctx.response.json();
+            code = body.code || code;
+            message = body.error || message;
+          }
+        } catch {
+          // ignore parse errors, use defaults
+        }
+        // Data sometimes still carries the body
+        if (data && typeof data === 'object') {
+          const d = data as any;
+          if (d.code) code = d.code;
+          if (d.error) message = d.error;
+        }
+        setAiError({ code, message });
+        return null;
+      }
 
       const result = data as FoodAnalysis;
       setAnalysis(result);
       return result;
-    } catch (error) {
-      logError('FoodLogModal.analyzeFood', error);
-      toast.error('Failed to analyze food. Please try again.');
+    } catch (err) {
+      logError('FoodLogModal.analyzeFood', err);
+      setAiError({
+        code: 'AI_UNAVAILABLE',
+        message: 'Unable to analyze food. Please enter macros manually below.',
+      });
       return null;
     } finally {
       setIsAnalyzing(false);
@@ -189,53 +223,85 @@ export const FoodLogModal = ({ open, onOpenChange, onSave }: FoodLogModalProps) 
     setCapturedImage(null);
     setAnalysis(null);
     setShowScrollHint(false);
+    setAiError(null);
+    setManualMacros({ calories: '', protein: '', carbs: '', fat: '' });
   };
 
-  // Core save logic — auto-analyzes if needed, then saves
-  const saveCurrentMeal = async (): Promise<boolean> => {
-    if (!hasInput) {
-      toast.error('Please enter food description or take a photo');
-      return false;
+  // Build totals from manual macro inputs
+  const buildManualTotals = () => ({
+    calories: parseInt(manualMacros.calories, 10) || 0,
+    protein: parseFloat(manualMacros.protein) || 0,
+    carbs: parseFloat(manualMacros.carbs) || 0,
+    fat: parseFloat(manualMacros.fat) || 0,
+  });
+
+  // Core save logic — auto-analyzes if needed, then saves. Falls back to manual macros on AI failure.
+  const saveCurrentMeal = async (): Promise<{ saved: boolean; totals: FoodAnalysis['totals'] | null }> => {
+    if (!hasInput && !hasManualMacros) {
+      toast.error('Please enter food description, take a photo, or add macros manually');
+      return { saved: false, totals: null };
     }
 
     setIsSaving(true);
     try {
-      // Auto-analyze if not already done
-      let currentAnalysis = analysis;
-      if (!currentAnalysis) {
-        currentAnalysis = await analyzeFood();
-        if (!currentAnalysis) {
-          return false; // Analysis failed
-        }
+      // If user already filled manual macros (AI failed path), save those directly
+      if (aiError && hasManualMacros) {
+        const totals = buildManualTotals();
+        onSave({
+          mealType,
+          rawText: foodText,
+          ...totals,
+        });
+        return { saved: true, totals };
       }
 
-      onSave({
-        mealType,
-        rawText: foodText,
-        calories: currentAnalysis.totals.calories,
-        protein: currentAnalysis.totals.protein,
-        carbs: currentAnalysis.totals.carbs,
-        fat: currentAnalysis.totals.fat,
-      });
+      // Try AI analysis if not already done
+      let currentAnalysis = analysis;
+      if (!currentAnalysis && hasInput) {
+        currentAnalysis = await analyzeFood();
+      }
 
-      return true;
+      if (currentAnalysis) {
+        onSave({
+          mealType,
+          rawText: foodText,
+          calories: currentAnalysis.totals.calories,
+          protein: currentAnalysis.totals.protein,
+          carbs: currentAnalysis.totals.carbs,
+          fat: currentAnalysis.totals.fat,
+        });
+        return { saved: true, totals: currentAnalysis.totals };
+      }
+
+      // AI failed — if manual macros are filled, allow save
+      if (hasManualMacros) {
+        const totals = buildManualTotals();
+        onSave({
+          mealType,
+          rawText: foodText,
+          ...totals,
+        });
+        return { saved: true, totals };
+      }
+
+      // AI failed and no manual macros yet — keep modal open, fallback UI is now visible
+      return { saved: false, totals: null };
     } finally {
       setIsSaving(false);
     }
   };
 
   const handleSaveAndContinue = async () => {
-    const saved = await saveCurrentMeal();
-    if (!saved) return;
+    const { saved, totals } = await saveCurrentMeal();
+    if (!saved || !totals) return;
 
     // Track in session
-    const currentAnalysis = analysis!;
     const newMeal: SessionMeal = {
       mealType,
-      calories: currentAnalysis.totals.calories,
-      protein: currentAnalysis.totals.protein,
-      carbs: currentAnalysis.totals.carbs,
-      fat: currentAnalysis.totals.fat,
+      calories: totals.calories,
+      protein: totals.protein,
+      carbs: totals.carbs,
+      fat: totals.fat,
     };
     setSessionMeals(prev => [...prev, newMeal]);
 
@@ -248,13 +314,16 @@ export const FoodLogModal = ({ open, onOpenChange, onSave }: FoodLogModalProps) 
   };
 
   const handleDone = async () => {
-    // If there's input pending, save it first
-    if (hasInput) {
-      const saved = await saveCurrentMeal();
+    // If there's input pending (or manual macros), save it first
+    if (hasInput || hasManualMacros) {
+      const { saved } = await saveCurrentMeal();
       if (saved) {
         const totalMeals = sessionMeals.length + 1;
         toast.success(`${totalMeals} meal${totalMeals > 1 ? 's' : ''} logged successfully!`);
+        handleClose(false);
       }
+      // If not saved (AI failed, no manual macros), keep modal open so user sees fallback
+      return;
     } else if (sessionMeals.length > 0) {
       toast.success(`${sessionMeals.length} meal${sessionMeals.length > 1 ? 's' : ''} logged successfully!`);
     }
@@ -437,6 +506,72 @@ export const FoodLogModal = ({ open, onOpenChange, onSave }: FoodLogModalProps) 
             </div>
           )}
 
+          {/* AI Error + Manual Macro Fallback */}
+          {aiError && !analysis && (
+            <motion.div
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="space-y-3 rounded-xl border border-warning/40 bg-warning/10 p-4"
+            >
+              <div className="flex items-start gap-2">
+                <AlertTriangle className="w-4 h-4 text-warning flex-shrink-0 mt-0.5" />
+                <p className="text-sm text-foreground">{aiError.message}</p>
+              </div>
+              <div>
+                <Label className="text-xs text-muted-foreground">Enter macros manually</Label>
+                <div className="mt-2 grid grid-cols-4 gap-2">
+                  <div>
+                    <Input
+                      type="number"
+                      inputMode="numeric"
+                      placeholder="kcal"
+                      value={manualMacros.calories}
+                      onChange={(e) => setManualMacros(m => ({ ...m, calories: e.target.value }))}
+                      className="text-center bg-secondary/50 ring-offset-card"
+                    />
+                    <p className="text-[10px] text-muted-foreground text-center mt-1">Calories</p>
+                  </div>
+                  <div>
+                    <Input
+                      type="number"
+                      inputMode="decimal"
+                      placeholder="g"
+                      value={manualMacros.protein}
+                      onChange={(e) => setManualMacros(m => ({ ...m, protein: e.target.value }))}
+                      className="text-center bg-secondary/50 ring-offset-card"
+                    />
+                    <p className="text-[10px] text-muted-foreground text-center mt-1">Protein</p>
+                  </div>
+                  <div>
+                    <Input
+                      type="number"
+                      inputMode="decimal"
+                      placeholder="g"
+                      value={manualMacros.carbs}
+                      onChange={(e) => setManualMacros(m => ({ ...m, carbs: e.target.value }))}
+                      className="text-center bg-secondary/50 ring-offset-card"
+                    />
+                    <p className="text-[10px] text-muted-foreground text-center mt-1">Carbs</p>
+                  </div>
+                  <div>
+                    <Input
+                      type="number"
+                      inputMode="decimal"
+                      placeholder="g"
+                      value={manualMacros.fat}
+                      onChange={(e) => setManualMacros(m => ({ ...m, fat: e.target.value }))}
+                      className="text-center bg-secondary/50 ring-offset-card"
+                    />
+                    <p className="text-[10px] text-muted-foreground text-center mt-1">Fat</p>
+                  </div>
+                </div>
+                <p className="text-[11px] text-muted-foreground mt-2">
+                  Tip: leave blank to log just the meal description with zero macros.
+                </p>
+              </div>
+            </motion.div>
+          )}
+
           {/* Analysis Results */}
           <AnimatePresence>
             {analysis && (
@@ -512,7 +647,7 @@ export const FoodLogModal = ({ open, onOpenChange, onSave }: FoodLogModalProps) 
           <Button 
             className="w-full h-12 rounded-xl"
             onClick={handleDone}
-            disabled={isProcessing || (!hasInput && sessionMeals.length === 0)}
+            disabled={isProcessing || (!hasInput && !hasManualMacros && sessionMeals.length === 0)}
           >
             {isProcessing ? (
               <>
@@ -520,10 +655,10 @@ export const FoodLogModal = ({ open, onOpenChange, onSave }: FoodLogModalProps) 
                 {isAnalyzing ? 'Analyzing & Saving...' : 'Saving...'}
               </>
             ) : (
-              hasInput ? 'Log Food' : (sessionMeals.length > 0 ? 'Done' : 'Log Food')
+              (hasInput || hasManualMacros) ? 'Log Food' : (sessionMeals.length > 0 ? 'Done' : 'Log Food')
             )}
           </Button>
-          {hasInput && (
+          {(hasInput || hasManualMacros) && (
             <Button 
               variant="outline"
               className="w-full h-10 rounded-xl"
