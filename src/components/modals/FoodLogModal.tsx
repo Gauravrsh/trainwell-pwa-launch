@@ -531,6 +531,13 @@ export const FoodLogModal = ({ open, onOpenChange, onSave, clientId = null, logg
           </div>
 
           <div className="dialog-scroll-area px-5 py-4 space-y-4">
+            <FoodDiaryPanel
+              clientId={clientId}
+              loggedDate={dateStr}
+              isToday={isToday}
+              isReadOnly={isReadOnly}
+              refreshSignal={diaryRefresh}
+            />
             <AnimatePresence>
               {sessionMeals.length > 0 && <FoodSessionSummary meals={sessionMeals} />}
             </AnimatePresence>
