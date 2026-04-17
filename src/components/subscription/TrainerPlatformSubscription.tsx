@@ -163,6 +163,48 @@ export function TrainerPlatformSubscription() {
     );
   }
 
+  // Pending payment view — trainer started checkout but never completed
+  if (status.isPendingPayment) {
+    return (
+      <>
+        <motion.div
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="p-4 rounded-2xl border bg-warning/10 border-warning/30"
+        >
+          <div className="flex items-start justify-between mb-3">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-warning/20 flex items-center justify-center">
+                <AlertTriangle className="w-5 h-5 text-warning" />
+              </div>
+              <div>
+                <h3 className="font-semibold text-foreground">Payment incomplete</h3>
+                <p className="text-sm text-warning">
+                  Your {subscription?.plan_type === 'annual' ? 'Elite' : 'Pro'} plan is awaiting payment confirmation.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <Button
+            onClick={() => setShowPlanModal(true)}
+            className="w-full bg-primary text-primary-foreground"
+          >
+            Complete Payment
+          </Button>
+        </motion.div>
+
+        <PlanSelectionModal
+          open={showPlanModal}
+          onClose={() => setShowPlanModal(false)}
+          onSelectPlan={handleSelectPlan}
+          isRenewal={true}
+          currentPlan={subscription?.plan_type}
+        />
+      </>
+    );
+  }
+
   // Paid plan view (monthly / annual)
   return (
     <>
