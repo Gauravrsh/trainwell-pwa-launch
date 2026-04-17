@@ -1,6 +1,5 @@
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { ArrowRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import CalendarMockup from './CalendarMockup';
 
@@ -48,10 +47,8 @@ export default function HeroSection() {
               className="mt-8 flex flex-col gap-3 sm:flex-row"
               initial="hidden" animate="visible" variants={fadeUp} custom={1.5}
             >
-              <Button asChild size="lg" className="gap-2 text-base font-bold">
-                <Link to="/auth">
-                  Get Started Free <ArrowRight className="h-4 w-4" />
-                </Link>
+              <Button asChild size="lg" className="text-base font-bold">
+                <Link to="/auth">Get Started</Link>
               </Button>
             </motion.div>
 
