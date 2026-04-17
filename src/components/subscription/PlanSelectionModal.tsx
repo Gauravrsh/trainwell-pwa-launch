@@ -258,7 +258,7 @@ export function PlanSelectionModal({
               <div className="w-full p-4 rounded-2xl border-2 border-dashed border-border bg-muted/30 text-left">
                 <div className="flex items-center gap-2 mb-2">
                   <Sparkles className="w-5 h-5 text-muted-foreground" />
-                  <span className="font-semibold text-foreground">Smart (Free)</span>
+                  <span className="font-semibold text-foreground">Smart</span>
                   <span className="px-2 py-0.5 bg-success/20 text-success text-xs font-bold rounded">CURRENT</span>
                 </div>
                 <div className="mb-2">
@@ -285,7 +285,7 @@ export function PlanSelectionModal({
                       {plan.id === 'annual' ? (
                         <Crown className="w-5 h-5 text-primary" />
                       ) : (
-                        <Sparkles className="w-5 h-5 text-muted-foreground" />
+                        <Rocket className="w-5 h-5 text-primary" />
                       )}
                       <span className="font-semibold text-foreground">{plan.name}</span>
                       {plan.badge && (
@@ -310,7 +310,7 @@ export function PlanSelectionModal({
                     <span className="text-muted-foreground">{plan.period}</span>
                   </div>
 
-                  <p className="text-sm text-muted-foreground mb-3">{plan.description}</p>
+                  <p className="text-sm text-muted-foreground mb-3 whitespace-pre-line">{plan.description}</p>
 
                   <ul className="space-y-1.5">
                     {plan.features.map((feature) => (
