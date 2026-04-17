@@ -161,6 +161,7 @@ export const FoodLogModal = ({ open, onOpenChange, onSave }: FoodLogModalProps) 
     }
 
     setIsAnalyzing(true);
+    setAiError(null);
     try {
       let imageBase64 = null;
       if (capturedImage) {
@@ -174,14 +175,43 @@ export const FoodLogModal = ({ open, onOpenChange, onSave }: FoodLogModalProps) 
         }
       });
 
-      if (error) throw error;
+      // Edge function returned a non-2xx — extract structured error if available
+      if (error) {
+        // supabase-js wraps non-2xx in FunctionsHttpError with .context.response
+        let code = 'AI_UNAVAILABLE';
+        let message = 'Unable to analyze food. Please enter macros manually below.';
+        try {
+          const ctx = (error as any)?.context;
+          if (ctx?.json) {
+            code = ctx.json.code || code;
+            message = ctx.json.error || message;
+          } else if (ctx?.response?.json) {
+            const body = await ctx.response.json();
+            code = body.code || code;
+            message = body.error || message;
+          }
+        } catch {
+          // ignore parse errors, use defaults
+        }
+        // Data sometimes still carries the body
+        if (data && typeof data === 'object') {
+          const d = data as any;
+          if (d.code) code = d.code;
+          if (d.error) message = d.error;
+        }
+        setAiError({ code, message });
+        return null;
+      }
 
       const result = data as FoodAnalysis;
       setAnalysis(result);
       return result;
-    } catch (error) {
-      logError('FoodLogModal.analyzeFood', error);
-      toast.error('Failed to analyze food. Please try again.');
+    } catch (err) {
+      logError('FoodLogModal.analyzeFood', err);
+      setAiError({
+        code: 'AI_UNAVAILABLE',
+        message: 'Unable to analyze food. Please enter macros manually below.',
+      });
       return null;
     } finally {
       setIsAnalyzing(false);
@@ -193,36 +223,69 @@ export const FoodLogModal = ({ open, onOpenChange, onSave }: FoodLogModalProps) 
     setCapturedImage(null);
     setAnalysis(null);
     setShowScrollHint(false);
+    setAiError(null);
+    setManualMacros({ calories: '', protein: '', carbs: '', fat: '' });
   };
 
-  // Core save logic — auto-analyzes if needed, then saves
-  const saveCurrentMeal = async (): Promise<boolean> => {
-    if (!hasInput) {
-      toast.error('Please enter food description or take a photo');
-      return false;
+  // Build totals from manual macro inputs
+  const buildManualTotals = () => ({
+    calories: parseInt(manualMacros.calories, 10) || 0,
+    protein: parseFloat(manualMacros.protein) || 0,
+    carbs: parseFloat(manualMacros.carbs) || 0,
+    fat: parseFloat(manualMacros.fat) || 0,
+  });
+
+  // Core save logic — auto-analyzes if needed, then saves. Falls back to manual macros on AI failure.
+  const saveCurrentMeal = async (): Promise<{ saved: boolean; totals: FoodAnalysis['totals'] | null }> => {
+    if (!hasInput && !hasManualMacros) {
+      toast.error('Please enter food description, take a photo, or add macros manually');
+      return { saved: false, totals: null };
     }
 
     setIsSaving(true);
     try {
-      // Auto-analyze if not already done
-      let currentAnalysis = analysis;
-      if (!currentAnalysis) {
-        currentAnalysis = await analyzeFood();
-        if (!currentAnalysis) {
-          return false; // Analysis failed
-        }
+      // If user already filled manual macros (AI failed path), save those directly
+      if (aiError && hasManualMacros) {
+        const totals = buildManualTotals();
+        onSave({
+          mealType,
+          rawText: foodText,
+          ...totals,
+        });
+        return { saved: true, totals };
       }
 
-      onSave({
-        mealType,
-        rawText: foodText,
-        calories: currentAnalysis.totals.calories,
-        protein: currentAnalysis.totals.protein,
-        carbs: currentAnalysis.totals.carbs,
-        fat: currentAnalysis.totals.fat,
-      });
+      // Try AI analysis if not already done
+      let currentAnalysis = analysis;
+      if (!currentAnalysis && hasInput) {
+        currentAnalysis = await analyzeFood();
+      }
 
-      return true;
+      if (currentAnalysis) {
+        onSave({
+          mealType,
+          rawText: foodText,
+          calories: currentAnalysis.totals.calories,
+          protein: currentAnalysis.totals.protein,
+          carbs: currentAnalysis.totals.carbs,
+          fat: currentAnalysis.totals.fat,
+        });
+        return { saved: true, totals: currentAnalysis.totals };
+      }
+
+      // AI failed — if manual macros are filled, allow save
+      if (hasManualMacros) {
+        const totals = buildManualTotals();
+        onSave({
+          mealType,
+          rawText: foodText,
+          ...totals,
+        });
+        return { saved: true, totals };
+      }
+
+      // AI failed and no manual macros yet — keep modal open, fallback UI is now visible
+      return { saved: false, totals: null };
     } finally {
       setIsSaving(false);
     }
