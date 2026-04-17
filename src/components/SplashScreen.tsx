@@ -4,6 +4,10 @@ interface SplashScreenProps {
   onComplete?: () => void;
 }
 
+/**
+ * Minimal splash: logo + tagline render immediately. Only the fade-out is animated
+ * so we never force the user to watch a scripted entrance before content is ready.
+ */
 const SplashScreen = ({ onComplete }: SplashScreenProps) => {
   return (
     <motion.div
@@ -11,33 +15,17 @@ const SplashScreen = ({ onComplete }: SplashScreenProps) => {
       initial={{ opacity: 1 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      transition={{ duration: 0.5 }}
+      transition={{ duration: 0.25 }}
       onAnimationComplete={onComplete}
     >
-      <motion.div
-        initial={{ scale: 0.8, opacity: 0 }}
-        animate={{ scale: 1, opacity: 1 }}
-        transition={{ duration: 0.6, ease: "easeOut" }}
-        className="flex flex-col items-center gap-8"
-      >
-        <motion.h1
-          className="text-6xl font-bold text-foreground tracking-tight"
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2, duration: 0.5, ease: "easeOut" }}
-        >
+      <div className="flex flex-col items-center gap-6">
+        <h1 className="text-6xl font-bold text-foreground tracking-tight">
           <span className="text-primary">V</span>ECTO
-        </motion.h1>
-
-        <motion.p
-          className="text-lg text-muted-foreground"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.6, duration: 0.5 }}
-        >
+        </h1>
+        <p className="text-lg text-muted-foreground">
           Effort | Direction | Discipline
-        </motion.p>
-      </motion.div>
+        </p>
+      </div>
     </motion.div>
   );
 };

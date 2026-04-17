@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, lazy, Suspense } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -10,21 +10,25 @@ import { AppLayout } from "@/components/layout/AppLayout";
 import { AnimatePresence } from "framer-motion";
 import SplashScreen from "@/components/SplashScreen";
 import ErrorBoundary from "@/components/ErrorBoundary";
+
+// Auth + Landing are eager (entry routes the user hits cold)
 import Auth from "./pages/Auth";
-import ResetPassword from "./pages/ResetPassword";
-import RoleSelection from "./pages/RoleSelection";
-import ProfileSetup from "./pages/ProfileSetup";
-import Home from "./pages/Home";
-import Calendar from "./pages/Calendar";
 import Landing from "./pages/Landing";
-import Plans from "./pages/Plans";
-import Progress from "./pages/Progress";
-import Refer from "./pages/Refer";
-import Profile from "./pages/Profile";
-import Terms from "./pages/Terms";
-import Pitch from "./pages/Pitch";
-import NotFound from "./pages/NotFound";
-import IconReview from "./pages/IconReview";
+
+// Everything else is code-split so we don't ship the full app on first paint.
+const ResetPassword = lazy(() => import("./pages/ResetPassword"));
+const RoleSelection = lazy(() => import("./pages/RoleSelection"));
+const ProfileSetup = lazy(() => import("./pages/ProfileSetup"));
+const Home = lazy(() => import("./pages/Home"));
+const Calendar = lazy(() => import("./pages/Calendar"));
+const Plans = lazy(() => import("./pages/Plans"));
+const Progress = lazy(() => import("./pages/Progress"));
+const Refer = lazy(() => import("./pages/Refer"));
+const Profile = lazy(() => import("./pages/Profile"));
+const Terms = lazy(() => import("./pages/Terms"));
+const Pitch = lazy(() => import("./pages/Pitch"));
+const NotFound = lazy(() => import("./pages/NotFound"));
+const IconReview = lazy(() => import("./pages/IconReview"));
 
 const queryClient = new QueryClient();
 
@@ -40,12 +44,10 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
     return <Navigate to="/auth" replace />;
   }
 
-  // Redirect to role selection if profile doesn't exist yet
   if (needsRoleSelection) {
     return <Navigate to="/role-selection" replace />;
   }
 
-  // Redirect to profile setup if profile exists but not complete
   if (needsProfileSetup) {
     return <Navigate to="/profile-setup" replace />;
   }
@@ -58,14 +60,13 @@ const RoleSelectionRoute = ({ children }: { children: React.ReactNode }) => {
   const { profile, loading: profileLoading } = useProfile();
 
   if (authLoading || profileLoading) {
-    return null; // Let splash screen handle loading state
+    return null;
   }
 
   if (!user) {
     return <Navigate to="/auth" replace />;
   }
 
-  // If profile already exists, go to home
   if (profile) {
     return <Navigate to="/dashboard" replace />;
   }
@@ -78,24 +79,21 @@ const ProfileSetupRoute = () => {
   const { profile, loading: profileLoading } = useProfile();
 
   if (authLoading || profileLoading) {
-    return null; // Let splash screen handle loading state
+    return null;
   }
 
   if (!user) {
     return <Navigate to="/auth" replace />;
   }
 
-  // If no profile, go to role selection
   if (!profile) {
     return <Navigate to="/role-selection" replace />;
   }
 
-  // If profile is complete, go to home
   if (profile.profile_complete) {
     return <Navigate to="/dashboard" replace />;
   }
 
-  // Get role from profile
   return <ProfileSetup role={profile.role} />;
 };
 
@@ -119,89 +117,91 @@ const PublicLandingRoute = () => {
   return <Landing />;
 };
 
-const AppRoutes = () => (
-  <Routes>
-    <Route
-      path="/auth"
-      element={
-        <AuthRoute>
-          <Auth />
-        </AuthRoute>
-      }
-    />
-    <Route
-      path="/reset-password"
-      element={<ResetPassword />}
-    />
-    <Route
-      path="/role-selection"
-      element={
-        <RoleSelectionRoute>
-          <RoleSelection />
-        </RoleSelectionRoute>
-      }
-    />
-    <Route
-      path="/profile-setup"
-      element={<ProfileSetupRoute />}
-    />
-    <Route path="/" element={<PublicLandingRoute />} />
-    <Route
-      path="/dashboard"
-      element={
-        <ProtectedRoute>
-          <Calendar />
-        </ProtectedRoute>
-      }
-    />
-    <Route
-      path="/home"
-      element={
-        <ProtectedRoute>
-          <Home />
-        </ProtectedRoute>
-      }
-    />
-    <Route
-      path="/plans"
-      element={
-        <ProtectedRoute>
-          <Plans />
-        </ProtectedRoute>
-      }
-    />
-    <Route
-      path="/progress"
-      element={
-        <ProtectedRoute>
-          <Progress />
-        </ProtectedRoute>
-      }
-    />
-    <Route
-      path="/refer"
-      element={
-        <ProtectedRoute>
-          <Refer />
-        </ProtectedRoute>
-      }
-    />
-    <Route
-      path="/profile"
-      element={
-        <ProtectedRoute>
-          <Profile />
-        </ProtectedRoute>
-      }
-    />
-    <Route path="/terms" element={<Terms />} />
-    <Route path="/pitch" element={<Pitch />} />
-    <Route path="/icon-review" element={<IconReview />} />
-    <Route path="*" element={<NotFound />} />
-  </Routes>
+const RouteFallback = () => (
+  <div className="fixed inset-0 flex items-center justify-center bg-background">
+    <div className="text-foreground/60 text-sm">Loading…</div>
+  </div>
 );
 
-const SPLASH_MAX_MS = 2500; // hard cap, never wait beyond this
+const AppRoutes = () => (
+  <Suspense fallback={<RouteFallback />}>
+    <Routes>
+      <Route
+        path="/auth"
+        element={
+          <AuthRoute>
+            <Auth />
+          </AuthRoute>
+        }
+      />
+      <Route path="/reset-password" element={<ResetPassword />} />
+      <Route
+        path="/role-selection"
+        element={
+          <RoleSelectionRoute>
+            <RoleSelection />
+          </RoleSelectionRoute>
+        }
+      />
+      <Route path="/profile-setup" element={<ProfileSetupRoute />} />
+      <Route path="/" element={<PublicLandingRoute />} />
+      <Route
+        path="/dashboard"
+        element={
+          <ProtectedRoute>
+            <Calendar />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/home"
+        element={
+          <ProtectedRoute>
+            <Home />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/plans"
+        element={
+          <ProtectedRoute>
+            <Plans />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/progress"
+        element={
+          <ProtectedRoute>
+            <Progress />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/refer"
+        element={
+          <ProtectedRoute>
+            <Refer />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/profile"
+        element={
+          <ProtectedRoute>
+            <Profile />
+          </ProtectedRoute>
+        }
+      />
+      <Route path="/terms" element={<Terms />} />
+      <Route path="/pitch" element={<Pitch />} />
+      <Route path="/icon-review" element={<IconReview />} />
+      <Route path="*" element={<NotFound />} />
+    </Routes>
+  </Suspense>
+);
+
+const SPLASH_MAX_MS = 1200; // hard cap; never strand the user on the splash
 
 const AppContent = () => {
   const { loading: authLoading } = useAuth();
@@ -210,18 +210,19 @@ const AppContent = () => {
   const [showSplash, setShowSplash] = useState(true);
   const [maxTimeReached, setMaxTimeReached] = useState(false);
 
-  // Never block invite/signup flows behind the splash if auth initialization is slow.
+  // Public auth routes never block on profile fetch.
   const isPublicRoute =
     location.pathname.startsWith("/auth") ||
-    location.pathname.startsWith("/reset-password");
+    location.pathname.startsWith("/reset-password") ||
+    location.pathname === "/" ||
+    location.pathname === "/terms" ||
+    location.pathname === "/pitch";
 
-  // Hard cap so a slow network never strands the user on the splash.
   useEffect(() => {
     const timer = setTimeout(() => setMaxTimeReached(true), SPLASH_MAX_MS);
     return () => clearTimeout(timer);
   }, []);
 
-  // Hide splash as soon as auth+profile are resolved (or instantly on public routes).
   useEffect(() => {
     const ready = isPublicRoute || (!authLoading && !profileLoading);
     if (ready || maxTimeReached) {

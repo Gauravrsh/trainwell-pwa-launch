@@ -1,10 +1,11 @@
+import { forwardRef } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
-export default function CTASection() {
+const CTASection = forwardRef<HTMLElement>((_, ref) => {
   return (
-    <section className="px-4 py-16 sm:py-24 text-center">
+    <section ref={ref} className="px-4 py-16 sm:py-24 text-center">
       <div className="mx-auto max-w-3xl">
         <h2 className="text-2xl font-extrabold sm:text-3xl">
           The Flywheel That Builds{' '}
@@ -26,4 +27,8 @@ export default function CTASection() {
       </div>
     </section>
   );
-}
+});
+
+CTASection.displayName = 'CTASection';
+
+export default CTASection;

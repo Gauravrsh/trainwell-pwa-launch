@@ -1,3 +1,4 @@
+import { forwardRef } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Check, ArrowRight, Sparkles } from 'lucide-react';
@@ -64,9 +65,9 @@ const plans = [
   },
 ];
 
-export default function PricingSection() {
+const PricingSection = forwardRef<HTMLElement>((_, ref) => {
   return (
-    <section className="px-4 py-16 sm:py-24 bg-secondary/20" id="pricing">
+    <section ref={ref} className="px-4 py-16 sm:py-24 bg-secondary/20" id="pricing">
       <div className="mx-auto max-w-5xl">
         {/* Beta Banner */}
         <motion.div
@@ -160,4 +161,8 @@ export default function PricingSection() {
       </div>
     </section>
   );
-}
+});
+
+PricingSection.displayName = 'PricingSection';
+
+export default PricingSection;
