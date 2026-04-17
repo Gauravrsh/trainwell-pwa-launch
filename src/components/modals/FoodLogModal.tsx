@@ -292,17 +292,16 @@ export const FoodLogModal = ({ open, onOpenChange, onSave }: FoodLogModalProps) 
   };
 
   const handleSaveAndContinue = async () => {
-    const saved = await saveCurrentMeal();
-    if (!saved) return;
+    const { saved, totals } = await saveCurrentMeal();
+    if (!saved || !totals) return;
 
     // Track in session
-    const currentAnalysis = analysis!;
     const newMeal: SessionMeal = {
       mealType,
-      calories: currentAnalysis.totals.calories,
-      protein: currentAnalysis.totals.protein,
-      carbs: currentAnalysis.totals.carbs,
-      fat: currentAnalysis.totals.fat,
+      calories: totals.calories,
+      protein: totals.protein,
+      carbs: totals.carbs,
+      fat: totals.fat,
     };
     setSessionMeals(prev => [...prev, newMeal]);
 
@@ -315,13 +314,16 @@ export const FoodLogModal = ({ open, onOpenChange, onSave }: FoodLogModalProps) 
   };
 
   const handleDone = async () => {
-    // If there's input pending, save it first
-    if (hasInput) {
-      const saved = await saveCurrentMeal();
+    // If there's input pending (or manual macros), save it first
+    if (hasInput || hasManualMacros) {
+      const { saved } = await saveCurrentMeal();
       if (saved) {
         const totalMeals = sessionMeals.length + 1;
         toast.success(`${totalMeals} meal${totalMeals > 1 ? 's' : ''} logged successfully!`);
+        handleClose(false);
       }
+      // If not saved (AI failed, no manual macros), keep modal open so user sees fallback
+      return;
     } else if (sessionMeals.length > 0) {
       toast.success(`${sessionMeals.length} meal${sessionMeals.length > 1 ? 's' : ''} logged successfully!`);
     }
