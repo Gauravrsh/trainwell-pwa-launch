@@ -647,7 +647,7 @@ export const FoodLogModal = ({ open, onOpenChange, onSave }: FoodLogModalProps) 
           <Button 
             className="w-full h-12 rounded-xl"
             onClick={handleDone}
-            disabled={isProcessing || (!hasInput && sessionMeals.length === 0)}
+            disabled={isProcessing || (!hasInput && !hasManualMacros && sessionMeals.length === 0)}
           >
             {isProcessing ? (
               <>
@@ -655,10 +655,10 @@ export const FoodLogModal = ({ open, onOpenChange, onSave }: FoodLogModalProps) 
                 {isAnalyzing ? 'Analyzing & Saving...' : 'Saving...'}
               </>
             ) : (
-              hasInput ? 'Log Food' : (sessionMeals.length > 0 ? 'Done' : 'Log Food')
+              (hasInput || hasManualMacros) ? 'Log Food' : (sessionMeals.length > 0 ? 'Done' : 'Log Food')
             )}
           </Button>
-          {hasInput && (
+          {(hasInput || hasManualMacros) && (
             <Button 
               variant="outline"
               className="w-full h-10 rounded-xl"
