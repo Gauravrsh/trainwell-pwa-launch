@@ -410,27 +410,7 @@ export const FoodLogModal = ({ open, onOpenChange, onSave, clientId = null, logg
     setDiaryRefresh((n) => n + 1);
   };
 
-  // Primary CTA: Analyze with AI then save in one tap
-  const handleAnalyzeAndSave = async () => {
-    if (!hasItems) {
-      // Run analysis first
-      await analyzeFood();
-      // Note: state updates async, so we check after via a follow-up render.
-      // We auto-save on the next render via a small effect below.
-      return;
-    }
-    setIsSaving(true);
-    try {
-      const ok = performSave(false);
-      if (ok) {
-        const name = mealType.charAt(0).toUpperCase() + mealType.slice(1);
-        toast.success(`${name} logged!`);
-        handleClose(false);
-      }
-    } finally {
-      setIsSaving(false);
-    }
-  };
+  // (Legacy single-tap "Analyse & Save" handler removed — use handlePrimaryCTA below.)
 
   // Auto-save once items appear from a "Analyse & Save" click (single-tap UX)
   const autoSaveAfterAnalyzeRef = useRef(false);
