@@ -1074,7 +1074,7 @@ const Calendar = () => {
                         <span className="text-xs text-muted-foreground">Holiday</span>
                       </div>
                       <div className="flex items-center gap-1.5">
-                        <div className="w-5 h-5 rounded-md bg-transparent border-2 border-amber-500" />
+                        <div className="w-5 h-5 rounded-md bg-transparent border-2 border-warning" />
                         <span className="text-xs text-muted-foreground">Trainer Leave</span>
                       </div>
                       <div className="flex items-center gap-1.5">
