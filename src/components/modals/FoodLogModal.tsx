@@ -224,10 +224,16 @@ export const FoodLogModal = ({ open, onOpenChange, onSave }: FoodLogModalProps) 
     setIsAnalyzing(true);
     setAiError(null);
     try {
-      const imageBase64 = image ? image.split(',')[1] : null;
-      const { data, error } = await supabase.functions.invoke('analyze-food', {
-        body: { foodText: text || undefined, imageBase64 },
-      });
+      // Route by input type:
+      // - Text-only (Describe tab) → vector cache lookup, then AI fallback
+      // - Photo (Snap tab) → direct AI (image embeddings are Phase B)
+      const useCache = !image && !!text;
+      const fnName = useCache ? 'lookup-or-analyze-food' : 'analyze-food';
+      const payload = useCache
+        ? { foodText: text }
+        : { foodText: text || undefined, imageBase64: image ? image.split(',')[1] : null };
+
+      const { data, error } = await supabase.functions.invoke(fnName, { body: payload });
 
       if (error) {
         let code = 'AI_UNAVAILABLE';
@@ -246,8 +252,25 @@ export const FoodLogModal = ({ open, onOpenChange, onSave }: FoodLogModalProps) 
         return;
       }
 
-      const result = data as { items: Omit<FoodItem, 'qty'>[]; totals: any };
-      setItems((result.items || []).map((it) => ({ ...it, qty: 1 })));
+      const result = data as {
+        items: Omit<FoodItem, 'qty'>[];
+        totals: any;
+        source?: 'cache' | 'ai';
+        matched_dictionary_id?: string;
+      };
+      const isCacheHit = result.source === 'cache';
+      setItems(
+        (result.items || []).map((it) => ({
+          ...it,
+          qty: 1,
+          source: result.source,
+          matchedDictionaryId: isCacheHit ? result.matched_dictionary_id : undefined,
+          originalCalories: isCacheHit ? it.calories : undefined,
+          originalProtein: isCacheHit ? it.protein : undefined,
+          originalCarbs: isCacheHit ? it.carbs : undefined,
+          originalFat: isCacheHit ? it.fat : undefined,
+        }))
+      );
     } catch (err) {
       logError('FoodLogModal.analyzeFood', err);
       setAiError({ code: 'AI_UNAVAILABLE', message: getErrorCopy('AI_UNAVAILABLE') });
@@ -264,7 +287,40 @@ export const FoodLogModal = ({ open, onOpenChange, onSave }: FoodLogModalProps) 
     );
   };
 
+  // Log feedback when a cached item is removed (strong negative signal: cache match was wrong)
+  const logCachedItemFeedback = async (item: FoodItem) => {
+    if (!item.matchedDictionaryId || item.source !== 'cache') return;
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('user_id', user.id)
+        .maybeSingle();
+      if (!profile?.id) return;
+      // Removal = treated as 100% kcal delta (full rejection)
+      await supabase.from('food_dictionary_edits').insert({
+        dictionary_id: item.matchedDictionaryId,
+        client_id: profile.id,
+        original_kcal: item.originalCalories ?? item.calories,
+        original_protein: item.originalProtein ?? item.protein,
+        original_carbs: item.originalCarbs ?? item.carbs,
+        original_fat: item.originalFat ?? item.fat,
+        edited_kcal: 0,
+        edited_protein: 0,
+        edited_carbs: 0,
+        edited_fat: 0,
+        kcal_delta_pct: 100,
+      });
+    } catch (err) {
+      logError('FoodLogModal.logCachedItemFeedback', err);
+    }
+  };
+
   const removeItem = (idx: number) => {
+    const item = items[idx];
+    if (item) void logCachedItemFeedback(item);
     setItems((prev) => prev.filter((_, i) => i !== idx));
   };
 
