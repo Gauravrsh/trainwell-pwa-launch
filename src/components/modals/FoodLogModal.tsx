@@ -65,7 +65,14 @@ interface FoodLogModalProps {
     carbs: number;
     fat: number;
     pendingAnalysis?: boolean;
-  }) => void;
+    matchedDictionaryId?: string | null;
+  }) => void | Promise<void>;
+  /** The profile id whose food we're logging — own id (client) or selectedClientId (trainer). */
+  clientId?: string | null;
+  /** Date being logged (defaults to today). */
+  loggedDate?: Date;
+  /** True when a trainer is viewing the diary — disables edit/delete affordances. */
+  isReadOnly?: boolean;
 }
 
 const mealTypeOrder: MealType[] = ['breakfast', 'lunch', 'dinner', 'snack'];
