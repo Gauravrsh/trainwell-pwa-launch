@@ -5,7 +5,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { AuthProvider, useAuth } from "@/hooks/useAuth";
-import { useProfile } from "@/hooks/useProfile";
+import { ProfileProvider, useProfile } from "@/hooks/useProfile";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { AnimatePresence } from "framer-motion";
 import SplashScreen from "@/components/SplashScreen";
@@ -201,32 +201,33 @@ const AppRoutes = () => (
   </Routes>
 );
 
+const SPLASH_MAX_MS = 2500; // hard cap, never wait beyond this
+
 const AppContent = () => {
   const { loading: authLoading } = useAuth();
   const { loading: profileLoading } = useProfile();
   const location = useLocation();
   const [showSplash, setShowSplash] = useState(true);
-  const [minTimeElapsed, setMinTimeElapsed] = useState(false);
+  const [maxTimeReached, setMaxTimeReached] = useState(false);
 
   // Never block invite/signup flows behind the splash if auth initialization is slow.
   const isPublicRoute =
     location.pathname.startsWith("/auth") ||
     location.pathname.startsWith("/reset-password");
 
-  // Show splash for at least 2 seconds
+  // Hard cap so a slow network never strands the user on the splash.
   useEffect(() => {
-    const timer = setTimeout(() => {
-      setMinTimeElapsed(true);
-    }, 2000);
+    const timer = setTimeout(() => setMaxTimeReached(true), SPLASH_MAX_MS);
     return () => clearTimeout(timer);
   }, []);
 
-  // Hide splash when loading is done AND minimum time has elapsed
+  // Hide splash as soon as auth+profile are resolved (or instantly on public routes).
   useEffect(() => {
-    if (minTimeElapsed && (isPublicRoute || (!authLoading && !profileLoading))) {
+    const ready = isPublicRoute || (!authLoading && !profileLoading);
+    if (ready || maxTimeReached) {
       setShowSplash(false);
     }
-  }, [authLoading, profileLoading, minTimeElapsed, isPublicRoute]);
+  }, [authLoading, profileLoading, isPublicRoute, maxTimeReached]);
 
   return (
     <>
@@ -245,7 +246,9 @@ const App = () => (
       <Sonner />
       <BrowserRouter>
         <AuthProvider>
-          <AppContent />
+          <ProfileProvider>
+            <AppContent />
+          </ProfileProvider>
         </AuthProvider>
       </BrowserRouter>
     </TooltipProvider>

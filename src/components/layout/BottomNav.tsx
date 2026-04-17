@@ -21,7 +21,12 @@ const navItems: NavItem[] = [
 
 export const BottomNav = () => {
   const location = useLocation();
-  const { isTrainer } = useProfile();
+  const { profile, loading } = useProfile();
+
+  // Don't render until we know the role — prevents the client→trainer menu flash.
+  if (loading || !profile) return null;
+
+  const isTrainer = profile.role === 'trainer';
 
   // Filter nav items based on role
   const visibleNavItems = navItems.filter(item => !item.trainerOnly || isTrainer);
