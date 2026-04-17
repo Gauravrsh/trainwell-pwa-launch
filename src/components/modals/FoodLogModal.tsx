@@ -506,6 +506,72 @@ export const FoodLogModal = ({ open, onOpenChange, onSave }: FoodLogModalProps) 
             </div>
           )}
 
+          {/* AI Error + Manual Macro Fallback */}
+          {aiError && !analysis && (
+            <motion.div
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="space-y-3 rounded-xl border border-warning/40 bg-warning/10 p-4"
+            >
+              <div className="flex items-start gap-2">
+                <AlertTriangle className="w-4 h-4 text-warning flex-shrink-0 mt-0.5" />
+                <p className="text-sm text-foreground">{aiError.message}</p>
+              </div>
+              <div>
+                <Label className="text-xs text-muted-foreground">Enter macros manually</Label>
+                <div className="mt-2 grid grid-cols-4 gap-2">
+                  <div>
+                    <Input
+                      type="number"
+                      inputMode="numeric"
+                      placeholder="kcal"
+                      value={manualMacros.calories}
+                      onChange={(e) => setManualMacros(m => ({ ...m, calories: e.target.value }))}
+                      className="text-center bg-secondary/50 ring-offset-card"
+                    />
+                    <p className="text-[10px] text-muted-foreground text-center mt-1">Calories</p>
+                  </div>
+                  <div>
+                    <Input
+                      type="number"
+                      inputMode="decimal"
+                      placeholder="g"
+                      value={manualMacros.protein}
+                      onChange={(e) => setManualMacros(m => ({ ...m, protein: e.target.value }))}
+                      className="text-center bg-secondary/50 ring-offset-card"
+                    />
+                    <p className="text-[10px] text-muted-foreground text-center mt-1">Protein</p>
+                  </div>
+                  <div>
+                    <Input
+                      type="number"
+                      inputMode="decimal"
+                      placeholder="g"
+                      value={manualMacros.carbs}
+                      onChange={(e) => setManualMacros(m => ({ ...m, carbs: e.target.value }))}
+                      className="text-center bg-secondary/50 ring-offset-card"
+                    />
+                    <p className="text-[10px] text-muted-foreground text-center mt-1">Carbs</p>
+                  </div>
+                  <div>
+                    <Input
+                      type="number"
+                      inputMode="decimal"
+                      placeholder="g"
+                      value={manualMacros.fat}
+                      onChange={(e) => setManualMacros(m => ({ ...m, fat: e.target.value }))}
+                      className="text-center bg-secondary/50 ring-offset-card"
+                    />
+                    <p className="text-[10px] text-muted-foreground text-center mt-1">Fat</p>
+                  </div>
+                </div>
+                <p className="text-[11px] text-muted-foreground mt-2">
+                  Tip: leave blank to log just the meal description with zero macros.
+                </p>
+              </div>
+            </motion.div>
+          )}
+
           {/* Analysis Results */}
           <AnimatePresence>
             {analysis && (
