@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Check, Crown, Sparkles, ChevronDown, ExternalLink, Loader2, Zap } from 'lucide-react';
+import { Check, Crown, Sparkles, ChevronDown, ExternalLink, Loader2, Zap, Rocket } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
