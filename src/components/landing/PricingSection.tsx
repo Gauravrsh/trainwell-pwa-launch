@@ -1,8 +1,9 @@
 import { forwardRef } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Check, Sparkles, Crown, Rocket } from 'lucide-react';
+import { Check, ArrowRight, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
 const fadeUp = {
   hidden: { opacity: 0, y: 24 },
@@ -12,66 +13,53 @@ const fadeUp = {
   }),
 };
 
-type Plan = {
-  id: 'smart' | 'monthly' | 'annual';
-  name: string;
-  icon: typeof Sparkles;
-  price: string;
-  period: string;
-  description: string;
-  badge?: string;
-  highlight?: boolean;
-  features: string[];
-  cta: string;
-};
-
-const plans: Plan[] = [
+const plans = [
   {
-    id: 'smart',
+    key: 'smart',
     name: 'Smart',
-    icon: Sparkles,
+    subtitle: 'FREE FOREVER',
     price: '₹0',
-    period: ' forever',
-    description: 'Up to 3 active clients · All features unlocked',
+    period: '',
+    equiv: 'Stay free, forever',
+    highlight: false,
     features: [
       'Up to 3 active clients',
       'All features unlocked',
       'No card required',
       'Upgrade only when you scale',
     ],
-    cta: 'Start Smart',
+    cta: 'Start Free',
   },
   {
-    id: 'monthly',
+    key: 'pro',
     name: 'Pro',
-    icon: Rocket,
+    subtitle: 'FOR GROWING TRAINERS',
     price: '₹999',
     period: '/month',
-    description: '30 days + 3-day grace · Unlimited clients',
+    equiv: 'Pay monthly · 30 days + 3 grace',
+    highlight: false,
     features: [
       'Unlimited active clients',
       'All features unlocked',
       'UPI & card payments',
       'Cancel anytime',
-      'Get invite to learning webinars',
     ],
     cta: 'Go Pro',
   },
   {
-    id: 'annual',
+    key: 'elite',
     name: 'Elite',
-    icon: Crown,
+    subtitle: 'FOR ELITE TRAINERS',
     price: '₹9,999',
     period: '/year',
-    description: '~₹714/month · Unlimited clients\n~28% less than monthly plan',
-    badge: 'BEST VALUE',
+    equiv: '12 + 2 bonus months · ~₹714/mo',
     highlight: true,
+    badge: '💪 Best Value',
     features: [
       'Everything in Pro',
       '14 months for the price of 12',
       'Referral rewards (annual)',
       'Priority support',
-      'Get invite to in-person meetups with elite trainers',
     ],
     cta: 'Go Elite',
   },
@@ -81,6 +69,19 @@ const PricingSection = forwardRef<HTMLElement>((_, ref) => {
   return (
     <section ref={ref} className="px-4 py-16 sm:py-24 bg-secondary/20" id="pricing">
       <div className="mx-auto max-w-5xl">
+        {/* Beta Banner */}
+        <motion.div
+          initial="hidden" whileInView="visible" viewport={{ once: true }}
+          variants={fadeUp} custom={0}
+          className="mx-auto mb-8 max-w-2xl rounded-xl border border-primary/30 bg-primary/10 px-4 py-3 text-center"
+        >
+          <p className="text-sm font-semibold text-foreground flex items-center justify-center gap-2 flex-wrap">
+            <Sparkles className="h-4 w-4 text-primary" />
+            <span>Special Pricing<sup>*</sup> for Beta Users</span>
+            <span className="text-muted-foreground font-normal">— Lock in these rates while you can.</span>
+          </p>
+        </motion.div>
+
         <motion.h2
           className="text-center text-2xl font-extrabold sm:text-3xl"
           initial="hidden" whileInView="visible" viewport={{ once: true }}
@@ -97,76 +98,57 @@ const PricingSection = forwardRef<HTMLElement>((_, ref) => {
           {`That social media post where your client flaunts the results, and gives you the credit — what would you pay for that? It's priceless right? \nFocus on what truly matters and what will get your clients' results. Cutting corners on that is, well, a bad career decision!!`}
         </motion.p>
 
-        {/* Beta Banner — moved here, just above the plan grid */}
-        <motion.div
-          initial="hidden" whileInView="visible" viewport={{ once: true }}
-          variants={fadeUp} custom={0.8}
-          className="mx-auto mt-8 mb-6 flex items-center justify-center gap-2 rounded-full border border-primary/30 bg-primary/10 px-4 py-1.5 w-fit"
-        >
-          <Sparkles className="h-3.5 w-3.5 text-primary" />
-          <span className="text-xs font-semibold text-foreground">
-            Special Beta Pricing<sup>*</sup>
-          </span>
-        </motion.div>
-
-        <div className="grid gap-6 md:grid-cols-3">
-          {plans.map((plan, i) => {
-            const Icon = plan.icon;
-            return (
-              <motion.div
-                key={plan.id}
-                initial="hidden" whileInView="visible" viewport={{ once: true, margin: '-40px' }}
-                variants={fadeUp} custom={i + 1}
-                className={`relative w-full p-5 rounded-2xl border-2 text-left transition-all ${
-                  plan.highlight
-                    ? 'border-primary bg-primary/5 shadow-[0_0_40px_-10px_hsl(var(--primary)/0.3)]'
-                    : 'border-border bg-card'
+        <div className="mt-12 grid gap-6 md:grid-cols-3">
+          {plans.map((p, i) => (
+            <motion.div
+              key={p.key}
+              initial="hidden" whileInView="visible" viewport={{ once: true, margin: '-40px' }}
+              variants={fadeUp} custom={i + 1}
+            >
+              <Card
+                className={`relative h-full ${
+                  p.highlight
+                    ? 'border-primary shadow-[0_0_40px_-10px_hsl(var(--primary)/0.3)]'
+                    : 'border-border'
                 }`}
               >
-                {plan.badge && (
-                  <span className="absolute -top-3 left-1/2 -translate-x-1/2 inline-flex items-center gap-1 rounded-full bg-primary px-3 py-0.5 text-[10px] font-bold text-primary-foreground whitespace-nowrap">
-                    {plan.badge}
+                {p.badge && (
+                  <span className="absolute -top-3 left-1/2 -translate-x-1/2 inline-flex items-center gap-1 rounded-full bg-primary px-3 py-0.5 text-xs font-bold text-primary-foreground whitespace-nowrap">
+                    {p.badge}
                   </span>
                 )}
-
-                <div className="flex items-center gap-2 mb-2">
-                  <Icon className="w-5 h-5 text-muted-foreground" />
-                  <span className="font-semibold text-foreground">{plan.name}</span>
-                </div>
-
-                <div className="mb-2">
-                  <span className="text-3xl font-bold text-foreground">{plan.price}</span>
-                  <span className="text-muted-foreground">{plan.period}</span>
-                </div>
-
-                <p className="text-sm text-muted-foreground mb-4 whitespace-pre-line min-h-[40px]">
-                  {plan.description}
-                </p>
-
-                <ul className="space-y-1.5 mb-5">
-                  {plan.features.map((feature) => (
-                    <li key={feature} className="flex items-center gap-2 text-sm text-muted-foreground">
-                      <Check className="w-4 h-4 text-success flex-shrink-0" />
-                      {feature}
-                    </li>
-                  ))}
-                </ul>
-
-                <Button
-                  asChild
-                  className={`w-full ${
-                    plan.highlight
-                      ? ''
-                      : 'bg-background text-foreground border-2 border-primary hover:bg-primary/10 hover:text-foreground'
-                  }`}
-                  variant={plan.highlight ? 'default' : 'outline'}
-                  size="lg"
-                >
-                  <Link to="/auth">{plan.cta}</Link>
-                </Button>
-              </motion.div>
-            );
-          })}
+                <CardHeader className="pb-2">
+                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">{p.subtitle}</p>
+                  <CardTitle className="text-lg mt-1">{p.name}</CardTitle>
+                  <div className="mt-2">
+                    <span className="text-4xl font-extrabold">{p.price}</span>
+                    {p.period && <span className="text-sm text-muted-foreground">{p.period}</span>}
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-1">{p.equiv}</p>
+                </CardHeader>
+                <CardContent>
+                  <ul className="space-y-2.5">
+                    {p.features.map((f) => (
+                      <li key={f} className="flex items-start gap-2 text-sm text-muted-foreground">
+                        <Check className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
+                        {f}
+                      </li>
+                    ))}
+                  </ul>
+                  <Button
+                    asChild
+                    className="mt-6 w-full gap-2"
+                    variant={p.highlight ? 'default' : 'outline'}
+                    size="lg"
+                  >
+                    <Link to="/auth">
+                      {p.cta} <ArrowRight className="h-4 w-4" />
+                    </Link>
+                  </Button>
+                </CardContent>
+              </Card>
+            </motion.div>
+          ))}
         </div>
 
         <motion.p

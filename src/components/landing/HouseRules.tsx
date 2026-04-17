@@ -54,9 +54,9 @@ export default function HouseRules() {
               initial="hidden" whileInView="visible" viewport={{ once: true, margin: '-40px' }}
               variants={fadeUp} custom={i + 1}
             >
-              <Card className="h-full border-border bg-card text-center">
+              <Card className="h-full border-border bg-card">
                 <CardHeader className="pb-2">
-                  <div className="mx-auto flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 mb-3">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 mb-3">
                     <r.icon className="h-5 w-5 text-primary" />
                   </div>
                   <CardTitle className="text-base">{r.title}</CardTitle>

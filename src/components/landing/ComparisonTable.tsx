@@ -36,7 +36,7 @@ export default function ComparisonTable() {
         </motion.p>
 
         <motion.div
-          className="mt-10 overflow-hidden rounded-xl border border-primary/40"
+          className="mt-10 overflow-hidden rounded-xl border border-border"
           initial="hidden" whileInView="visible" viewport={{ once: true }}
           variants={fadeUp}
         >

@@ -13,7 +13,7 @@ export default function LandingNav() {
             <Link to="/auth">Login</Link>
           </Button>
           <Button asChild size="sm" className="font-bold">
-            <Link to="/auth">Get Started</Link>
+            <Link to="/auth">Get Started Free</Link>
           </Button>
         </div>
       </div>
