@@ -277,9 +277,32 @@ Return ONLY the JSON object, no additional text.`
     if (!response.ok) {
       const errorText = await response.text();
       console.error('AI Gateway error:', response.status, errorText);
-      // Return generic error to client, keep details in server logs
+
+      // Surface credit/rate-limit errors so the client can show a helpful message
+      if (response.status === 402) {
+        return new Response(
+          JSON.stringify({
+            error: 'Food AI is temporarily out of credits. Please try again in a few hours, or log manually below.',
+            code: 'CREDITS_EXHAUSTED',
+          }),
+          { status: 402, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      if (response.status === 429) {
+        return new Response(
+          JSON.stringify({
+            error: 'Food AI is busy right now. Please try again in a moment, or log manually below.',
+            code: 'RATE_LIMITED',
+          }),
+          { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
       return new Response(
-        JSON.stringify({ error: 'Unable to analyze food. Please try again.' }),
+        JSON.stringify({
+          error: 'Unable to analyze food. Please try again, or log manually below.',
+          code: 'AI_UNAVAILABLE',
+        }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
