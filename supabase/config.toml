@@ -17,3 +17,6 @@ verify_jwt = false
 
 [functions.nudge-trainers]
 verify_jwt = false
+
+[functions.record-food-edit]
+verify_jwt = false

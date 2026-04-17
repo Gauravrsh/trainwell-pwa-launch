@@ -720,10 +720,9 @@ const Calendar = () => {
     carbs: number;
     fat: number;
     pendingAnalysis?: boolean;
+    matchedDictionaryId?: string | null;
   }) => {
     if (!selectedDate) return;
-    
-    // For trainer view, use selectedClientId; for client view, use profile.id
     const clientId = isTrainer ? selectedClientId : profile?.id;
     if (!clientId) return;
 
@@ -740,13 +739,12 @@ const Calendar = () => {
           carbs: data.carbs,
           fat: data.fat,
           pending_analysis: data.pendingAnalysis ?? false,
+          matched_dictionary_id: data.matchedDictionaryId ?? null,
         });
 
       if (error) throw error;
 
-      setShowFoodModal(false);
-      setShowClientActionSheet(false);
-      setShowTrainerActionSheet(false);
+      // NOTE: modal stays open — diary panel inside the modal will refetch.
       promptPushPermission();
     } catch (error) {
       logError('Calendar.handleFoodSave', error);
@@ -1479,6 +1477,9 @@ const Calendar = () => {
         open={showFoodModal}
         onOpenChange={setShowFoodModal}
         onSave={handleFoodSave}
+        clientId={isTrainer ? selectedClientId : profile?.id ?? null}
+        loggedDate={selectedDate ?? undefined}
+        isReadOnly={isTrainer}
       />
 
       {/* Step Log Modal */}

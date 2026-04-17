@@ -11,6 +11,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { logError } from '@/lib/errorUtils';
 import { FoodSessionSummary } from './FoodSessionSummary';
+import { FoodDiaryPanel } from './FoodDiaryPanel';
+import { format } from 'date-fns';
 
 type MealType = 'breakfast' | 'lunch' | 'dinner' | 'snack';
 type TabValue = 'snap' | 'describe' | 'recent';
@@ -63,7 +65,14 @@ interface FoodLogModalProps {
     carbs: number;
     fat: number;
     pendingAnalysis?: boolean;
-  }) => void;
+    matchedDictionaryId?: string | null;
+  }) => void | Promise<void>;
+  /** The profile id whose food we're logging — own id (client) or selectedClientId (trainer). */
+  clientId?: string | null;
+  /** Date being logged (defaults to today). */
+  loggedDate?: Date;
+  /** True when a trainer is viewing the diary — disables edit/delete affordances. */
+  isReadOnly?: boolean;
 }
 
 const mealTypeOrder: MealType[] = ['breakfast', 'lunch', 'dinner', 'snack'];
@@ -104,7 +113,7 @@ const getErrorCopy = (code: string): string => {
   }
 };
 
-export const FoodLogModal = ({ open, onOpenChange, onSave }: FoodLogModalProps) => {
+export const FoodLogModal = ({ open, onOpenChange, onSave, clientId = null, loggedDate, isReadOnly = false }: FoodLogModalProps) => {
   const [mealType, setMealType] = useState<MealType>(getDefaultMealType());
   const [tab, setTab] = useState<TabValue>('snap');
   const [foodText, setFoodText] = useState('');
@@ -116,6 +125,13 @@ export const FoodLogModal = ({ open, onOpenChange, onSave }: FoodLogModalProps) 
   const [aiError, setAiError] = useState<{ code: string; message: string } | null>(null);
   const [recentMeals, setRecentMeals] = useState<RecentMeal[]>([]);
   const [loadingRecent, setLoadingRecent] = useState(false);
+  const [diaryRefresh, setDiaryRefresh] = useState(0);
+
+  const dateStr = useMemo(
+    () => format(loggedDate ?? new Date(), 'yyyy-MM-dd'),
+    [loggedDate]
+  );
+  const isToday = dateStr === format(new Date(), 'yyyy-MM-dd');
 
   const cameraInputRef = useRef<HTMLInputElement>(null);
   const galleryInputRef = useRef<HTMLInputElement>(null);
@@ -348,14 +364,13 @@ export const FoodLogModal = ({ open, onOpenChange, onSave }: FoodLogModalProps) 
     setAiError(null);
   };
 
-  const performSave = (pending = false): boolean => {
+  const performSave = async (pending = false): Promise<boolean> => {
     if (pending) {
-      // Save for later: needs at least some input (text or image)
       if (!hasInput) {
         toast.error('Add a photo or describe your meal first');
         return false;
       }
-      onSave({
+      await onSave({
         mealType,
         rawText: foodText || (capturedImage ? '[Photo meal — pending analysis]' : ''),
         calories: 0,
@@ -363,6 +378,7 @@ export const FoodLogModal = ({ open, onOpenChange, onSave }: FoodLogModalProps) 
         carbs: 0,
         fat: 0,
         pendingAnalysis: true,
+        matchedDictionaryId: null,
       });
       setSessionMeals((prev) => [...prev, { mealType, calories: 0, protein: 0, carbs: 0, fat: 0 }]);
       return true;
@@ -372,7 +388,8 @@ export const FoodLogModal = ({ open, onOpenChange, onSave }: FoodLogModalProps) 
       toast.error('Analyze your meal first');
       return false;
     }
-    onSave({
+    const cachedItem = items.find((i) => i.source === 'cache' && i.matchedDictionaryId);
+    await onSave({
       mealType,
       rawText: foodText || items.map((i) => `${i.name} (${i.qty}x ${i.quantity})`).join(', '),
       calories: round(totals.calories),
@@ -380,32 +397,20 @@ export const FoodLogModal = ({ open, onOpenChange, onSave }: FoodLogModalProps) 
       carbs: round(totals.carbs, 1),
       fat: round(totals.fat, 1),
       pendingAnalysis: false,
+      matchedDictionaryId: cachedItem?.matchedDictionaryId ?? null,
     });
     setSessionMeals((prev) => [...prev, { mealType, ...totals }]);
     return true;
   };
 
-  // Primary CTA: Analyze with AI then save in one tap
-  const handleAnalyzeAndSave = async () => {
-    if (!hasItems) {
-      // Run analysis first
-      await analyzeFood();
-      // Note: state updates async, so we check after via a follow-up render.
-      // We auto-save on the next render via a small effect below.
-      return;
-    }
-    setIsSaving(true);
-    try {
-      const ok = performSave(false);
-      if (ok) {
-        const name = mealType.charAt(0).toUpperCase() + mealType.slice(1);
-        toast.success(`${name} logged!`);
-        handleClose(false);
-      }
-    } finally {
-      setIsSaving(false);
-    }
+  // After a successful save, keep the modal open so the diary panel reflects the
+  // newly-logged meal. Resets the input area and bumps the diary refresh signal.
+  const finalizeAfterSave = () => {
+    resetForm();
+    setDiaryRefresh((n) => n + 1);
   };
+
+  // (Legacy single-tap "Analyse & Save" handler removed — use handlePrimaryCTA below.)
 
   // Auto-save once items appear from a "Analyse & Save" click (single-tap UX)
   const autoSaveAfterAnalyzeRef = useRef(false);
@@ -416,12 +421,14 @@ export const FoodLogModal = ({ open, onOpenChange, onSave }: FoodLogModalProps) 
   useEffect(() => {
     if (autoSaveAfterAnalyzeRef.current && hasItems && !isAnalyzing) {
       autoSaveAfterAnalyzeRef.current = false;
-      const ok = performSave(false);
-      if (ok) {
-        const name = mealType.charAt(0).toUpperCase() + mealType.slice(1);
-        toast.success(`${name} logged!`);
-        handleClose(false);
-      }
+      void (async () => {
+        const ok = await performSave(false);
+        if (ok) {
+          const name = mealType.charAt(0).toUpperCase() + mealType.slice(1);
+          toast.success(`${name} logged!`);
+          finalizeAfterSave();
+        }
+      })();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [hasItems, isAnalyzing]);
@@ -431,11 +438,11 @@ export const FoodLogModal = ({ open, onOpenChange, onSave }: FoodLogModalProps) 
       // Already analyzed — just save
       setIsSaving(true);
       try {
-        const ok = performSave(false);
+        const ok = await performSave(false);
         if (ok) {
           const name = mealType.charAt(0).toUpperCase() + mealType.slice(1);
           toast.success(`${name} logged!`);
-          handleClose(false);
+          finalizeAfterSave();
         }
       } finally {
         setIsSaving(false);
@@ -447,13 +454,13 @@ export const FoodLogModal = ({ open, onOpenChange, onSave }: FoodLogModalProps) 
     await analyzeFood();
   };
 
-  const handleSaveForLater = () => {
+  const handleSaveForLater = async () => {
     setIsSaving(true);
     try {
-      const ok = performSave(true);
+      const ok = await performSave(true);
       if (ok) {
         toast.success("Saved! We'll analyze it the moment our AI is back.");
-        handleClose(false);
+        finalizeAfterSave();
       }
     } finally {
       setIsSaving(false);
@@ -524,6 +531,13 @@ export const FoodLogModal = ({ open, onOpenChange, onSave }: FoodLogModalProps) 
           </div>
 
           <div className="dialog-scroll-area px-5 py-4 space-y-4">
+            <FoodDiaryPanel
+              clientId={clientId}
+              loggedDate={dateStr}
+              isToday={isToday}
+              isReadOnly={isReadOnly}
+              refreshSignal={diaryRefresh}
+            />
             <AnimatePresence>
               {sessionMeals.length > 0 && <FoodSessionSummary meals={sessionMeals} />}
             </AnimatePresence>
