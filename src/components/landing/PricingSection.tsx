@@ -65,7 +65,7 @@ const plans = [
   },
 ];
 
-export default function PricingSection() {
+const PricingSection = forwardRef<HTMLElement>((_, ref) => {
   return (
     <section className="px-4 py-16 sm:py-24 bg-secondary/20" id="pricing">
       <div className="mx-auto max-w-5xl">
