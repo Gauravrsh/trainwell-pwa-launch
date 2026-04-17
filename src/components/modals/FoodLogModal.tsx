@@ -11,6 +11,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { logError } from '@/lib/errorUtils';
 import { FoodSessionSummary } from './FoodSessionSummary';
+import { FoodDiaryPanel } from './FoodDiaryPanel';
+import { format } from 'date-fns';
 
 type MealType = 'breakfast' | 'lunch' | 'dinner' | 'snack';
 type TabValue = 'snap' | 'describe' | 'recent';
