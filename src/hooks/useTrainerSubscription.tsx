@@ -28,6 +28,7 @@ export interface SubscriptionStatus {
   subscription: TrainerSubscription | null;
   isActive: boolean;
   isReadOnly: boolean;
+  isPendingPayment: boolean;
   isFree: boolean;
   daysRemaining: number;
   isInGracePeriod: boolean;
