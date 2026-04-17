@@ -190,6 +190,116 @@ export type Database = {
           },
         ]
       }
+      food_dictionary: {
+        Row: {
+          base_carbs: number
+          base_fat: number
+          base_kcal: number
+          base_protein: number
+          base_quantity: number
+          created_at: string
+          embedding: string | null
+          food_name: string
+          id: string
+          last_used_at: string
+          needs_review: boolean
+          original_raw_text: string | null
+          quantity_unit: string
+          updated_at: string
+          usage_count: number
+        }
+        Insert: {
+          base_carbs?: number
+          base_fat?: number
+          base_kcal?: number
+          base_protein?: number
+          base_quantity?: number
+          created_at?: string
+          embedding?: string | null
+          food_name: string
+          id?: string
+          last_used_at?: string
+          needs_review?: boolean
+          original_raw_text?: string | null
+          quantity_unit?: string
+          updated_at?: string
+          usage_count?: number
+        }
+        Update: {
+          base_carbs?: number
+          base_fat?: number
+          base_kcal?: number
+          base_protein?: number
+          base_quantity?: number
+          created_at?: string
+          embedding?: string | null
+          food_name?: string
+          id?: string
+          last_used_at?: string
+          needs_review?: boolean
+          original_raw_text?: string | null
+          quantity_unit?: string
+          updated_at?: string
+          usage_count?: number
+        }
+        Relationships: []
+      }
+      food_dictionary_edits: {
+        Row: {
+          client_id: string
+          dictionary_id: string
+          edited_at: string
+          edited_carbs: number | null
+          edited_fat: number | null
+          edited_kcal: number | null
+          edited_protein: number | null
+          id: string
+          kcal_delta_pct: number | null
+          original_carbs: number | null
+          original_fat: number | null
+          original_kcal: number | null
+          original_protein: number | null
+        }
+        Insert: {
+          client_id: string
+          dictionary_id: string
+          edited_at?: string
+          edited_carbs?: number | null
+          edited_fat?: number | null
+          edited_kcal?: number | null
+          edited_protein?: number | null
+          id?: string
+          kcal_delta_pct?: number | null
+          original_carbs?: number | null
+          original_fat?: number | null
+          original_kcal?: number | null
+          original_protein?: number | null
+        }
+        Update: {
+          client_id?: string
+          dictionary_id?: string
+          edited_at?: string
+          edited_carbs?: number | null
+          edited_fat?: number | null
+          edited_kcal?: number | null
+          edited_protein?: number | null
+          id?: string
+          kcal_delta_pct?: number | null
+          original_carbs?: number | null
+          original_fat?: number | null
+          original_kcal?: number | null
+          original_protein?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "food_dictionary_edits_dictionary_id_fkey"
+            columns: ["dictionary_id"]
+            isOneToOne: false
+            referencedRelation: "food_dictionary"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       food_logs: {
         Row: {
           calories: number | null
@@ -873,6 +983,10 @@ export type Database = {
         Args: { p_referral_id: string }
         Returns: boolean
       }
+      bump_dictionary_usage: {
+        Args: { p_dictionary_id: string }
+        Returns: undefined
+      }
       calculate_referral_reward: {
         Args: {
           p_referee_plan: Database["public"]["Enums"]["platform_plan_type"]
@@ -1041,6 +1155,24 @@ export type Database = {
           p_subscription_id: string
         }
         Returns: undefined
+      }
+      search_food_dictionary: {
+        Args: {
+          match_count?: number
+          match_threshold?: number
+          query_embedding: string
+        }
+        Returns: {
+          base_carbs: number
+          base_fat: number
+          base_kcal: number
+          base_protein: number
+          base_quantity: number
+          distance: number
+          food_name: string
+          id: string
+          quantity_unit: string
+        }[]
       }
       start_trainer_free: {
         Args: { p_trainer_id: string }
