@@ -120,11 +120,19 @@ export function PlansList() {
               Manage Billing
             </h1>
           </div>
-          <Button onClick={() => setShowCreateModal(true)} size="sm" className="gap-2" disabled={isReadOnly}>
+          <Button onClick={handleNewPlanClick} size="sm" className="gap-2" disabled={isReadOnly}>
             <Plus className="w-4 h-4" />
             New Plan
           </Button>
         </motion.div>
+        {isFree && (
+          <p className="text-xs text-muted-foreground mt-2">
+            Smart plan: {freeClientsRemaining} of 3 active client slots remaining.{' '}
+            <button onClick={() => setShowPlanModal(true)} className="text-primary font-medium hover:underline">
+              Upgrade
+            </button>
+          </p>
+        )}
       </div>
 
       {/* Subscription Enforcement Banner */}
