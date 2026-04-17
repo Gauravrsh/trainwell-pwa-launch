@@ -200,6 +200,7 @@ export type Database = {
           id: string
           logged_date: string
           meal_type: Database["public"]["Enums"]["meal_type"]
+          pending_analysis: boolean
           protein: number | null
           raw_text: string | null
           updated_at: string | null
@@ -213,6 +214,7 @@ export type Database = {
           id?: string
           logged_date: string
           meal_type: Database["public"]["Enums"]["meal_type"]
+          pending_analysis?: boolean
           protein?: number | null
           raw_text?: string | null
           updated_at?: string | null
@@ -226,6 +228,7 @@ export type Database = {
           id?: string
           logged_date?: string
           meal_type?: Database["public"]["Enums"]["meal_type"]
+          pending_analysis?: boolean
           protein?: number | null
           raw_text?: string | null
           updated_at?: string | null
