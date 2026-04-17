@@ -1,25 +1,30 @@
 import { motion } from 'framer-motion';
-import { Check, X, Dumbbell } from 'lucide-react';
+import { Check, Dumbbell, Palmtree, UserX, CalendarOff } from 'lucide-react';
 
-type DayStatus = 'completed' | 'skipped' | 'pending' | 'empty' | 'future';
+type DayStatus =
+  | 'completed'    // green border only
+  | 'pending'      // today, awaiting log
+  | 'client_leave' // CL — red border
+  | 'trainer_leave'// TL — amber border
+  | 'holiday'      // HL — muted border
+  | 'empty'        // past day, nothing logged (blank tile)
+  | 'future';      // future day, dimmed
 
-// Simulated month data — a realistic client calendar for March 2026
+// Simulated month — March 2026 (starts Sunday). "Today" = Mar 23.
 const calendarData: { day: number; status: DayStatus; weekday: number }[] = (() => {
-  // March 2026 starts on Sunday (weekday 0)
-  const startDay = 0; // Sunday
+  const startDay = 0;
   const daysInMonth = 31;
-  const todayDate = 23; // Simulate "today" as March 23
 
   const statuses: DayStatus[] = [
-    // Week 1 (1-7): Strong start
-    'completed', 'completed', 'completed', 'skipped', 'completed', 'completed', 'completed',
-    // Week 2 (8-14): One slip
-    'completed', 'completed', 'skipped', 'completed', 'completed', 'completed', 'completed',
-    // Week 3 (15-21): Mostly on track
-    'completed', 'completed', 'completed', 'completed', 'skipped', 'completed', 'completed',
-    // Week 4 (22-23): current
+    // Week 1 (1-7)
+    'completed', 'completed', 'completed', 'empty', 'completed', 'completed', 'holiday',
+    // Week 2 (8-14)
+    'completed', 'completed', 'client_leave', 'completed', 'completed', 'completed', 'completed',
+    // Week 3 (15-21)
+    'completed', 'completed', 'completed', 'trainer_leave', 'empty', 'completed', 'completed',
+    // Week 4 (22-23)
     'completed', 'pending',
-    // Rest are future
+    // Future
     'future', 'future', 'future', 'future', 'future', 'future', 'future', 'future',
   ];
 
@@ -32,29 +37,16 @@ const calendarData: { day: number; status: DayStatus; weekday: number }[] = (() 
 
 const weekDays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
-const getStatusStyles = (status: DayStatus) => {
+const getCellStyles = (status: DayStatus) => {
   switch (status) {
     case 'completed':
-      return {
-        icon: <Check className="w-2.5 h-2.5" />,
-        dotBg: 'bg-success',
-        dotText: 'text-foreground',
-        cellBg: 'bg-success/20 border-success/40',
-      };
-    case 'skipped':
-      return {
-        icon: <X className="w-2.5 h-2.5" />,
-        dotBg: 'bg-destructive',
-        dotText: 'text-foreground',
-        cellBg: 'bg-destructive/20 border-destructive/40',
-      };
-    case 'pending':
-      return {
-        icon: <Dumbbell className="w-2 h-2" />,
-        dotBg: 'bg-primary/80',
-        dotText: 'text-primary-foreground',
-        cellBg: 'border-primary/30',
-      };
+      return { border: 'border-success', icon: <Check className="w-2.5 h-2.5 text-success" /> };
+    case 'client_leave':
+      return { border: 'border-destructive', icon: <UserX className="w-2.5 h-2.5 text-destructive" /> };
+    case 'trainer_leave':
+      return { border: 'border-warning', icon: <CalendarOff className="w-2.5 h-2.5 text-warning" /> };
+    case 'holiday':
+      return { border: 'border-muted-foreground/60', icon: <Palmtree className="w-2.5 h-2.5 text-muted-foreground" /> };
     default:
       return null;
   }
@@ -62,8 +54,6 @@ const getStatusStyles = (status: DayStatus) => {
 
 export default function CalendarMockup() {
   const todayDate = 23;
-
-  // Calculate leading empty cells for the first week
   const firstWeekday = calendarData[0]?.weekday ?? 0;
 
   return (
@@ -74,9 +64,8 @@ export default function CalendarMockup() {
       viewport={{ once: true }}
       transition={{ duration: 0.6, ease: 'easeOut' }}
     >
-      {/* Outer card mimicking the app's calendar section */}
       <div className="rounded-2xl border border-primary/30 bg-primary/5 p-3 shadow-2xl">
-        {/* Month header */}
+        {/* Header */}
         <div className="mb-2 flex items-center justify-between px-1">
           <div>
             <p className="text-xs text-muted-foreground">Client: Rahul M.</p>
@@ -87,24 +76,21 @@ export default function CalendarMockup() {
           </span>
         </div>
 
-        {/* 7-col grid */}
+        {/* Grid */}
         <div className="grid grid-cols-7 gap-1.5">
-          {/* Weekday headers */}
           {weekDays.map((d, i) => (
             <div key={i} className="text-center text-[10px] font-semibold text-muted-foreground py-1">
               {d}
             </div>
           ))}
 
-          {/* Leading empty cells */}
           {Array.from({ length: firstWeekday }).map((_, i) => (
             <div key={`empty-${i}`} />
           ))}
 
-          {/* Day cells */}
           {calendarData.map((cell, i) => {
             const isToday = cell.day === todayDate;
-            const styles = getStatusStyles(cell.status);
+            const styles = getCellStyles(cell.status);
             const isFuture = cell.status === 'future';
 
             return (
@@ -116,7 +102,7 @@ export default function CalendarMockup() {
                   ${isToday
                     ? 'bg-primary text-primary-foreground ring-2 ring-primary ring-offset-2 ring-offset-background border-primary'
                     : styles
-                      ? styles.cellBg
+                      ? `bg-card ${styles.border}`
                       : isFuture
                         ? 'bg-card/50 text-muted-foreground/50 border-transparent'
                         : 'bg-card text-foreground border-transparent'
@@ -129,14 +115,12 @@ export default function CalendarMockup() {
               >
                 <span className={isToday ? 'font-bold' : ''}>{cell.day}</span>
 
-                {/* Status icon at bottom — matches real app */}
                 {styles && !isToday && (
-                  <div className={`absolute bottom-0.5 rounded-full p-0.5 ${styles.dotBg} ${styles.dotText}`}>
+                  <div className="absolute bottom-0.5">
                     {styles.icon}
                   </div>
                 )}
 
-                {/* Today's workout indicator */}
                 {isToday && cell.status === 'pending' && (
                   <div className="absolute bottom-0.5">
                     <Dumbbell className="w-2.5 h-2.5 text-primary-foreground" />
@@ -147,29 +131,34 @@ export default function CalendarMockup() {
           })}
         </div>
 
-        {/* Legend — matches real app */}
-        <div className="flex flex-wrap gap-3 mt-3 px-1">
+        {/* Legend — mirrors real app (boundary-only, marks included) */}
+        <div className="grid grid-cols-2 gap-x-3 gap-y-1.5 mt-3 px-1">
           <div className="flex items-center gap-1.5">
-            <div className="w-4 h-4 rounded-full bg-success flex items-center justify-center">
-              <Check className="w-2.5 h-2.5 text-foreground" />
-            </div>
+            <div className="w-3.5 h-3.5 rounded border-2 border-success" />
             <span className="text-[10px] text-muted-foreground">Completed</span>
           </div>
           <div className="flex items-center gap-1.5">
-            <div className="w-4 h-4 rounded-full bg-destructive flex items-center justify-center">
-              <X className="w-2.5 h-2.5 text-foreground" />
-            </div>
-            <span className="text-[10px] text-muted-foreground">Missed</span>
+            <div className="w-3.5 h-3.5 rounded border-2 border-primary bg-primary/20" />
+            <span className="text-[10px] text-muted-foreground">Today / Pending</span>
           </div>
           <div className="flex items-center gap-1.5">
-            <div className="w-4 h-4 rounded-full bg-primary/80 flex items-center justify-center">
-              <Dumbbell className="w-2 h-2 text-primary-foreground" />
-            </div>
-            <span className="text-[10px] text-muted-foreground">Pending</span>
+            <div className="w-3.5 h-3.5 rounded border-2 border-destructive" />
+            <span className="text-[10px] text-muted-foreground">Client Leave</span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <div className="w-3.5 h-3.5 rounded border-2 border-warning" />
+            <span className="text-[10px] text-muted-foreground">Trainer Leave</span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <div className="w-3.5 h-3.5 rounded border-2 border-muted-foreground/60" />
+            <span className="text-[10px] text-muted-foreground">Holiday</span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <div className="w-3.5 h-3.5 rounded border-2 border-transparent bg-card" />
+            <span className="text-[10px] text-muted-foreground">Missed (blank)</span>
           </div>
         </div>
 
-        {/* Caption */}
         <p className="mt-2 text-center text-[10px] text-muted-foreground italic">
           Total visibility on why your client is (or isn't) winning.
         </p>
