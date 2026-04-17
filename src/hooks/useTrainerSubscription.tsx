@@ -138,7 +138,7 @@ export function useTrainerSubscription() {
 
     const daysRemaining = Math.ceil((endDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
     const isInGracePeriod = subscription.status === 'grace' || (daysRemaining < 0 && graceEndDate && today <= graceEndDate);
-    const isPendingPayment = subscription.status === 'pending_payment';
+    const isPendingPayment = false; // pending_payment handled in early-return above
     const isExpired = subscription.status === 'expired' ||
       (graceEndDate && today > graceEndDate) ||
       (daysRemaining < 0 && !graceEndDate);
