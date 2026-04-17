@@ -322,37 +322,26 @@ export function PlanSelectionModal({
               ))}
 
               <div className="w-full py-2 flex flex-col items-center gap-3">
-                <div className="w-full rounded-2xl border border-border bg-secondary/40 p-4 space-y-3">
-                  <div className="space-y-1">
-                    <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
-                      Selected plan
-                    </p>
-                    <p className="text-lg font-semibold text-foreground">
-                      {selectedPlanConfig.name} · ₹{selectedPlanConfig.price.toLocaleString()}
-                      <span className="text-muted-foreground font-normal">{selectedPlanConfig.period}</span>
-                    </p>
-                  </div>
+                <Button
+                  onClick={handleProceedToPayment}
+                  disabled={isProcessing}
+                  className="w-full gap-2 min-h-12"
+                >
+                  {isProcessing ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      Processing...
+                    </>
+                  ) : (
+                    <>
+                      Proceed to Pay · ₹{selectedPlanConfig.price.toLocaleString()}
+                      <span className="text-primary-foreground/80 font-normal">{selectedPlanConfig.period}</span>
+                      <ExternalLink className="w-4 h-4" />
+                    </>
+                  )}
+                </Button>
 
-                  <Button
-                    onClick={handleProceedToPayment}
-                    disabled={isProcessing}
-                    className="w-full gap-2 min-h-12"
-                  >
-                    {isProcessing ? (
-                      <>
-                        <Loader2 className="w-4 h-4 animate-spin" />
-                        Processing...
-                      </>
-                    ) : (
-                      <>
-                        Proceed to Pay
-                        <ExternalLink className="w-4 h-4" />
-                      </>
-                    )}
-                  </Button>
-                </div>
-
-                <p className="text-xs text-center text-muted-foreground mt-3">
+                <p className="text-xs text-center text-muted-foreground">
                   Opens Razorpay&apos;s secure payment page. Your plan activates automatically after successful payment.
                 </p>
               </div>
