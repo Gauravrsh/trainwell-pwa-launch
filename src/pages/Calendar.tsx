@@ -225,62 +225,19 @@ const Calendar = () => {
     return dayMarks.find(m => isSameDay(new Date(m.mark_date), date));
   };
 
-  const getStatusStyles = (status?: string) => {
-    switch (status) {
-      case 'completed':
-        return {
-          icon: <Check className="w-2.5 h-2.5 sm:w-3.5 sm:h-3.5" />,
-          bg: 'bg-success',
-          text: 'text-success-foreground',
-          ring: 'ring-success/50',
-          cellBg: 'bg-success/20 border-success/40',
-        };
-      case 'skipped':
-        return {
-          icon: <X className="w-2.5 h-2.5 sm:w-3.5 sm:h-3.5" />,
-          bg: 'bg-destructive',
-          text: 'text-destructive-foreground',
-          ring: 'ring-destructive/50',
-          cellBg: 'bg-destructive/20 border-destructive/40',
-        };
-      case 'pending':
-        return {
-          icon: <Dumbbell className="w-2 h-2 sm:w-3 sm:h-3" />,
-          bg: 'bg-primary/80',
-          text: 'text-primary-foreground',
-          ring: 'ring-primary/30',
-          cellBg: 'border-primary/30',
-        };
-      default:
-        return null;
-    }
+  // Boundary-only styles for logged status (kept name for backward compat)
+  const getStatusBorder = (status?: string): string | null => {
+    if (status === 'completed') return 'border-success';
+    return null; // pending / skipped → blank tile
   };
 
-  const getDayMarkStyles = (markType: string) => {
+  // Boundary-only colors per day mark type
+  const getDayMarkBorder = (markType: string): string | null => {
     switch (markType) {
-      case 'client_leave':
-        return {
-          label: 'CL',
-          cellBg: 'bg-destructive/20 border-destructive/40',
-          chipBg: 'bg-destructive',
-          chipText: 'text-destructive-foreground',
-        };
-      case 'trainer_leave':
-        return {
-          label: 'TL',
-          cellBg: 'bg-muted border-muted-foreground/30',
-          chipBg: 'bg-muted-foreground/50',
-          chipText: 'text-muted-foreground',
-        };
-      case 'holiday':
-        return {
-          label: 'HL',
-          cellBg: 'bg-muted border-muted-foreground/30',
-          chipBg: 'bg-muted-foreground/50',
-          chipText: 'text-muted-foreground',
-        };
-      default:
-        return null;
+      case 'client_leave':  return 'border-destructive';
+      case 'trainer_leave': return 'border-amber-500';
+      case 'holiday':       return 'border-muted-foreground/60';
+      default: return null;
     }
   };
 
