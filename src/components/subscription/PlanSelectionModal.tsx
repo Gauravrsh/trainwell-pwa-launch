@@ -47,6 +47,7 @@ const paidPlans = [
       'All features unlocked',
       'UPI & card payments',
       'Cancel anytime',
+      'Get invite to learning webinars',
     ],
   },
   {
@@ -54,7 +55,7 @@ const paidPlans = [
     name: 'Elite',
     price: 9999,
     period: '/year',
-    description: '12 + 2 bonus months (425 days) · Unlimited clients',
+    description: '~₹714/month · Unlimited clients\n~28% less than monthly plan',
     badge: 'BEST VALUE',
     razorpayButtonId: 'pl_S6ccDIYhIw1AaB',
     features: [
@@ -62,6 +63,7 @@ const paidPlans = [
       '14 months for the price of 12',
       'Referral rewards (annual)',
       'Priority support',
+      'Get invite to in-person meetups with elite trainers',
     ],
   },
 ];
