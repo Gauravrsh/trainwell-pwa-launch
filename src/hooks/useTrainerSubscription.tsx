@@ -28,6 +28,7 @@ export interface SubscriptionStatus {
   subscription: TrainerSubscription | null;
   isActive: boolean;
   isReadOnly: boolean;
+  isPendingPayment: boolean;
   isFree: boolean;
   daysRemaining: number;
   isInGracePeriod: boolean;
@@ -90,6 +91,7 @@ export function useTrainerSubscription() {
         subscription: null,
         isActive: false,
         isReadOnly: true,
+        isPendingPayment: false,
         isFree: false,
         daysRemaining: 0,
         isInGracePeriod: false,
@@ -111,6 +113,7 @@ export function useTrainerSubscription() {
         subscription,
         isActive: true,
         isReadOnly: false,
+        isPendingPayment: false,
         isFree: true,
         daysRemaining: 0,
         isInGracePeriod: false,
@@ -138,7 +141,8 @@ export function useTrainerSubscription() {
       (daysRemaining < 0 && !graceEndDate);
 
     const isActive = ['trial', 'active'].includes(subscription.status) && daysRemaining >= 0;
-    const isReadOnly = isExpired || isPendingPayment;
+    // Pending payment is NOT read-only — trainer keeps prior access until expiry/grace
+    const isReadOnly = isExpired;
     const showExpiryWarning = daysRemaining <= 7 && daysRemaining >= 0;
 
     return {
@@ -146,6 +150,7 @@ export function useTrainerSubscription() {
       subscription,
       isActive,
       isReadOnly,
+      isPendingPayment,
       isFree: false,
       daysRemaining: Math.max(0, daysRemaining),
       isInGracePeriod,
