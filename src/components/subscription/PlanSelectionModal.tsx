@@ -283,9 +283,9 @@ export function PlanSelectionModal({
                   <div className="flex items-start justify-between mb-2">
                     <div className="flex items-center gap-2">
                       {plan.id === 'annual' ? (
-                        <Crown className="w-5 h-5 text-primary" />
+                        <Crown className="w-5 h-5 text-muted-foreground" />
                       ) : (
-                        <Rocket className="w-5 h-5 text-primary" />
+                        <Rocket className="w-5 h-5 text-muted-foreground" />
                       )}
                       <span className="font-semibold text-foreground">{plan.name}</span>
                       {plan.badge && (
