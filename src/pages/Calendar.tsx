@@ -235,7 +235,7 @@ const Calendar = () => {
   const getDayMarkBorder = (markType: string): string | null => {
     switch (markType) {
       case 'client_leave':  return 'border-destructive';
-      case 'trainer_leave': return 'border-amber-500';
+      case 'trainer_leave': return 'border-warning';
       case 'holiday':       return 'border-muted-foreground/60';
       default: return null;
     }
