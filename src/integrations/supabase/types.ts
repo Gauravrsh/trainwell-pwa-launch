@@ -309,6 +309,7 @@ export type Database = {
           fat: number | null
           id: string
           logged_date: string
+          matched_dictionary_id: string | null
           meal_type: Database["public"]["Enums"]["meal_type"]
           pending_analysis: boolean
           protein: number | null
@@ -323,6 +324,7 @@ export type Database = {
           fat?: number | null
           id?: string
           logged_date: string
+          matched_dictionary_id?: string | null
           meal_type: Database["public"]["Enums"]["meal_type"]
           pending_analysis?: boolean
           protein?: number | null
@@ -337,6 +339,7 @@ export type Database = {
           fat?: number | null
           id?: string
           logged_date?: string
+          matched_dictionary_id?: string | null
           meal_type?: Database["public"]["Enums"]["meal_type"]
           pending_analysis?: boolean
           protein?: number | null
@@ -349,6 +352,13 @@ export type Database = {
             columns: ["client_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "food_logs_matched_dictionary_id_fkey"
+            columns: ["matched_dictionary_id"]
+            isOneToOne: false
+            referencedRelation: "food_dictionary"
             referencedColumns: ["id"]
           },
         ]
