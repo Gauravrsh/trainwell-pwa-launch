@@ -364,14 +364,13 @@ export const FoodLogModal = ({ open, onOpenChange, onSave, clientId = null, logg
     setAiError(null);
   };
 
-  const performSave = (pending = false): boolean => {
+  const performSave = async (pending = false): Promise<boolean> => {
     if (pending) {
-      // Save for later: needs at least some input (text or image)
       if (!hasInput) {
         toast.error('Add a photo or describe your meal first');
         return false;
       }
-      onSave({
+      await onSave({
         mealType,
         rawText: foodText || (capturedImage ? '[Photo meal — pending analysis]' : ''),
         calories: 0,
@@ -379,6 +378,7 @@ export const FoodLogModal = ({ open, onOpenChange, onSave, clientId = null, logg
         carbs: 0,
         fat: 0,
         pendingAnalysis: true,
+        matchedDictionaryId: null,
       });
       setSessionMeals((prev) => [...prev, { mealType, calories: 0, protein: 0, carbs: 0, fat: 0 }]);
       return true;
@@ -388,7 +388,8 @@ export const FoodLogModal = ({ open, onOpenChange, onSave, clientId = null, logg
       toast.error('Analyze your meal first');
       return false;
     }
-    onSave({
+    const cachedItem = items.find((i) => i.source === 'cache' && i.matchedDictionaryId);
+    await onSave({
       mealType,
       rawText: foodText || items.map((i) => `${i.name} (${i.qty}x ${i.quantity})`).join(', '),
       calories: round(totals.calories),
@@ -396,9 +397,17 @@ export const FoodLogModal = ({ open, onOpenChange, onSave, clientId = null, logg
       carbs: round(totals.carbs, 1),
       fat: round(totals.fat, 1),
       pendingAnalysis: false,
+      matchedDictionaryId: cachedItem?.matchedDictionaryId ?? null,
     });
     setSessionMeals((prev) => [...prev, { mealType, ...totals }]);
     return true;
+  };
+
+  // After a successful save, keep the modal open so the diary panel reflects the
+  // newly-logged meal. Resets the input area and bumps the diary refresh signal.
+  const finalizeAfterSave = () => {
+    resetForm();
+    setDiaryRefresh((n) => n + 1);
   };
 
   // Primary CTA: Analyze with AI then save in one tap
