@@ -174,6 +174,7 @@ export const ClientDashboard = () => {
     carbs: number;
     fat: number;
     pendingAnalysis?: boolean;
+    matchedDictionaryId?: string | null;
   }) => {
     if (!profile) return;
 
@@ -190,12 +191,13 @@ export const ClientDashboard = () => {
           carbs: data.carbs,
           fat: data.fat,
           pending_analysis: data.pendingAnalysis ?? false,
+          matched_dictionary_id: data.matchedDictionaryId ?? null,
         });
 
       if (error) throw error;
 
       queryClient.invalidateQueries({ queryKey: ['today-food'] });
-      setShowFoodModal(false);
+      // Modal stays open — diary panel will refresh.
     } catch (error) {
       logError('ClientDashboard.handleFoodSave', error);
       toast.error('Failed to save food');
@@ -482,6 +484,8 @@ export const ClientDashboard = () => {
         open={showFoodModal}
         onOpenChange={setShowFoodModal}
         onSave={handleFoodSave}
+        clientId={profile?.id ?? null}
+        loggedDate={new Date()}
       />
     </div>
   );
