@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Check, ArrowRight, Dumbbell } from 'lucide-react';
+import { Check, ArrowRight, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
@@ -14,32 +14,73 @@ const fadeUp = {
 
 const plans = [
   {
-    name: 'Monthly',
-    subtitle: 'FOR SMART TRAINERS',
-    price: '₹499',
-    period: '/month',
-    equiv: 'Pay Monthly',
+    key: 'smart',
+    name: 'Smart',
+    subtitle: 'FREE FOREVER',
+    price: '₹0',
+    period: '',
+    equiv: 'Stay free, forever',
     highlight: false,
-    features: ['Unlimited clients', 'Progress graphs for clients', '30 days validity + 3-day grace', 'UPI & Card payments'],
-    cta: 'Start Monthly',
+    features: [
+      'Up to 3 active clients',
+      'All features unlocked',
+      'No card required',
+      'Upgrade only when you scale',
+    ],
+    cta: 'Start Free',
   },
   {
-    name: 'Annual',
-    subtitle: 'For Elite Trainers',
-    price: '₹5,988',
+    key: 'pro',
+    name: 'Pro',
+    subtitle: 'FOR GROWING TRAINERS',
+    price: '₹999',
+    period: '/month',
+    equiv: 'Pay monthly · 30 days + 3 grace',
+    highlight: false,
+    features: [
+      'Unlimited active clients',
+      'All features unlocked',
+      'UPI & card payments',
+      'Cancel anytime',
+    ],
+    cta: 'Go Pro',
+  },
+  {
+    key: 'elite',
+    name: 'Elite',
+    subtitle: 'FOR ELITE TRAINERS',
+    price: '₹9,999',
     period: '/year',
-    equiv: 'Pay Annual',
+    equiv: '12 + 2 bonus months · ~₹714/mo',
     highlight: true,
-    badge: '💪 Choice of Top Trainers',
-    features: ['Everything in Monthly +', '2 months free', '+90 days per annual referral', 'Invite to workshops'],
-    cta: 'Go Annual — Invest in your Career',
+    badge: '💪 Best Value',
+    features: [
+      'Everything in Pro',
+      '14 months for the price of 12',
+      'Referral rewards (annual)',
+      'Priority support',
+    ],
+    cta: 'Go Elite',
   },
 ];
 
 export default function PricingSection() {
   return (
     <section className="px-4 py-16 sm:py-24 bg-secondary/20" id="pricing">
-      <div className="mx-auto max-w-3xl">
+      <div className="mx-auto max-w-5xl">
+        {/* Beta Banner */}
+        <motion.div
+          initial="hidden" whileInView="visible" viewport={{ once: true }}
+          variants={fadeUp} custom={0}
+          className="mx-auto mb-8 max-w-2xl rounded-xl border border-primary/30 bg-primary/10 px-4 py-3 text-center"
+        >
+          <p className="text-sm font-semibold text-foreground flex items-center justify-center gap-2 flex-wrap">
+            <Sparkles className="h-4 w-4 text-primary" />
+            <span>Special Pricing<sup>*</sup> for Beta Users</span>
+            <span className="text-muted-foreground font-normal">— Lock in these rates while you can.</span>
+          </p>
+        </motion.div>
+
         <motion.h2
           className="text-center text-2xl font-extrabold sm:text-3xl"
           initial="hidden" whileInView="visible" viewport={{ once: true }}
@@ -56,10 +97,10 @@ export default function PricingSection() {
           {`That social media post where your client flaunts the results, and gives you the credit — what would you pay for that? It's priceless right? \nFocus on what truly matters and what will get your clients' results. Cutting corners on that is, well, a bad career decision!!`}
         </motion.p>
 
-        <div className="mt-12 grid gap-6 sm:grid-cols-2">
+        <div className="mt-12 grid gap-6 md:grid-cols-3">
           {plans.map((p, i) => (
             <motion.div
-              key={p.name}
+              key={p.key}
               initial="hidden" whileInView="visible" viewport={{ once: true, margin: '-40px' }}
               variants={fadeUp} custom={i + 1}
             >
@@ -80,7 +121,7 @@ export default function PricingSection() {
                   <CardTitle className="text-lg mt-1">{p.name}</CardTitle>
                   <div className="mt-2">
                     <span className="text-4xl font-extrabold">{p.price}</span>
-                    <span className="text-sm text-muted-foreground">{p.period}</span>
+                    {p.period && <span className="text-sm text-muted-foreground">{p.period}</span>}
                   </div>
                   <p className="text-xs text-muted-foreground mt-1">{p.equiv}</p>
                 </CardHeader>
@@ -112,9 +153,9 @@ export default function PricingSection() {
         <motion.p
           className="mt-8 text-center text-xs text-muted-foreground"
           initial="hidden" whileInView="visible" viewport={{ once: true }}
-          variants={fadeUp} custom={3}
+          variants={fadeUp} custom={4}
         >
-          Start with a free 14-day trial — 3 clients, all features. No card needed.
+          <sup>*</sup> Beta launch pricing. Subject to revision. Existing paid subscribers continue at their paid rate until renewal.
         </motion.p>
       </div>
     </section>
