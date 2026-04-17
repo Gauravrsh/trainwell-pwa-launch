@@ -441,12 +441,14 @@ export const FoodLogModal = ({ open, onOpenChange, onSave, clientId = null, logg
   useEffect(() => {
     if (autoSaveAfterAnalyzeRef.current && hasItems && !isAnalyzing) {
       autoSaveAfterAnalyzeRef.current = false;
-      const ok = performSave(false);
-      if (ok) {
-        const name = mealType.charAt(0).toUpperCase() + mealType.slice(1);
-        toast.success(`${name} logged!`);
-        handleClose(false);
-      }
+      void (async () => {
+        const ok = await performSave(false);
+        if (ok) {
+          const name = mealType.charAt(0).toUpperCase() + mealType.slice(1);
+          toast.success(`${name} logged!`);
+          finalizeAfterSave();
+        }
+      })();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [hasItems, isAnalyzing]);
@@ -456,11 +458,11 @@ export const FoodLogModal = ({ open, onOpenChange, onSave, clientId = null, logg
       // Already analyzed — just save
       setIsSaving(true);
       try {
-        const ok = performSave(false);
+        const ok = await performSave(false);
         if (ok) {
           const name = mealType.charAt(0).toUpperCase() + mealType.slice(1);
           toast.success(`${name} logged!`);
-          handleClose(false);
+          finalizeAfterSave();
         }
       } finally {
         setIsSaving(false);
@@ -472,13 +474,13 @@ export const FoodLogModal = ({ open, onOpenChange, onSave, clientId = null, logg
     await analyzeFood();
   };
 
-  const handleSaveForLater = () => {
+  const handleSaveForLater = async () => {
     setIsSaving(true);
     try {
-      const ok = performSave(true);
+      const ok = await performSave(true);
       if (ok) {
         toast.success("Saved! We'll analyze it the moment our AI is back.");
-        handleClose(false);
+        finalizeAfterSave();
       }
     } finally {
       setIsSaving(false);
