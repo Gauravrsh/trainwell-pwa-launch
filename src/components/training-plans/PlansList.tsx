@@ -224,7 +224,7 @@ export function PlansList() {
                     : `No plans in ${activeTab} status`}
                 </p>
                 {activeTab === 'active' && (
-                  <Button onClick={() => setShowCreateModal(true)} className="gap-2">
+                  <Button onClick={handleNewPlanClick} className="gap-2">
                     <Plus className="w-4 h-4" />
                     Create Plan
                   </Button>
