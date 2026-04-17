@@ -113,7 +113,7 @@ const getErrorCopy = (code: string): string => {
   }
 };
 
-export const FoodLogModal = ({ open, onOpenChange, onSave }: FoodLogModalProps) => {
+export const FoodLogModal = ({ open, onOpenChange, onSave, clientId = null, loggedDate, isReadOnly = false }: FoodLogModalProps) => {
   const [mealType, setMealType] = useState<MealType>(getDefaultMealType());
   const [tab, setTab] = useState<TabValue>('snap');
   const [foodText, setFoodText] = useState('');
@@ -125,6 +125,13 @@ export const FoodLogModal = ({ open, onOpenChange, onSave }: FoodLogModalProps) 
   const [aiError, setAiError] = useState<{ code: string; message: string } | null>(null);
   const [recentMeals, setRecentMeals] = useState<RecentMeal[]>([]);
   const [loadingRecent, setLoadingRecent] = useState(false);
+  const [diaryRefresh, setDiaryRefresh] = useState(0);
+
+  const dateStr = useMemo(
+    () => format(loggedDate ?? new Date(), 'yyyy-MM-dd'),
+    [loggedDate]
+  );
+  const isToday = dateStr === format(new Date(), 'yyyy-MM-dd');
 
   const cameraInputRef = useRef<HTMLInputElement>(null);
   const galleryInputRef = useRef<HTMLInputElement>(null);
