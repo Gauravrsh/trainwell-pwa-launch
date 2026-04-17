@@ -162,6 +162,7 @@ export function PlanSelectionModal({
   const selectedPlanConfig = paidPlans.find((plan) => plan.id === selectedPlan) ?? paidPlans[1];
 
   const handleProceedToPayment = useCallback(async () => {
+    if (isProcessing) return;
     setIsProcessing(true);
     try {
       await onSelectPlan(selectedPlan);
@@ -173,19 +174,21 @@ export function PlanSelectionModal({
 
       const paymentWindow = window.open(paymentUrl, '_blank', 'noopener,noreferrer');
       if (!paymentWindow) {
-        window.location.assign(paymentUrl);
+        toast.error('Pop-up blocked. Please allow pop-ups for this site and try again.');
+        setIsProcessing(false);
         return;
       }
 
       setAwaitingPayment(true);
-      setIsProcessing(false);
       startPolling();
+      // Re-enable button after 2s in case the user cancels checkout and retries
+      window.setTimeout(() => setIsProcessing(false), 2000);
     } catch (error) {
       console.error('Error creating subscription record:', error);
       toast.error('Failed to initiate payment. Please try again.');
       setIsProcessing(false);
     }
-  }, [onSelectPlan, selectedPlan, selectedPlanConfig.razorpayButtonId, startPolling]);
+  }, [isProcessing, onSelectPlan, selectedPlan, selectedPlanConfig.razorpayButtonId, startPolling]);
 
   return (
     <Dialog open={open} onOpenChange={(isOpen) => {
