@@ -71,6 +71,8 @@ export const FoodLogModal = ({ open, onOpenChange, onSave }: FoodLogModalProps) 
   const [analysis, setAnalysis] = useState<FoodAnalysis | null>(null);
   const [sessionMeals, setSessionMeals] = useState<SessionMeal[]>([]);
   const [showScrollHint, setShowScrollHint] = useState(false);
+  const [aiError, setAiError] = useState<{ code: string; message: string } | null>(null);
+  const [manualMacros, setManualMacros] = useState({ calories: '', protein: '', carbs: '', fat: '' });
   
   const cameraInputRef = useRef<HTMLInputElement>(null);
   const galleryInputRef = useRef<HTMLInputElement>(null);
@@ -78,6 +80,7 @@ export const FoodLogModal = ({ open, onOpenChange, onSave }: FoodLogModalProps) 
   const scrollAreaRef = useRef<HTMLDivElement>(null);
 
   const hasInput = !!(foodText.trim() || capturedImage);
+  const hasManualMacros = !!(manualMacros.calories || manualMacros.protein || manualMacros.carbs || manualMacros.fat);
 
   // Check if analysis results are visible
   const checkScrollVisibility = useCallback(() => {
