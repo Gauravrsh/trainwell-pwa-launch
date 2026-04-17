@@ -235,7 +235,7 @@ const Calendar = () => {
   const getDayMarkBorder = (markType: string): string | null => {
     switch (markType) {
       case 'client_leave':  return 'border-destructive';
-      case 'trainer_leave': return 'border-amber-500';
+      case 'trainer_leave': return 'border-warning';
       case 'holiday':       return 'border-muted-foreground/60';
       default: return null;
     }
@@ -1074,7 +1074,7 @@ const Calendar = () => {
                         <span className="text-xs text-muted-foreground">Holiday</span>
                       </div>
                       <div className="flex items-center gap-1.5">
-                        <div className="w-5 h-5 rounded-md bg-transparent border-2 border-amber-500" />
+                        <div className="w-5 h-5 rounded-md bg-transparent border-2 border-warning" />
                         <span className="text-xs text-muted-foreground">Trainer Leave</span>
                       </div>
                       <div className="flex items-center gap-1.5">

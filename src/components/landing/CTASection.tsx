@@ -17,7 +17,7 @@ export default function CTASection() {
         </p>
         <Button asChild size="lg" className="mt-8 gap-2 text-base font-bold">
           <Link to="/auth">
-            Start Free 14-Day Trial <ArrowRight className="h-4 w-4" />
+            Get Started Free <ArrowRight className="h-4 w-4" />
           </Link>
         </Button>
         <p className="mt-4 text-xs text-muted-foreground">

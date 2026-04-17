@@ -50,7 +50,7 @@ export default function HeroSection() {
             >
               <Button asChild size="lg" className="gap-2 text-base font-bold">
                 <Link to="/auth">
-                  Start Free 14-Day Trial <ArrowRight className="h-4 w-4" />
+                  Get Started Free <ArrowRight className="h-4 w-4" />
                 </Link>
               </Button>
             </motion.div>

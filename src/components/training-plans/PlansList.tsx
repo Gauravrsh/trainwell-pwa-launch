@@ -30,12 +30,20 @@ export function PlansList() {
   const [activeTab, setActiveTab] = useState('active');
 
   // Subscription access for trainers
-  const { isReadOnly, reason, loading: subscriptionLoading } = useSubscriptionAccess();
+  const { isReadOnly, reason, loading: subscriptionLoading, isFree, freeClientsRemaining, canInviteClients } = useSubscriptionAccess();
   const { renewPlan, status } = useTrainerSubscription();
 
   const handleSelectPlan = async (planType: 'monthly' | 'annual') => {
     await renewPlan(planType);
     setShowPlanModal(false);
+  };
+
+  const handleNewPlanClick = () => {
+    if (isFree && !canInviteClients) {
+      setShowPlanModal(true);
+      return;
+    }
+    setShowCreateModal(true);
   };
 
   const {
@@ -112,11 +120,19 @@ export function PlansList() {
               Manage Billing
             </h1>
           </div>
-          <Button onClick={() => setShowCreateModal(true)} size="sm" className="gap-2" disabled={isReadOnly}>
+          <Button onClick={handleNewPlanClick} size="sm" className="gap-2" disabled={isReadOnly}>
             <Plus className="w-4 h-4" />
             New Plan
           </Button>
         </motion.div>
+        {isFree && (
+          <p className="text-xs text-muted-foreground mt-2">
+            Smart plan: {freeClientsRemaining} of 3 active client slots remaining.{' '}
+            <button onClick={() => setShowPlanModal(true)} className="text-primary font-medium hover:underline">
+              Upgrade
+            </button>
+          </p>
+        )}
       </div>
 
       {/* Subscription Enforcement Banner */}
@@ -208,7 +224,7 @@ export function PlansList() {
                     : `No plans in ${activeTab} status`}
                 </p>
                 {activeTab === 'active' && (
-                  <Button onClick={() => setShowCreateModal(true)} className="gap-2">
+                  <Button onClick={handleNewPlanClick} className="gap-2">
                     <Plus className="w-4 h-4" />
                     Create Plan
                   </Button>
