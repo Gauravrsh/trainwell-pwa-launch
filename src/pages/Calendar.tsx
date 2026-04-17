@@ -225,62 +225,19 @@ const Calendar = () => {
     return dayMarks.find(m => isSameDay(new Date(m.mark_date), date));
   };
 
-  const getStatusStyles = (status?: string) => {
-    switch (status) {
-      case 'completed':
-        return {
-          icon: <Check className="w-2.5 h-2.5 sm:w-3.5 sm:h-3.5" />,
-          bg: 'bg-success',
-          text: 'text-success-foreground',
-          ring: 'ring-success/50',
-          cellBg: 'bg-success/20 border-success/40',
-        };
-      case 'skipped':
-        return {
-          icon: <X className="w-2.5 h-2.5 sm:w-3.5 sm:h-3.5" />,
-          bg: 'bg-destructive',
-          text: 'text-destructive-foreground',
-          ring: 'ring-destructive/50',
-          cellBg: 'bg-destructive/20 border-destructive/40',
-        };
-      case 'pending':
-        return {
-          icon: <Dumbbell className="w-2 h-2 sm:w-3 sm:h-3" />,
-          bg: 'bg-primary/80',
-          text: 'text-primary-foreground',
-          ring: 'ring-primary/30',
-          cellBg: 'border-primary/30',
-        };
-      default:
-        return null;
-    }
+  // Boundary-only styles for logged status (kept name for backward compat)
+  const getStatusBorder = (status?: string): string | null => {
+    if (status === 'completed') return 'border-success';
+    return null; // pending / skipped → blank tile
   };
 
-  const getDayMarkStyles = (markType: string) => {
+  // Boundary-only colors per day mark type
+  const getDayMarkBorder = (markType: string): string | null => {
     switch (markType) {
-      case 'client_leave':
-        return {
-          label: 'CL',
-          cellBg: 'bg-destructive/20 border-destructive/40',
-          chipBg: 'bg-destructive',
-          chipText: 'text-destructive-foreground',
-        };
-      case 'trainer_leave':
-        return {
-          label: 'TL',
-          cellBg: 'bg-muted border-muted-foreground/30',
-          chipBg: 'bg-muted-foreground/50',
-          chipText: 'text-muted-foreground',
-        };
-      case 'holiday':
-        return {
-          label: 'HL',
-          cellBg: 'bg-muted border-muted-foreground/30',
-          chipBg: 'bg-muted-foreground/50',
-          chipText: 'text-muted-foreground',
-        };
-      default:
-        return null;
+      case 'client_leave':  return 'border-destructive';
+      case 'trainer_leave': return 'border-amber-500';
+      case 'holiday':       return 'border-muted-foreground/60';
+      default: return null;
     }
   };
 
@@ -1060,23 +1017,27 @@ const Calendar = () => {
                     const dayMark = getDayMarkForDate(date);
                     const isToday = isSameDay(date, today);
                     const isPast = isBefore(date, today);
-                    const hasWorkout = !!workout;
                     const isSelected = selectedDate && isSameDay(date, selectedDate);
-                    const statusStyles = getStatusStyles(workout?.status);
-                    const markStyles = dayMark ? getDayMarkStyles(dayMark.mark_type) : null;
 
-                    // Day marks take visual priority over workout status
-                    const cellBgClass = isToday
-                      ? 'bg-primary text-primary-foreground ring-2 ring-primary ring-offset-2 ring-offset-background border-primary'
-                      : isSelected
-                        ? 'bg-secondary ring-2 ring-primary/50 border-primary/50'
-                        : markStyles
-                          ? markStyles.cellBg
-                          : hasWorkout && statusStyles
-                            ? statusStyles.cellBg
-                            : isPast && section === 'past'
-                              ? 'bg-muted/50 text-muted-foreground border-transparent'
-                              : 'bg-card hover:bg-secondary text-foreground border-transparent hover:border-border';
+                    // Boundary-only model:
+                    // priority: today > day mark > completed workout > default
+                    const markBorder = dayMark ? getDayMarkBorder(dayMark.mark_type) : null;
+                    const statusBorder = workout ? getStatusBorder(workout.status) : null;
+
+                    let cellClass: string;
+                    if (isToday) {
+                      cellClass = 'bg-primary text-primary-foreground border-primary ring-2 ring-primary ring-offset-2 ring-offset-background';
+                    } else if (isSelected) {
+                      cellClass = 'bg-secondary border-primary/50 ring-2 ring-primary/50';
+                    } else if (markBorder) {
+                      cellClass = `bg-transparent text-foreground ${markBorder}`;
+                    } else if (statusBorder) {
+                      cellClass = `bg-transparent text-foreground ${statusBorder}`;
+                    } else if (isPast && section === 'past') {
+                      cellClass = 'bg-muted/30 text-muted-foreground border-transparent';
+                    } else {
+                      cellClass = 'bg-card hover:bg-secondary text-foreground border-transparent hover:border-border';
+                    }
 
                     return (
                       <motion.button
@@ -1084,94 +1045,41 @@ const Calendar = () => {
                         ref={isToday ? todayCellRef : undefined}
                         onClick={() => handleDateClick(date)}
                         whileTap={{ scale: 0.9 }}
-                        className={`
-                          relative aspect-square rounded-xl flex flex-col items-center justify-center
-                          transition-all duration-200 text-sm font-medium border-2
-                          ${cellBgClass}
-                        `}
+                        className={`relative aspect-square rounded-xl flex items-center justify-center transition-all duration-200 text-sm font-medium border-2 ${cellClass}`}
                       >
-                        <span className={`${isToday ? 'font-bold' : ''} ${(hasWorkout || dayMark) && !isToday ? 'mb-0.5' : ''}`}>
+                        <span className={isToday ? 'font-bold' : ''}>
                           {format(date, 'd')}
                         </span>
-                        
-                        {/* Day Mark Chip - takes priority over workout status */}
-                        {dayMark && markStyles && !isToday && (
-                          <div className={`absolute bottom-0.5 sm:bottom-1 rounded-full px-1 py-0.5 ${markStyles.chipBg}`}>
-                            <span className={`text-[8px] sm:text-[9px] font-bold ${markStyles.chipText}`}>
-                              {markStyles.label}
-                            </span>
-                          </div>
-                        )}
-
-                        {/* Day mark on today */}
-                        {dayMark && markStyles && isToday && (
-                          <div className="absolute bottom-0.5">
-                            <span className="text-[8px] font-bold text-primary-foreground">
-                              {markStyles.label}
-                            </span>
-                          </div>
-                        )}
-                        
-                        {/* Workout Status Indicator - only if no day mark */}
-                        {!dayMark && hasWorkout && statusStyles && !isToday && (
-                          <div className={`absolute bottom-0.5 sm:bottom-1 rounded-full p-0.5 sm:p-1 ${statusStyles.bg} ${statusStyles.text}`}>
-                            {statusStyles.icon}
-                          </div>
-                        )}
-                        
-                        {/* Workout indicator on today - only if no day mark */}
-                        {!dayMark && hasWorkout && isToday && (
-                          <div className="absolute bottom-1">
-                            <Dumbbell className="w-3 h-3 text-primary-foreground" />
-                          </div>
-                        )}
                       </motion.button>
                     );
                   })}
                 </div>
               </div>
-              
-              {/* Status Legend for current section */}
+
+              {/* Status Legend (boundary swatches only) */}
               {isCurrentSection && (
                 <div className="flex flex-wrap gap-3 mt-3 px-1">
                   <div className="flex items-center gap-1.5">
-                    <div className="w-5 h-5 rounded-full bg-success flex items-center justify-center">
-                      <Check className="w-3 h-3 text-success-foreground" />
-                    </div>
-                    <span className="text-xs text-muted-foreground">Completed</span>
+                    <div className="w-5 h-5 rounded-md bg-primary border-2 border-primary" />
+                    <span className="text-xs text-muted-foreground">Today</span>
                   </div>
                   <div className="flex items-center gap-1.5">
-                    <div className="w-5 h-5 rounded-full bg-destructive flex items-center justify-center">
-                      <X className="w-3 h-3 text-destructive-foreground" />
-                    </div>
-                    <span className="text-xs text-muted-foreground">Missed</span>
+                    <div className="w-5 h-5 rounded-md bg-transparent border-2 border-success" />
+                    <span className="text-xs text-muted-foreground">Logged</span>
                   </div>
-                  <div className="flex items-center gap-1.5">
-                    <div className="w-5 h-5 rounded-full bg-primary/80 flex items-center justify-center">
-                      <Dumbbell className="w-2.5 h-2.5 text-primary-foreground" />
-                    </div>
-                    <span className="text-xs text-muted-foreground">Pending</span>
-                  </div>
-                  {/* Day mark legends - show for trainers or if marks exist */}
                   {(isTrainer || dayMarks.length > 0) && (
                     <>
                       <div className="flex items-center gap-1.5">
-                        <div className="w-5 h-5 rounded-full bg-muted-foreground/50 flex items-center justify-center">
-                          <span className="text-[8px] font-bold text-muted-foreground">TL</span>
-                        </div>
+                        <div className="w-5 h-5 rounded-md bg-transparent border-2 border-muted-foreground/60" />
+                        <span className="text-xs text-muted-foreground">Holiday</span>
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        <div className="w-5 h-5 rounded-md bg-transparent border-2 border-amber-500" />
                         <span className="text-xs text-muted-foreground">Trainer Leave</span>
                       </div>
                       <div className="flex items-center gap-1.5">
-                        <div className="w-5 h-5 rounded-full bg-destructive flex items-center justify-center">
-                          <span className="text-[8px] font-bold text-destructive-foreground">CL</span>
-                        </div>
+                        <div className="w-5 h-5 rounded-md bg-transparent border-2 border-destructive" />
                         <span className="text-xs text-muted-foreground">Client Leave</span>
-                      </div>
-                      <div className="flex items-center gap-1.5">
-                        <div className="w-5 h-5 rounded-full bg-muted-foreground/50 flex items-center justify-center">
-                          <span className="text-[8px] font-bold text-muted-foreground">HL</span>
-                        </div>
-                        <span className="text-xs text-muted-foreground">Holiday</span>
                       </div>
                     </>
                   )}

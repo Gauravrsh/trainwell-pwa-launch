@@ -877,6 +877,10 @@ export type Database = {
         }
         Returns: number
       }
+      can_trainer_add_client: {
+        Args: { p_trainer_id: string }
+        Returns: boolean
+      }
       create_trainer_subscription: {
         Args: {
           p_is_trial_used: boolean
@@ -921,6 +925,10 @@ export type Database = {
       generate_unique_id: {
         Args: { p_role: Database["public"]["Enums"]["user_role"] }
         Returns: string
+      }
+      get_active_client_count: {
+        Args: { p_trainer_id: string }
+        Returns: number
       }
       get_client_profile_for_trainer: {
         Args: { _client_profile_id: string }
@@ -1031,6 +1039,33 @@ export type Database = {
         }
         Returns: undefined
       }
+      start_trainer_free: {
+        Args: { p_trainer_id: string }
+        Returns: {
+          amount: number | null
+          created_at: string
+          end_date: string
+          grace_end_date: string | null
+          id: string
+          is_trial_used: boolean | null
+          max_trial_clients: number | null
+          payment_status: string | null
+          plan_type: Database["public"]["Enums"]["platform_plan_type"]
+          razorpay_order_id: string | null
+          razorpay_payment_id: string | null
+          start_date: string
+          status: Database["public"]["Enums"]["platform_subscription_status"]
+          trainer_id: string
+          trial_clients_count: number | null
+          updated_at: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "trainer_platform_subscriptions"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
       start_trainer_trial: {
         Args: { p_trainer_id: string }
         Returns: {
@@ -1067,7 +1102,7 @@ export type Database = {
       billing_model: "prepaid" | "postpaid"
       meal_type: "breakfast" | "lunch" | "dinner" | "snack"
       payment_status: "pending" | "completed" | "failed" | "refunded"
-      platform_plan_type: "trial" | "monthly" | "annual"
+      platform_plan_type: "trial" | "monthly" | "annual" | "free"
       platform_subscription_status:
         | "trial"
         | "active"
@@ -1221,7 +1256,7 @@ export const Constants = {
       billing_model: ["prepaid", "postpaid"],
       meal_type: ["breakfast", "lunch", "dinner", "snack"],
       payment_status: ["pending", "completed", "failed", "refunded"],
-      platform_plan_type: ["trial", "monthly", "annual"],
+      platform_plan_type: ["trial", "monthly", "annual", "free"],
       platform_subscription_status: [
         "trial",
         "active",

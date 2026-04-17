@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Check, Crown, Sparkles, ChevronDown, ExternalLink, Loader2 } from 'lucide-react';
+import { Check, Crown, Sparkles, ChevronDown, ExternalLink, Loader2, Zap } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
@@ -21,9 +21,10 @@ interface PlanSelectionModalProps {
 }
 
 // Whitelist of valid Razorpay button IDs - SECURITY: Never use user-controllable values
+// TODO: Replace these with new Razorpay button IDs for ₹999 monthly and ₹9,999 annual
 const VALID_RAZORPAY_BUTTON_IDS = new Set([
-  'pl_S6cIGsJyU7Owle', // Monthly plan
-  'pl_S6ccDIYhIw1AaB', // Annual plan
+  'pl_S6cIGsJyU7Owle', // Pro / Monthly plan (placeholder — update after Razorpay button created)
+  'pl_S6ccDIYhIw1AaB', // Elite / Annual plan (placeholder — update after Razorpay button created)
 ]);
 
 const getRazorpayPaymentUrl = (buttonId: string): string | null => {
@@ -31,40 +32,37 @@ const getRazorpayPaymentUrl = (buttonId: string): string | null => {
     console.error('Invalid Razorpay button ID - rejected for security');
     return null;
   }
-
   return `https://razorpay.com/payment-button/${buttonId}/view`;
 };
 
-const plans = [
+const paidPlans = [
   {
     id: 'monthly' as const,
-    name: 'Monthly',
-    price: 499,
+    name: 'Pro',
+    price: 999,
     period: '/month',
-    description: 'Pay as you go',
+    description: '30 days + 3-day grace · Unlimited clients',
     razorpayButtonId: 'pl_S6cIGsJyU7Owle',
     features: [
-      'Unlimited clients',
-      'Workout & nutrition planning',
-      'Client progress tracking',
-      'Payment management',
-      'In-app notifications',
+      'Unlimited active clients',
+      'All features unlocked',
+      'UPI & card payments',
+      'Cancel anytime',
     ],
   },
   {
     id: 'annual' as const,
-    name: 'Annual',
-    price: 5988,
-    originalPrice: 5988,
+    name: 'Elite',
+    price: 9999,
     period: '/year',
-    description: 'Pay for 12 months, get 14 months access',
+    description: '12 + 2 bonus months (425 days) · Unlimited clients',
     badge: 'BEST VALUE',
     razorpayButtonId: 'pl_S6ccDIYhIw1AaB',
     features: [
-      'Get 3 months extra validity every time you refer a trainer on annual plan',
-      'Everything in Monthly',
+      'Everything in Pro',
+      '14 months for the price of 12',
+      'Referral rewards (annual)',
       'Priority support',
-      'Early access to new features',
     ],
   },
 ];
@@ -83,7 +81,6 @@ export function PlanSelectionModal({
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  // Check if scroll is needed
   const checkScrollHint = useCallback(() => {
     const container = scrollContainerRef.current;
     if (container) {
@@ -107,7 +104,6 @@ export function PlanSelectionModal({
     };
   }, [open]);
 
-  // Check scroll hint on open and resize
   useEffect(() => {
     if (open) {
       window.setTimeout(checkScrollHint, 100);
@@ -116,13 +112,11 @@ export function PlanSelectionModal({
     }
   }, [open, checkScrollHint]);
 
-  // Poll for subscription activation after payment window opens
   const startPolling = useCallback(() => {
     if (pollingRef.current) clearInterval(pollingRef.current);
-    
     let attempts = 0;
-    const maxAttempts = 60; // 5 minutes max (5s intervals)
-    
+    const maxAttempts = 60;
+
     pollingRef.current = setInterval(async () => {
       attempts++;
       if (attempts > maxAttempts) {
@@ -141,7 +135,7 @@ export function PlanSelectionModal({
           .select('id')
           .eq('user_id', user.id)
           .single();
-        
+
         if (!profile) return;
 
         const { data: sub } = await supabase
@@ -166,16 +160,12 @@ export function PlanSelectionModal({
     }, 5000);
   }, [onClose, navigate]);
 
-  const selectedPlanConfig = plans.find((plan) => plan.id === selectedPlan) ?? plans[1];
+  const selectedPlanConfig = paidPlans.find((plan) => plan.id === selectedPlan) ?? paidPlans[1];
 
   const handleProceedToPayment = useCallback(async () => {
     setIsProcessing(true);
-    
     try {
-      // Step 1: Create pending_payment record in DB so webhook can match it
       await onSelectPlan(selectedPlan);
-      
-      // Step 2: Open Razorpay payment page
       const paymentUrl = getRazorpayPaymentUrl(selectedPlanConfig.razorpayButtonId);
       if (!paymentUrl) {
         setIsProcessing(false);
@@ -188,11 +178,9 @@ export function PlanSelectionModal({
         return;
       }
 
-      // Step 3: Start polling for subscription activation
       setAwaitingPayment(true);
       setIsProcessing(false);
       startPolling();
-      
     } catch (error) {
       console.error('Error creating subscription record:', error);
       toast.error('Failed to initiate payment. Please try again.');
@@ -212,24 +200,21 @@ export function PlanSelectionModal({
     }}>
       <DialogContent
         className="max-w-md p-0 overflow-hidden max-h-[90vh] flex flex-col"
-        onOpenAutoFocus={(e) => {
-          e.preventDefault();
-        }}
+        onOpenAutoFocus={(e) => { e.preventDefault(); }}
       >
         <DialogHeader className="p-6 pb-0 flex-shrink-0">
           <DialogTitle className="text-xl font-bold">
-            {isRenewal ? 'Renew Your Plan' : 'Choose Your Plan'}
+            {isRenewal ? 'Upgrade Your Plan' : 'Choose Your Plan'}
           </DialogTitle>
           <p className="text-sm text-muted-foreground mt-1">
-            {awaitingPayment 
+            {awaitingPayment
               ? 'Complete payment on the Razorpay page. We\'ll activate your plan automatically.'
-              : isRenewal 
-                ? 'Select a plan to continue your subscription' 
-                : 'Start growing your fitness business today'}
+              : isRenewal
+                ? 'Unlock unlimited clients and stay ahead'
+                : 'Free forever or unlock unlimited clients'}
           </p>
         </DialogHeader>
 
-        {/* Awaiting Payment State */}
         {awaitingPayment ? (
           <div className="flex-1 p-6 flex flex-col items-center justify-center gap-4 min-h-[200px]">
             <Loader2 className="w-10 h-10 text-primary animate-spin" />
@@ -239,8 +224,8 @@ export function PlanSelectionModal({
                 Complete your payment on the Razorpay page. This screen will update automatically once confirmed.
               </p>
             </div>
-            <Button 
-              variant="ghost" 
+            <Button
+              variant="ghost"
               size="sm"
               onClick={() => {
                 if (pollingRef.current) clearInterval(pollingRef.current);
@@ -254,13 +239,33 @@ export function PlanSelectionModal({
           </div>
         ) : (
           <>
-            {/* Scrollable Content */}
-            <div 
+            <div
               ref={scrollContainerRef}
               onScroll={checkScrollHint}
               className="flex-1 overflow-y-auto overscroll-contain p-6 space-y-4"
             >
-              {plans.map((plan) => (
+              {/* Beta Pricing Pill */}
+              <div className="flex items-center justify-center gap-2 rounded-full border border-primary/30 bg-primary/10 px-3 py-1.5 mb-2">
+                <Zap className="w-3.5 h-3.5 text-primary" />
+                <span className="text-xs font-semibold text-foreground">Special Beta Pricing</span>
+              </div>
+
+              {/* Free / Smart Plan card (informational) */}
+              <div className="w-full p-4 rounded-2xl border-2 border-dashed border-border bg-muted/30 text-left">
+                <div className="flex items-center gap-2 mb-2">
+                  <Sparkles className="w-5 h-5 text-muted-foreground" />
+                  <span className="font-semibold text-foreground">Smart (Free)</span>
+                  <span className="px-2 py-0.5 bg-success/20 text-success text-xs font-bold rounded">CURRENT</span>
+                </div>
+                <div className="mb-2">
+                  <span className="text-2xl font-bold text-foreground">₹0</span>
+                  <span className="text-muted-foreground"> forever</span>
+                </div>
+                <p className="text-sm text-muted-foreground mb-1">Up to 3 active clients · All features unlocked</p>
+                <p className="text-xs text-muted-foreground">Upgrade below to remove the 3-client cap.</p>
+              </div>
+
+              {paidPlans.map((plan) => (
                 <motion.button
                   key={plan.id}
                   whileTap={{ scale: 0.98 }}
@@ -314,7 +319,6 @@ export function PlanSelectionModal({
                 </motion.button>
               ))}
 
-              {/* Razorpay Checkout CTA */}
               <div className="w-full py-2 flex flex-col items-center gap-3">
                 <div className="w-full rounded-2xl border border-border bg-secondary/40 p-4 space-y-3">
                   <div className="space-y-1">
@@ -327,8 +331,8 @@ export function PlanSelectionModal({
                     </p>
                   </div>
 
-                  <Button 
-                    onClick={handleProceedToPayment} 
+                  <Button
+                    onClick={handleProceedToPayment}
                     disabled={isProcessing}
                     className="w-full gap-2 min-h-12"
                   >
@@ -351,7 +355,6 @@ export function PlanSelectionModal({
                 </p>
               </div>
 
-              {/* Legal Footer */}
               <div className="bg-muted/50 rounded-lg px-4 py-3">
                 <p className="text-sm text-muted-foreground text-center leading-relaxed">
                   <span className="font-medium">IMP:</span> Vecto is a health and wellness brand owned and managed by SG Enviro Social Services. All Rights Reserved. TnC Apply.
@@ -359,7 +362,6 @@ export function PlanSelectionModal({
               </div>
             </div>
 
-            {/* Scroll Hint Indicator */}
             {showScrollHint && (
               <motion.div
                 initial={{ opacity: 0 }}
