@@ -719,6 +719,7 @@ const Calendar = () => {
     protein: number;
     carbs: number;
     fat: number;
+    pendingAnalysis?: boolean;
   }) => {
     if (!selectedDate) return;
     
@@ -737,12 +738,12 @@ const Calendar = () => {
           calories: data.calories,
           protein: data.protein,
           carbs: data.carbs,
-          fat: data.fat
+          fat: data.fat,
+          pending_analysis: data.pendingAnalysis ?? false,
         });
 
       if (error) throw error;
 
-      toast.success('Food logged successfully!');
       setShowFoodModal(false);
       setShowClientActionSheet(false);
       setShowTrainerActionSheet(false);

@@ -173,6 +173,7 @@ export const ClientDashboard = () => {
     protein: number;
     carbs: number;
     fat: number;
+    pendingAnalysis?: boolean;
   }) => {
     if (!profile) return;
 
@@ -187,12 +188,12 @@ export const ClientDashboard = () => {
           calories: data.calories,
           protein: data.protein,
           carbs: data.carbs,
-          fat: data.fat
+          fat: data.fat,
+          pending_analysis: data.pendingAnalysis ?? false,
         });
 
       if (error) throw error;
 
-      toast.success('Food logged!');
       queryClient.invalidateQueries({ queryKey: ['today-food'] });
       setShowFoodModal(false);
     } catch (error) {

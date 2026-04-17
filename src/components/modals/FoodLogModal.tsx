@@ -1,10 +1,9 @@
 import { useState, useRef, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Camera, Utensils, Loader2, Plus, ImagePlus, Sparkles, AlertTriangle, Minus, Clock, Edit3, Trash2 } from 'lucide-react';
+import { X, Camera, Utensils, Loader2, Plus, ImagePlus, Sparkles, AlertTriangle, Minus, Clock, Edit3, Trash2, RefreshCw, Save } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
@@ -23,7 +22,7 @@ interface FoodItem {
   protein: number;
   carbs: number;
   fat: number;
-  qty: number; // multiplier for stepper (default 1)
+  qty: number;
 }
 
 interface SessionMeal {
@@ -55,6 +54,7 @@ interface FoodLogModalProps {
     protein: number;
     carbs: number;
     fat: number;
+    pendingAnalysis?: boolean;
   }) => void;
 }
 
@@ -71,7 +71,6 @@ const getNextMealType = (current: MealType): MealType => {
   return mealTypeOrder[(i + 1) % mealTypeOrder.length];
 };
 
-// Smart default: meal type based on time of day
 const getDefaultMealType = (): MealType => {
   const h = new Date().getHours();
   if (h >= 4 && h < 11) return 'breakfast';
@@ -85,6 +84,18 @@ const round = (n: number, dp = 0) => {
   return Math.round(n * f) / f;
 };
 
+// Map AI error codes → friendly message
+const getErrorCopy = (code: string): string => {
+  switch (code) {
+    case 'CREDITS_EXHAUSTED':
+      return "Our nutrition AI is recharging. Save it now — we'll analyze automatically the moment it's back.";
+    case 'RATE_LIMITED':
+      return "Lots of meals being logged right now. Retry in a few seconds, or save and we'll analyze later.";
+    default:
+      return "Couldn't reach our nutrition AI. Retry, or save and we'll analyze it later.";
+  }
+};
+
 export const FoodLogModal = ({ open, onOpenChange, onSave }: FoodLogModalProps) => {
   const [mealType, setMealType] = useState<MealType>(getDefaultMealType());
   const [tab, setTab] = useState<TabValue>('snap');
@@ -95,14 +106,12 @@ export const FoodLogModal = ({ open, onOpenChange, onSave }: FoodLogModalProps) 
   const [items, setItems] = useState<FoodItem[]>([]);
   const [sessionMeals, setSessionMeals] = useState<SessionMeal[]>([]);
   const [aiError, setAiError] = useState<{ code: string; message: string } | null>(null);
-  const [manualMacros, setManualMacros] = useState({ calories: '', protein: '', carbs: '', fat: '' });
   const [recentMeals, setRecentMeals] = useState<RecentMeal[]>([]);
   const [loadingRecent, setLoadingRecent] = useState(false);
 
   const cameraInputRef = useRef<HTMLInputElement>(null);
   const galleryInputRef = useRef<HTMLInputElement>(null);
 
-  // Reset to smart default whenever modal opens
   useEffect(() => {
     if (open) {
       setMealType(getDefaultMealType());
@@ -110,7 +119,6 @@ export const FoodLogModal = ({ open, onOpenChange, onSave }: FoodLogModalProps) 
     }
   }, [open]);
 
-  // Fetch recent meals when Recent tab opens
   useEffect(() => {
     if (!open || tab !== 'recent' || recentMeals.length > 0) return;
     let cancelled = false;
@@ -129,6 +137,7 @@ export const FoodLogModal = ({ open, onOpenChange, onSave }: FoodLogModalProps) 
           .from('food_logs')
           .select('id, meal_type, raw_text, calories, protein, carbs, fat, logged_date')
           .eq('client_id', profile.id)
+          .eq('pending_analysis', false)
           .order('logged_date', { ascending: false })
           .order('created_at', { ascending: false })
           .limit(20);
@@ -157,18 +166,8 @@ export const FoodLogModal = ({ open, onOpenChange, onSave }: FoodLogModalProps) 
 
   const hasItems = items.length > 0;
   const hasInput = !!(foodText.trim() || capturedImage);
-  const hasManualMacros = !!(manualMacros.calories || manualMacros.protein || manualMacros.carbs || manualMacros.fat);
 
-  // Running totals from items + manual macro override (when AI failed)
   const totals = useMemo(() => {
-    if (aiError && hasManualMacros && !hasItems) {
-      return {
-        calories: parseInt(manualMacros.calories, 10) || 0,
-        protein: parseFloat(manualMacros.protein) || 0,
-        carbs: parseFloat(manualMacros.carbs) || 0,
-        fat: parseFloat(manualMacros.fat) || 0,
-      };
-    }
     return items.reduce(
       (acc, it) => ({
         calories: acc.calories + it.calories * it.qty,
@@ -178,9 +177,7 @@ export const FoodLogModal = ({ open, onOpenChange, onSave }: FoodLogModalProps) 
       }),
       { calories: 0, protein: 0, carbs: 0, fat: 0 }
     );
-  }, [items, aiError, hasManualMacros, manualMacros]);
-
-  const canSave = hasItems || hasManualMacros;
+  }, [items]);
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -200,8 +197,6 @@ export const FoodLogModal = ({ open, onOpenChange, onSave }: FoodLogModalProps) 
         setCapturedImage(result);
         setItems([]);
         setAiError(null);
-        // Auto-trigger analysis
-        setTimeout(() => analyzeFood(result, foodText), 50);
       }
     };
     reader.onerror = () => toast.error('Failed to read image. Please try again.');
@@ -226,24 +221,18 @@ export const FoodLogModal = ({ open, onOpenChange, onSave }: FoodLogModalProps) 
 
       if (error) {
         let code = 'AI_UNAVAILABLE';
-        let message = 'Unable to analyze food. Enter macros manually below.';
         try {
           const ctx = (error as any)?.context;
-          if (ctx?.json) {
-            code = ctx.json.code || code;
-            message = ctx.json.error || message;
-          } else if (ctx?.response?.json) {
+          if (ctx?.json?.code) code = ctx.json.code;
+          else if (ctx?.response?.json) {
             const body = await ctx.response.json();
-            code = body.code || code;
-            message = body.error || message;
+            if (body.code) code = body.code;
           }
         } catch { /* noop */ }
-        if (data && typeof data === 'object') {
-          const d = data as any;
-          if (d.code) code = d.code;
-          if (d.error) message = d.error;
+        if (data && typeof data === 'object' && (data as any).code) {
+          code = (data as any).code;
         }
-        setAiError({ code, message });
+        setAiError({ code, message: getErrorCopy(code) });
         return;
       }
 
@@ -251,7 +240,7 @@ export const FoodLogModal = ({ open, onOpenChange, onSave }: FoodLogModalProps) 
       setItems((result.items || []).map((it) => ({ ...it, qty: 1 })));
     } catch (err) {
       logError('FoodLogModal.analyzeFood', err);
-      setAiError({ code: 'AI_UNAVAILABLE', message: 'Unable to analyze food. Enter macros manually below.' });
+      setAiError({ code: 'AI_UNAVAILABLE', message: getErrorCopy('AI_UNAVAILABLE') });
     } finally {
       setIsAnalyzing(false);
     }
@@ -267,13 +256,6 @@ export const FoodLogModal = ({ open, onOpenChange, onSave }: FoodLogModalProps) 
 
   const removeItem = (idx: number) => {
     setItems((prev) => prev.filter((_, i) => i !== idx));
-  };
-
-  const addManualItem = () => {
-    setItems((prev) => [
-      ...prev,
-      { name: 'Custom item', quantity: '1 serving', calories: 0, protein: 0, carbs: 0, fat: 0, qty: 1 },
-    ]);
   };
 
   const cloneRecentMeal = (m: RecentMeal) => {
@@ -298,12 +280,30 @@ export const FoodLogModal = ({ open, onOpenChange, onSave }: FoodLogModalProps) 
     setCapturedImage(null);
     setItems([]);
     setAiError(null);
-    setManualMacros({ calories: '', protein: '', carbs: '', fat: '' });
   };
 
-  const performSave = (): boolean => {
-    if (!canSave) {
-      toast.error('Add a meal first');
+  const performSave = (pending = false): boolean => {
+    if (pending) {
+      // Save for later: needs at least some input (text or image)
+      if (!hasInput) {
+        toast.error('Add a photo or describe your meal first');
+        return false;
+      }
+      onSave({
+        mealType,
+        rawText: foodText || (capturedImage ? '[Photo meal — pending analysis]' : ''),
+        calories: 0,
+        protein: 0,
+        carbs: 0,
+        fat: 0,
+        pendingAnalysis: true,
+      });
+      setSessionMeals((prev) => [...prev, { mealType, calories: 0, protein: 0, carbs: 0, fat: 0 }]);
+      return true;
+    }
+
+    if (!hasItems) {
+      toast.error('Analyze your meal first');
       return false;
     }
     onSave({
@@ -313,15 +313,24 @@ export const FoodLogModal = ({ open, onOpenChange, onSave }: FoodLogModalProps) 
       protein: round(totals.protein, 1),
       carbs: round(totals.carbs, 1),
       fat: round(totals.fat, 1),
+      pendingAnalysis: false,
     });
     setSessionMeals((prev) => [...prev, { mealType, ...totals }]);
     return true;
   };
 
-  const handleSaveMeal = async () => {
+  // Primary CTA: Analyze with AI then save in one tap
+  const handleAnalyzeAndSave = async () => {
+    if (!hasItems) {
+      // Run analysis first
+      await analyzeFood();
+      // Note: state updates async, so we check after via a follow-up render.
+      // We auto-save on the next render via a small effect below.
+      return;
+    }
     setIsSaving(true);
     try {
-      const ok = performSave();
+      const ok = performSave(false);
       if (ok) {
         const name = mealType.charAt(0).toUpperCase() + mealType.slice(1);
         toast.success(`${name} logged!`);
@@ -332,20 +341,63 @@ export const FoodLogModal = ({ open, onOpenChange, onSave }: FoodLogModalProps) 
     }
   };
 
-  const handleSaveAndContinue = async () => {
+  // Auto-save once items appear from a "Analyse & Save" click (single-tap UX)
+  const autoSaveAfterAnalyzeRef = useRef(false);
+  const triggerAnalyzeAndSaveFlag = () => {
+    autoSaveAfterAnalyzeRef.current = true;
+  };
+
+  useEffect(() => {
+    if (autoSaveAfterAnalyzeRef.current && hasItems && !isAnalyzing) {
+      autoSaveAfterAnalyzeRef.current = false;
+      const ok = performSave(false);
+      if (ok) {
+        const name = mealType.charAt(0).toUpperCase() + mealType.slice(1);
+        toast.success(`${name} logged!`);
+        handleClose(false);
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hasItems, isAnalyzing]);
+
+  const handlePrimaryCTA = async () => {
+    if (hasItems) {
+      // Already analyzed — just save
+      setIsSaving(true);
+      try {
+        const ok = performSave(false);
+        if (ok) {
+          const name = mealType.charAt(0).toUpperCase() + mealType.slice(1);
+          toast.success(`${name} logged!`);
+          handleClose(false);
+        }
+      } finally {
+        setIsSaving(false);
+      }
+      return;
+    }
+    // Not yet analyzed — analyze, then auto-save when items arrive
+    triggerAnalyzeAndSaveFlag();
+    await analyzeFood();
+  };
+
+  const handleSaveForLater = () => {
     setIsSaving(true);
     try {
-      const ok = performSave();
-      if (!ok) return;
-      const next = getNextMealType(mealType);
-      const name = mealType.charAt(0).toUpperCase() + mealType.slice(1);
-      setMealType(next);
-      resetForm();
-      setTab('snap');
-      toast.success(`${name} logged! Ready for ${next}`);
+      const ok = performSave(true);
+      if (ok) {
+        toast.success("Saved! We'll analyze it the moment our AI is back.");
+        handleClose(false);
+      }
     } finally {
       setIsSaving(false);
     }
+  };
+
+  const handleRetryAi = async () => {
+    setAiError(null);
+    autoSaveAfterAnalyzeRef.current = false;
+    await analyzeFood();
   };
 
   const handleClose = (o: boolean) => {
@@ -353,11 +405,13 @@ export const FoodLogModal = ({ open, onOpenChange, onSave }: FoodLogModalProps) 
       resetForm();
       setSessionMeals([]);
       setRecentMeals([]);
+      autoSaveAfterAnalyzeRef.current = false;
     }
     onOpenChange(o);
   };
 
   const isProcessing = isAnalyzing || isSaving;
+  const ctaDisabled = isProcessing || (!hasItems && !hasInput);
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
@@ -403,7 +457,6 @@ export const FoodLogModal = ({ open, onOpenChange, onSave }: FoodLogModalProps) 
             </TabsList>
           </div>
 
-          {/* Scrollable content area */}
           <div className="dialog-scroll-area px-5 py-4 space-y-4">
             <AnimatePresence>
               {sessionMeals.length > 0 && <FoodSessionSummary meals={sessionMeals} />}
@@ -500,24 +553,9 @@ export const FoodLogModal = ({ open, onOpenChange, onSave }: FoodLogModalProps) 
                 }}
                 className="min-h-[120px] bg-secondary/50 ring-offset-card"
               />
-              <Button
-                variant="outline"
-                className="w-full"
-                onClick={() => analyzeFood()}
-                disabled={!foodText.trim() || isAnalyzing}
-              >
-                {isAnalyzing ? (
-                  <>
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    Analyzing…
-                  </>
-                ) : (
-                  <>
-                    <Sparkles className="w-4 h-4 mr-2" />
-                    Analyze with AI
-                  </>
-                )}
-              </Button>
+              <p className="text-[11px] text-muted-foreground text-center">
+                Tap the button below — AI will detect macros and log instantly.
+              </p>
             </TabsContent>
 
             {/* RECENT TAB */}
@@ -561,7 +599,7 @@ export const FoodLogModal = ({ open, onOpenChange, onSave }: FoodLogModalProps) 
               )}
             </TabsContent>
 
-            {/* AI Error + Manual Fallback (cross-tab) */}
+            {/* AI Error → Smart Retry / Save for Later card */}
             {aiError && !hasItems && (
               <motion.div
                 initial={{ opacity: 0, y: 8 }}
@@ -570,27 +608,44 @@ export const FoodLogModal = ({ open, onOpenChange, onSave }: FoodLogModalProps) 
               >
                 <div className="flex items-start gap-2">
                   <AlertTriangle className="w-4 h-4 text-warning flex-shrink-0 mt-0.5" />
-                  <p className="text-sm text-foreground">{aiError.message}</p>
-                </div>
-                <div>
-                  <Label className="text-xs text-muted-foreground">Enter macros manually</Label>
-                  <div className="mt-2 grid grid-cols-4 gap-2">
-                    {(['calories', 'protein', 'carbs', 'fat'] as const).map((k) => (
-                      <div key={k}>
-                        <Input
-                          type="number"
-                          inputMode={k === 'calories' ? 'numeric' : 'decimal'}
-                          placeholder={k === 'calories' ? 'kcal' : 'g'}
-                          value={manualMacros[k]}
-                          onChange={(e) => setManualMacros((m) => ({ ...m, [k]: e.target.value }))}
-                          className="text-center bg-secondary/50 ring-offset-card"
-                        />
-                        <p className="text-[10px] text-muted-foreground text-center mt-1 capitalize">
-                          {k === 'calories' ? 'Calories' : k}
-                        </p>
-                      </div>
-                    ))}
+                  <div className="space-y-1">
+                    <p className="text-sm font-semibold text-foreground">Couldn't analyze right now</p>
+                    <p className="text-xs text-muted-foreground">{aiError.message}</p>
                   </div>
+                </div>
+
+                {/* Show what they tried to log */}
+                {(foodText || capturedImage) && (
+                  <div className="rounded-lg bg-background/50 border border-border p-2.5 flex items-center gap-2">
+                    {capturedImage && (
+                      <img src={capturedImage} alt="Pending" className="w-12 h-12 rounded-md object-cover flex-shrink-0" />
+                    )}
+                    <p className="text-xs text-muted-foreground line-clamp-2 flex-1">
+                      {foodText || 'Photo meal'}
+                    </p>
+                  </div>
+                )}
+
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="flex-1"
+                    onClick={handleRetryAi}
+                    disabled={isAnalyzing}
+                  >
+                    <RefreshCw className={`w-3.5 h-3.5 mr-1.5 ${isAnalyzing ? 'animate-spin' : ''}`} />
+                    Try AI again
+                  </Button>
+                  <Button
+                    size="sm"
+                    className="flex-1"
+                    onClick={handleSaveForLater}
+                    disabled={isSaving}
+                  >
+                    <Save className="w-3.5 h-3.5 mr-1.5" />
+                    Save for later
+                  </Button>
                 </div>
               </motion.div>
             )}
@@ -598,17 +653,9 @@ export const FoodLogModal = ({ open, onOpenChange, onSave }: FoodLogModalProps) 
             {/* Detected/Editable Items */}
             {hasItems && (
               <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <Label className="text-xs text-muted-foreground uppercase tracking-wider">
-                    Items ({items.length})
-                  </Label>
-                  <button
-                    onClick={addManualItem}
-                    className="text-xs text-primary hover:underline flex items-center gap-1"
-                  >
-                    <Plus className="w-3 h-3" /> Add item
-                  </button>
-                </div>
+                <Label className="text-xs text-muted-foreground uppercase tracking-wider">
+                  Detected ({items.length})
+                </Label>
                 <div className="rounded-xl border border-border divide-y divide-border overflow-hidden">
                   {items.map((it, i) => (
                     <div key={i} className="p-3 space-y-2">
@@ -662,9 +709,9 @@ export const FoodLogModal = ({ open, onOpenChange, onSave }: FoodLogModalProps) 
           </div>
         </Tabs>
 
-        {/* Sticky Footer with Running Totals */}
-        <div className="dialog-footer p-4 border-t border-border space-y-3 flex-shrink-0">
-          {(canSave || hasManualMacros) && (
+        {/* Sticky Footer */}
+        <div className="dialog-footer p-4 border-t border-border space-y-2 flex-shrink-0">
+          {hasItems && (
             <div className="flex items-center justify-between text-sm px-1">
               <span className="text-muted-foreground">Total</span>
               <span className="font-semibold text-foreground tabular-nums">
@@ -677,27 +724,31 @@ export const FoodLogModal = ({ open, onOpenChange, onSave }: FoodLogModalProps) 
           )}
           <Button
             className="w-full h-12 rounded-xl font-semibold"
-            onClick={handleSaveMeal}
-            disabled={isProcessing || !canSave}
+            onClick={handlePrimaryCTA}
+            disabled={ctaDisabled}
           >
-            {isSaving ? (
+            {isAnalyzing ? (
+              <>
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                Analyzing…
+              </>
+            ) : isSaving ? (
               <>
                 <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                 Saving…
               </>
+            ) : hasItems ? (
+              <>
+                <Utensils className="w-4 h-4 mr-2" />
+                Save Meal →
+              </>
             ) : (
-              <>Save Meal →</>
+              <>
+                <Sparkles className="w-4 h-4 mr-2" />
+                Analyse with AI & Save Meal
+              </>
             )}
           </Button>
-          {canSave && (
-            <button
-              onClick={handleSaveAndContinue}
-              disabled={isProcessing}
-              className="w-full text-xs text-muted-foreground hover:text-primary transition-colors py-1 disabled:opacity-50"
-            >
-              Save & log next meal
-            </button>
-          )}
         </div>
       </DialogContent>
     </Dialog>
