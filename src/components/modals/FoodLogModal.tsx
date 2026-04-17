@@ -23,6 +23,14 @@ interface FoodItem {
   carbs: number;
   fat: number;
   qty: number;
+  // Cache provenance — only set for Describe-tab cache hits
+  source?: 'cache' | 'ai';
+  matchedDictionaryId?: string;
+  // Original cached macros, captured pre-edit, used to compute delta for feedback log
+  originalCalories?: number;
+  originalProtein?: number;
+  originalCarbs?: number;
+  originalFat?: number;
 }
 
 interface SessionMeal {
@@ -119,8 +127,9 @@ export const FoodLogModal = ({ open, onOpenChange, onSave }: FoodLogModalProps) 
     }
   }, [open]);
 
+  // Recent tab: refetch when meal type changes (per-meal recents)
   useEffect(() => {
-    if (!open || tab !== 'recent' || recentMeals.length > 0) return;
+    if (!open || tab !== 'recent') return;
     let cancelled = false;
     (async () => {
       setLoadingRecent(true);
@@ -138,9 +147,10 @@ export const FoodLogModal = ({ open, onOpenChange, onSave }: FoodLogModalProps) 
           .select('id, meal_type, raw_text, calories, protein, carbs, fat, logged_date')
           .eq('client_id', profile.id)
           .eq('pending_analysis', false)
+          .eq('meal_type', mealType)
           .order('logged_date', { ascending: false })
           .order('created_at', { ascending: false })
-          .limit(20);
+          .limit(10);
         if (error) throw error;
         if (cancelled) return;
         setRecentMeals(
@@ -162,7 +172,7 @@ export const FoodLogModal = ({ open, onOpenChange, onSave }: FoodLogModalProps) 
       }
     })();
     return () => { cancelled = true; };
-  }, [open, tab, recentMeals.length]);
+  }, [open, tab, mealType]);
 
   const hasItems = items.length > 0;
   const hasInput = !!(foodText.trim() || capturedImage);
@@ -214,10 +224,16 @@ export const FoodLogModal = ({ open, onOpenChange, onSave }: FoodLogModalProps) 
     setIsAnalyzing(true);
     setAiError(null);
     try {
-      const imageBase64 = image ? image.split(',')[1] : null;
-      const { data, error } = await supabase.functions.invoke('analyze-food', {
-        body: { foodText: text || undefined, imageBase64 },
-      });
+      // Route by input type:
+      // - Text-only (Describe tab) → vector cache lookup, then AI fallback
+      // - Photo (Snap tab) → direct AI (image embeddings are Phase B)
+      const useCache = !image && !!text;
+      const fnName = useCache ? 'lookup-or-analyze-food' : 'analyze-food';
+      const payload = useCache
+        ? { foodText: text }
+        : { foodText: text || undefined, imageBase64: image ? image.split(',')[1] : null };
+
+      const { data, error } = await supabase.functions.invoke(fnName, { body: payload });
 
       if (error) {
         let code = 'AI_UNAVAILABLE';
@@ -236,8 +252,25 @@ export const FoodLogModal = ({ open, onOpenChange, onSave }: FoodLogModalProps) 
         return;
       }
 
-      const result = data as { items: Omit<FoodItem, 'qty'>[]; totals: any };
-      setItems((result.items || []).map((it) => ({ ...it, qty: 1 })));
+      const result = data as {
+        items: Omit<FoodItem, 'qty'>[];
+        totals: any;
+        source?: 'cache' | 'ai';
+        matched_dictionary_id?: string;
+      };
+      const isCacheHit = result.source === 'cache';
+      setItems(
+        (result.items || []).map((it) => ({
+          ...it,
+          qty: 1,
+          source: result.source,
+          matchedDictionaryId: isCacheHit ? result.matched_dictionary_id : undefined,
+          originalCalories: isCacheHit ? it.calories : undefined,
+          originalProtein: isCacheHit ? it.protein : undefined,
+          originalCarbs: isCacheHit ? it.carbs : undefined,
+          originalFat: isCacheHit ? it.fat : undefined,
+        }))
+      );
     } catch (err) {
       logError('FoodLogModal.analyzeFood', err);
       setAiError({ code: 'AI_UNAVAILABLE', message: getErrorCopy('AI_UNAVAILABLE') });
@@ -254,7 +287,40 @@ export const FoodLogModal = ({ open, onOpenChange, onSave }: FoodLogModalProps) 
     );
   };
 
+  // Log feedback when a cached item is removed (strong negative signal: cache match was wrong)
+  const logCachedItemFeedback = async (item: FoodItem) => {
+    if (!item.matchedDictionaryId || item.source !== 'cache') return;
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('user_id', user.id)
+        .maybeSingle();
+      if (!profile?.id) return;
+      // Removal = treated as 100% kcal delta (full rejection)
+      await supabase.from('food_dictionary_edits').insert({
+        dictionary_id: item.matchedDictionaryId,
+        client_id: profile.id,
+        original_kcal: item.originalCalories ?? item.calories,
+        original_protein: item.originalProtein ?? item.protein,
+        original_carbs: item.originalCarbs ?? item.carbs,
+        original_fat: item.originalFat ?? item.fat,
+        edited_kcal: 0,
+        edited_protein: 0,
+        edited_carbs: 0,
+        edited_fat: 0,
+        kcal_delta_pct: 100,
+      });
+    } catch (err) {
+      logError('FoodLogModal.logCachedItemFeedback', err);
+    }
+  };
+
   const removeItem = (idx: number) => {
+    const item = items[idx];
+    if (item) void logCachedItemFeedback(item);
     setItems((prev) => prev.filter((_, i) => i !== idx));
   };
 
@@ -662,7 +728,15 @@ export const FoodLogModal = ({ open, onOpenChange, onSave }: FoodLogModalProps) 
                       <div className="flex items-start justify-between gap-2">
                         <div className="min-w-0 flex-1">
                           <p className="font-medium text-sm text-foreground truncate">{it.name}</p>
-                          <p className="text-[11px] text-muted-foreground">{it.quantity}</p>
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <p className="text-[11px] text-muted-foreground">{it.quantity}</p>
+                            {it.source === 'cache' && (
+                              <span className="inline-flex items-center gap-0.5 text-[10px] px-1.5 py-0.5 rounded-full bg-primary/15 text-primary font-medium">
+                                <Sparkles className="w-2.5 h-2.5" />
+                                matched from kitchen
+                              </span>
+                            )}
+                          </div>
                         </div>
                         <button
                           onClick={() => removeItem(i)}
