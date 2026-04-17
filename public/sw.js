@@ -1,4 +1,13 @@
-// Minimal service worker for Web Push notifications only — no caching
+// Minimal service worker for Web Push + fresh-shell guard for installed PWAs
+// Network-first for HTML navigations ensures users always get latest index.html
+// (JS/CSS are content-hashed by Vite, so they cache safely.)
+self.addEventListener('fetch', (event) => {
+  const req = event.request;
+  if (req.mode === 'navigate') {
+    event.respondWith(fetch(req).catch(() => caches.match(req)));
+  }
+});
+
 self.addEventListener('push', (event) => {
   if (!event.data) return;
 

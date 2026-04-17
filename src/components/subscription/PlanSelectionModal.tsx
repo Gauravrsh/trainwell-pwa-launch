@@ -21,10 +21,9 @@ interface PlanSelectionModalProps {
 }
 
 // Whitelist of valid Razorpay button IDs - SECURITY: Never use user-controllable values
-// TODO: Replace these with new Razorpay button IDs for ₹999 monthly and ₹9,999 annual
 const VALID_RAZORPAY_BUTTON_IDS = new Set([
-  'pl_S6cIGsJyU7Owle', // Pro / Monthly plan (placeholder — update after Razorpay button created)
-  'pl_S6ccDIYhIw1AaB', // Elite / Annual plan (placeholder — update after Razorpay button created)
+  'pl_S6cIGsJyU7Owle', // Pro / Monthly plan (₹999/month)
+  'pl_S6ccDIYhIw1AaB', // Elite / Annual plan (₹9,999/year)
 ]);
 
 const getRazorpayPaymentUrl = (buttonId: string): string | null => {
