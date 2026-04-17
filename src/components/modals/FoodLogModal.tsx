@@ -23,6 +23,14 @@ interface FoodItem {
   carbs: number;
   fat: number;
   qty: number;
+  // Cache provenance — only set for Describe-tab cache hits
+  source?: 'cache' | 'ai';
+  matchedDictionaryId?: string;
+  // Original cached macros, captured pre-edit, used to compute delta for feedback log
+  originalCalories?: number;
+  originalProtein?: number;
+  originalCarbs?: number;
+  originalFat?: number;
 }
 
 interface SessionMeal {
