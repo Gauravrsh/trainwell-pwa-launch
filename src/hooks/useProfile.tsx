@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, createContext, useContext, ReactNode, useCallback } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { logError } from '@/lib/errorUtils';
@@ -25,73 +25,45 @@ interface PaymentInfo {
   vpa_address: string | null;
 }
 
-export const useProfile = () => {
-  const { user } = useAuth();
+interface ProfileContextValue {
+  profile: Profile | null;
+  paymentInfo: PaymentInfo | null;
+  loading: boolean;
+  error: Error | null;
+  refetchProfile: () => Promise<void>;
+  needsRoleSelection: boolean;
+  needsProfileSetup: boolean;
+  isTrainer: boolean;
+  isClient: boolean;
+}
+
+const ProfileContext = createContext<ProfileContextValue | undefined>(undefined);
+
+export const ProfileProvider = ({ children }: { children: ReactNode }) => {
+  const { user, loading: authLoading } = useAuth();
   const [profile, setProfile] = useState<Profile | null>(null);
   const [paymentInfo, setPaymentInfo] = useState<PaymentInfo | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
 
-  useEffect(() => {
-    const fetchProfile = async () => {
-      if (!user) {
-        setProfile(null);
-        setPaymentInfo(null);
-        setLoading(false);
-        return;
-      }
+  const fetchAll = useCallback(async (uid: string | null) => {
+    if (!uid) {
+      setProfile(null);
+      setPaymentInfo(null);
+      setLoading(false);
+      return;
+    }
 
-      try {
-        // Fetch profile data
-        const { data: profileData, error: fetchError } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('user_id', user.id)
-          .maybeSingle();
-
-        if (fetchError) throw fetchError;
-        setProfile(profileData);
-
-        // Fetch payment info separately (owner-only access)
-        if (profileData?.id) {
-          const { data: paymentData, error: paymentError } = await supabase
-            .from('payment_info')
-            .select('vpa_address')
-            .eq('profile_id', profileData.id)
-            .maybeSingle();
-
-          if (paymentError) {
-            logError('useProfile.fetchPaymentInfo', paymentError);
-          } else {
-            setPaymentInfo(paymentData);
-          }
-        }
-      } catch (err) {
-        logError('useProfile.fetchProfile', err);
-        setError(err as Error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchProfile();
-  }, [user]);
-
-  const refetchProfile = async () => {
-    if (!user) return;
-    
-    setLoading(true);
     try {
       const { data: profileData, error: fetchError } = await supabase
         .from('profiles')
         .select('*')
-        .eq('user_id', user.id)
+        .eq('user_id', uid)
         .maybeSingle();
 
       if (fetchError) throw fetchError;
       setProfile(profileData);
 
-      // Refetch payment info
       if (profileData?.id) {
         const { data: paymentData, error: paymentError } = await supabase
           .from('payment_info')
@@ -100,34 +72,55 @@ export const useProfile = () => {
           .maybeSingle();
 
         if (paymentError) {
-          logError('useProfile.refetchPaymentInfo', paymentError);
+          logError('useProfile.fetchPaymentInfo', paymentError);
         } else {
           setPaymentInfo(paymentData);
         }
+      } else {
+        setPaymentInfo(null);
       }
     } catch (err) {
-      logError('useProfile.refetchProfile', err);
+      logError('useProfile.fetchProfile', err);
       setError(err as Error);
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
-  // Check if user needs to select a role (no profile exists)
+  useEffect(() => {
+    // Wait for auth to initialise before deciding profile state.
+    if (authLoading) return;
+    setLoading(true);
+    fetchAll(user?.id ?? null);
+  }, [user?.id, authLoading, fetchAll]);
+
+  const refetchProfile = useCallback(async () => {
+    setLoading(true);
+    await fetchAll(user?.id ?? null);
+  }, [user?.id, fetchAll]);
+
   const needsRoleSelection = profile === null && user !== null && !loading;
-
-  // Check if user has selected role but hasn't completed profile setup
   const needsProfileSetup = profile !== null && !profile.profile_complete && user !== null && !loading;
 
-  return { 
-    profile, 
+  const value: ProfileContextValue = {
+    profile,
     paymentInfo,
-    loading, 
-    error, 
+    loading,
+    error,
     refetchProfile,
     needsRoleSelection,
     needsProfileSetup,
     isTrainer: profile?.role === 'trainer',
     isClient: profile?.role === 'client',
   };
+
+  return <ProfileContext.Provider value={value}>{children}</ProfileContext.Provider>;
+};
+
+export const useProfile = (): ProfileContextValue => {
+  const ctx = useContext(ProfileContext);
+  if (!ctx) {
+    throw new Error('useProfile must be used within a ProfileProvider');
+  }
+  return ctx;
 };
