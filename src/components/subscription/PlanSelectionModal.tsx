@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Check, Crown, Sparkles, ChevronDown, ExternalLink, Loader2, Zap } from 'lucide-react';
+import { Check, Crown, Sparkles, ChevronDown, ExternalLink, Loader2, Zap, Rocket } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
@@ -47,6 +47,7 @@ const paidPlans = [
       'All features unlocked',
       'UPI & card payments',
       'Cancel anytime',
+      'Get invite to learning webinars',
     ],
   },
   {
@@ -54,7 +55,7 @@ const paidPlans = [
     name: 'Elite',
     price: 9999,
     period: '/year',
-    description: '12 + 2 bonus months (425 days) · Unlimited clients',
+    description: '~₹714/month · Unlimited clients\n~28% less than monthly plan',
     badge: 'BEST VALUE',
     razorpayButtonId: 'pl_S6ccDIYhIw1AaB',
     features: [
@@ -62,6 +63,7 @@ const paidPlans = [
       '14 months for the price of 12',
       'Referral rewards (annual)',
       'Priority support',
+      'Get invite to in-person meetups with elite trainers',
     ],
   },
 ];
@@ -256,7 +258,7 @@ export function PlanSelectionModal({
               <div className="w-full p-4 rounded-2xl border-2 border-dashed border-border bg-muted/30 text-left">
                 <div className="flex items-center gap-2 mb-2">
                   <Sparkles className="w-5 h-5 text-muted-foreground" />
-                  <span className="font-semibold text-foreground">Smart (Free)</span>
+                  <span className="font-semibold text-foreground">Smart</span>
                   <span className="px-2 py-0.5 bg-success/20 text-success text-xs font-bold rounded">CURRENT</span>
                 </div>
                 <div className="mb-2">
@@ -283,7 +285,7 @@ export function PlanSelectionModal({
                       {plan.id === 'annual' ? (
                         <Crown className="w-5 h-5 text-primary" />
                       ) : (
-                        <Sparkles className="w-5 h-5 text-muted-foreground" />
+                        <Rocket className="w-5 h-5 text-primary" />
                       )}
                       <span className="font-semibold text-foreground">{plan.name}</span>
                       {plan.badge && (
@@ -308,7 +310,7 @@ export function PlanSelectionModal({
                     <span className="text-muted-foreground">{plan.period}</span>
                   </div>
 
-                  <p className="text-sm text-muted-foreground mb-3">{plan.description}</p>
+                  <p className="text-sm text-muted-foreground mb-3 whitespace-pre-line">{plan.description}</p>
 
                   <ul className="space-y-1.5">
                     {plan.features.map((feature) => (
