@@ -127,8 +127,9 @@ export const FoodLogModal = ({ open, onOpenChange, onSave }: FoodLogModalProps) 
     }
   }, [open]);
 
+  // Recent tab: refetch when meal type changes (per-meal recents)
   useEffect(() => {
-    if (!open || tab !== 'recent' || recentMeals.length > 0) return;
+    if (!open || tab !== 'recent') return;
     let cancelled = false;
     (async () => {
       setLoadingRecent(true);
@@ -146,9 +147,10 @@ export const FoodLogModal = ({ open, onOpenChange, onSave }: FoodLogModalProps) 
           .select('id, meal_type, raw_text, calories, protein, carbs, fat, logged_date')
           .eq('client_id', profile.id)
           .eq('pending_analysis', false)
+          .eq('meal_type', mealType)
           .order('logged_date', { ascending: false })
           .order('created_at', { ascending: false })
-          .limit(20);
+          .limit(10);
         if (error) throw error;
         if (cancelled) return;
         setRecentMeals(
@@ -170,7 +172,7 @@ export const FoodLogModal = ({ open, onOpenChange, onSave }: FoodLogModalProps) 
       }
     })();
     return () => { cancelled = true; };
-  }, [open, tab, recentMeals.length]);
+  }, [open, tab, mealType]);
 
   const hasItems = items.length > 0;
   const hasInput = !!(foodText.trim() || capturedImage);
