@@ -91,8 +91,9 @@ export const useProgressData = (
       if (weightLogsRes.error) throw weightLogsRes.error;
       if (stepLogsRes.error) throw stepLogsRes.error;
 
-      // Default BMR estimation if not set (Harris-Benedict rough estimate)
-      const bmr = profileRes.data?.bmr || 1800;
+      // Use actual BMR if logged; otherwise 0 so charts reflect each client's real, distinct data
+      // (No silent fallback — a missing BMR is surfaced via the existing "BMR may be outdated" banner)
+      const bmr = profileRes.data?.bmr ?? 0;
 
       // Group food logs by date
       const foodByDate: Record<string, number> = {};
