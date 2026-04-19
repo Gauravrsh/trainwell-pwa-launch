@@ -29,6 +29,7 @@ const Terms = lazy(() => import("./pages/Terms"));
 const Pitch = lazy(() => import("./pages/Pitch"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 const IconReview = lazy(() => import("./pages/IconReview"));
+const FlywheelReview = lazy(() => import("./pages/FlywheelReview"));
 
 const queryClient = new QueryClient();
 
@@ -203,6 +204,7 @@ const AppRoutes = () => (
       <Route path="/terms" element={<Terms />} />
       <Route path="/pitch" element={<Pitch />} />
       <Route path="/icon-review" element={<IconReview />} />
+      <Route path="/flywheel-review" element={<FlywheelReview />} />
       <Route path="*" element={<NotFound />} />
     </Routes>
   </Suspense>
