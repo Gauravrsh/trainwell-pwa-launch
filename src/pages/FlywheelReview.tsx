@@ -1,4 +1,4 @@
-import flywheel from '@/assets/flywheel-mockups/option1-final-v6.png';
+import flywheel from '@/assets/flywheel-mockups/option1-final-v7.png';
 
 export default function FlywheelReview() {
   return (
