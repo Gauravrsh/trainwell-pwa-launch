@@ -1,6 +1,7 @@
 import { forwardRef } from 'react';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
+import flywheel from '@/assets/flywheel-mockups/option1-final-v8.png';
 
 const CTASection = forwardRef<HTMLElement>((_, ref) => {
   return (
@@ -12,11 +13,14 @@ const CTASection = forwardRef<HTMLElement>((_, ref) => {
           <span className="text-foreground">and</span>{' '}
           <span className="text-gradient">Your Career</span>
         </h2>
-        <p className="mx-auto mt-6 max-w-xl text-base sm:text-lg text-muted-foreground leading-relaxed">
-          Client tracks consistently → Results come →
-          Client stays longer → Refers friends →&nbsp; &nbsp; &nbsp; &nbsp;
-          Your reputation grows →&nbsp;More Clients&nbsp;→ Repeat
-        </p>
+        <div className="mx-auto mt-8 w-full max-w-[560px]">
+          <img
+            src={flywheel}
+            alt="Vecto Flywheel of Growth: client tracks, results come, client stays, gives testimonials, refers friends, reputation grows, more clients, repeat"
+            className="block w-full h-auto"
+            loading="lazy"
+          />
+        </div>
         <Button asChild size="lg" className="mt-8 text-base font-bold">
           <Link to="/auth">Start Free</Link>
         </Button>
