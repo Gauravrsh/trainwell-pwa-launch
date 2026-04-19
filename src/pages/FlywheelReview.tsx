@@ -1,11 +1,17 @@
-import option1 from '@/assets/flywheel-mockups/option1-circular.png';
-import option2 from '@/assets/flywheel-mockups/option2-hex.png';
-import option3 from '@/assets/flywheel-mockups/option3-orbit.png';
+import optionV2 from '@/assets/flywheel-mockups/option1-circular-v2.png';
+import optionV4 from '@/assets/flywheel-mockups/option1-circular-v4.png';
 
 const mockups = [
-  { src: option1, title: 'Option 1 — Circular Flywheel', note: 'Closest to your reference. Has stray "100%/70%" debug text inside arrows that needs cleanup.' },
-  { src: option2, title: 'Option 2 — Hexagonal Command Grid', note: 'Brutalist / command-center energy. Arrow flow reads counterclockwise, needs fix.' },
-  { src: option3, title: 'Option 3 — Editorial Orbit', note: 'Refined Economist-style. Has a typo "REPUATION" and only 4 of 6 labels rendered.' },
+  {
+    src: optionV2,
+    title: 'Option 1 — Circular Flywheel (cleaned)',
+    note: 'All stray debug text removed. 6 nodes + icons + central VECTO mark are correct. Arrow count came back as 8 instead of the requested 7 — image model would not honor the count after multiple attempts.',
+  },
+  {
+    src: optionV4,
+    title: 'Option 1 — Retry attempt (still 8 arrows)',
+    note: 'Same as above visually. Kept for comparison.',
+  },
 ];
 
 export default function FlywheelReview() {
@@ -13,7 +19,11 @@ export default function FlywheelReview() {
     <div className="min-h-screen bg-background text-foreground px-4 py-10">
       <div className="mx-auto max-w-5xl">
         <h1 className="text-3xl font-extrabold mb-2">Flywheel Mockup Review</h1>
-        <p className="text-muted-foreground mb-10">Pick one to perfect before placing on landing page.</p>
+        <p className="text-muted-foreground mb-2">Refined per request: 6 nodes (CLIENT TRACKS → RESULTS COME → CLIENT STAYS → REFERS FRIENDS → REPUTATION GROWS → MORE CLIENTS).</p>
+        <p className="text-sm text-primary mb-10">
+          ⚠ Honest flag: you asked for 7 arrows. The image model returns 8 every time (it auto-balances arrows to node count). Three options:
+          (a) accept 8 arrows — visually it reads as a clean continuous loop; (b) I rebuild this as native SVG in code where I can guarantee exactly 7 arrows; (c) different arrow scheme.
+        </p>
         <div className="space-y-12">
           {mockups.map((m) => (
             <section key={m.title}>
