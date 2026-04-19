@@ -1,4 +1,4 @@
-import { ClipboardCheck, TrendingUp, Lock, Megaphone, Crown, Users } from 'lucide-react';
+import { ClipboardCheck, TrendingUp, Lock, Megaphone, Crown, Users, type LucideIcon } from 'lucide-react';
 
 /**
  * Vecto Flywheel — native SVG, exactly 6 nodes + 7 arrows.
@@ -15,7 +15,7 @@ import { ClipboardCheck, TrendingUp, Lock, Megaphone, Crown, Users } from 'lucid
 type Node = {
   key: string;
   label: string;
-  Icon: React.ComponentType<{ size?: number; strokeWidth?: number; className?: string }>;
+  Icon: LucideIcon;
   /** angle in degrees, 0 = top, clockwise */
   angle: number;
 };
