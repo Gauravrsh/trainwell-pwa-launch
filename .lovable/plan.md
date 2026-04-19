@@ -1,69 +1,70 @@
 
-The user wants a comprehensive Vecto brand guidelines document they can paste into Gemini 3 Pro (and other tools) to generate a 5-second logo reveal animation, plus reuse across all marketing collaterals.
 
-This is a **document/artifact task**, not a code change. I should generate a detailed brand guideline as a downloadable file (Markdown + PDF) and also include a ready-to-use Gemini prompt for the 5-sec logo reveal.
+## Vecto Brand Guidelines v2 — Plan
 
-Let me check existing brand memory to ensure 100% accuracy:
-- Mononym: VECTO (always uppercase)
-- Lime "V" (#BFFF00), white "ECTO" (#FAFAFA)
-- Background: Obsidian Black (#0A0A0A / #0F172A)
-- Font: Inter, Bold, tight tracking
-- Tagline: "Effort | Direction | Discipline"
-- Voice: Elite Jester — Sage (Truth) + Ruler (Enforcement) + Jester (Polite Savagery)
-- Philosophy: "Whatever gets tracked, gets done" / "The Mirror Doesn't Lie"
-- Vector etymology: Magnitude + Direction
-- App icon: lime "V" + white dot (V.) — strictly PWA only, never beside wordmark
+Acting as Creative Director, here's what I'll deliver based on your answers.
 
-## Plan
+### Scope changes
+1. **Remove** Section 13 (Gemini logo-reveal prompt)
+2. **Add** full Logo Variants Library (7 variants, with downloadable SVG + PNG)
+3. **Add** Spacing & Layout System on an 8pt grid with social template specs (8 formats)
 
-### 1. Generate two artifacts in `/mnt/documents/`
-- **`vecto-brand-guidelines.md`** — full granular guideline
-- **`vecto-brand-guidelines.pdf`** — same content rendered as PDF for sharing
+### What gets built
 
-### 2. Brand guideline structure (granular, agency-grade)
-1. **Brand Essence** — mission, etymology (Vector = Magnitude + Direction), positioning, "Mirror Doesn't Lie"
-2. **Archetype Triad** — Sage / Ruler / Jester with usage ratios
-3. **Logo System**
-   - Wordmark anatomy (V lime + ECTO white, exact kerning, weight)
-   - App icon "V." (lime V + white dot) — PWA only
-   - Clear space (= height of "V"), minimum sizes
-   - DO/DON'T (no shadows, no gradients on V, no italic, never split colors differently, never place icon beside wordmark)
-4. **Color System**
-   - Primary: Vecto Neon `#BFFF00` (HSL/RGB/CMYK/Pantone-near)
-   - Background: Obsidian Black `#0A0A0A`
-   - Data White `#FAFAFA`
-   - Muted neutrals
-   - Color usage rules: Neon = Action/Truth/Win, White = Data, Black = Canvas. Neon ≤15% of any composition.
-5. **Typography**
-   - Display: Inter Bold/Black, tight tracking (-0.02em), uppercase
-   - Body: Inter Regular/Medium
-   - Type scale (H1-H6, body, micro)
-   - Never serif. Never script.
-6. **Voice & Tone** — Elite Jester rules, do/don't copy examples, prohibited softness ("we're here to help" → banned)
-7. **Iconography** — Lucide stroke 1.5, lime accents only on active state
-8. **Motion Principles**
-   - Easing: precision cubic-bezier (0.32, 0.72, 0, 1) — confident, not bouncy
-   - Tempo: snap-cuts at 200-300ms; reveals at 600-800ms
-   - "Mirror" motif — split / reflect / lock
-   - Sound: minimal mechanical clicks (locking sound), no whoosh
-9. **Photography & Imagery**
-   - Indian gym contexts, real freelance trainers (not stock)
-   - High-contrast, single light source
-   - Deep blacks, controlled highlights
-10. **Copy Patterns** — headline formulas, CTA library, banned phrases
-11. **Ad Film & Shoot Direction** — wardrobe, location, color grading LUT direction (crushed blacks, lime-only accents)
-12. **Application Examples** — social post, billboard, app icon, video pre-roll
-13. **Gemini 3 Pro Prompt — 5-Sec Logo Reveal** (ready to paste, with full sensory detail)
+**A. Logo Variants Library — 7 variants, generated as SVG + PNG**
+1. `V.` app icon — lime V + white dot (PWA only)
+2. `VECTO` primary wordmark — lime V + white ECTO
+3. `VECTO` + tagline stacked lockup — centered, lime `|` pipes (per your selection)
+4. Horizontal lockup — V. icon + VECTO wordmark, side-by-side (for headers/email signatures)
+5. Mono white knockout — full lockup in #FAFAFA on dark
+6. Mono black knockout — full lockup in #0A0A0A on light
+7. Lime knockout — wordmark in #0A0A0A on #BFFF00 background (high-impact CTA)
 
-### 3. Gemini prompt design (key element)
-The prompt will be a single dense paragraph specifying: aspect ratio, duration, background, exact hex colors, font, motion choreography (vector arrow drawing → V locks in → ECTO types/scrolls in → tagline fades → mirror flash), sound design notes, ending hold frame, and negative constraints.
+For each variant, the spec defines: construction grid, x-height, kerning, minimum size (digital + print), clear-space (= height of "V"), approved backgrounds, file naming convention.
 
-### 4. Generation method
-Use `pandoc` to convert MD → PDF with a dark theme (matching brand). Inspect the PDF after generation (convert to image, view) before delivering.
+**B. Spacing & Layout System (8pt grid)**
+- Base unit `s = 8px`. Scale: 8, 16, 24, 32, 48, 64, 96, 128
+- Clear-space rule: minimum padding around any logo = 1× cap-height of "V"
+- Negative space rule: in any composition, ≥40% of canvas must be empty Obsidian
+- Neon lime usage rule: ≤15% of pixel area
+- Optical alignment notes for the V (visual vs mathematical center)
 
-### 5. Deliverables
-- `vecto-brand-guidelines.md`
-- `vecto-brand-guidelines.pdf`
-- Inline copy of the Gemini 5-sec logo reveal prompt in chat for immediate use
+**C. Social Template Specs — 8 formats with safe-zones**
 
-No code/component changes. No landing page edits.
+| Format | Dimensions | Use |
+|---|---|---|
+| Square | 1080×1080 | IG feed |
+| Portrait | 1080×1350 | IG feed (preferred) |
+| Story / Reel | 1080×1920 | IG / FB story, Reels |
+| LinkedIn feed | 1200×628 | LinkedIn post |
+| YouTube | 1920×1080 | Thumbnails, pre-roll |
+| WhatsApp status | 1080×1920 | Status share |
+| X / Twitter | 1600×900 | Post card |
+| Billboard | 3000×1000 (3:1) | OOH |
+
+For each: outer margin, safe-zone, logo placement zones (top-left default, bottom-center alt), headline zone, CTA zone, tagline lock-up position.
+
+**D. Updated PDF**
+- Dark theme, ~14 pages
+- Renders all 7 logo variants on-page with construction grids
+- Renders all 8 social templates as wireframe diagrams with measurements
+- Saved as `/mnt/documents/vecto-brand-guidelines-v2.pdf`
+- Logo asset files saved under `/mnt/documents/vecto-logos/`
+
+### Method
+1. Generate SVGs programmatically (precise geometry, brand-locked colors)
+2. Rasterize to PNG at 1×, 2×, 3× for each variant
+3. Build wireframe diagrams for the 8 social formats
+4. Compose v2 markdown → render to PDF via reportlab (dark theme)
+5. QA every PDF page as image; fix any clipping/contrast/overlap before delivery
+
+### Deliverables
+- `vecto-brand-guidelines-v2.pdf` (the document)
+- `vecto-logos/` folder with 7 variants × (SVG + PNG@1x/2x/3x)
+- `vecto-social-templates/` folder with 8 wireframe PNGs
+
+### Three creative-director questions before I build
+I'll ask these inline as I go only if blocking, but flagging upfront:
+1. **Tagline weight** in the stacked lockup — Inter Medium tracked at +0.2em (refined) vs. Inter Bold tight (assertive). Default to refined unless you say otherwise.
+2. **Horizontal lockup gap** between V. icon and VECTO wordmark — I'll use 1× cap-height (industry default).
+3. **Social template content** — I'll show wireframes (zones only), not finished posts. Finished templates would be a separate next deliverable.
