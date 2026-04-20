@@ -14,6 +14,21 @@ export type Database = {
   }
   public: {
     Tables: {
+      _system_heartbeat: {
+        Row: {
+          beat_at: string
+          id: number
+        }
+        Insert: {
+          beat_at?: string
+          id?: number
+        }
+        Update: {
+          beat_at?: string
+          id?: number
+        }
+        Relationships: []
+      }
       client_training_plans: {
         Row: {
           amount_due: number | null
@@ -1125,6 +1140,7 @@ export type Database = {
           unique_id: string
         }[]
       }
+      record_heartbeat: { Args: never; Returns: undefined }
       renew_trainer_subscription: {
         Args: {
           p_is_active: boolean
