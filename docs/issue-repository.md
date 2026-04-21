@@ -156,3 +156,37 @@
   - Any flow that mutates `profiles` MUST call `refetchProfile()` before navigating to a route guarded by `ProtectedRoute` / `ProfileSetupRoute`.
   - Post-auth redirects should target the canonical authenticated route (`/dashboard`), never `/`, to avoid double-hop guard evaluation on stale context.
   - Future audit candidate: add a generic post-mutation context invalidation pattern (e.g., subscribe `useProfile` to a Supabase realtime channel on `profiles` row) to make this class of bug structurally impossible.
+
+---
+
+## TW-013: Sign-In Button Silently Disabled When Password Autofilled Without Email
+- **Severity:** High
+- **Status:** ✅ Fixed
+- **Date Found:** 2026-04-21
+- **Symptom:** On Android (Samsung Internet / Chrome) with a saved password, the Auth page opened with the password field showing dots (autofilled) but the email field still showing the placeholder. The "Sign In" button looked active (slightly dimmed olive — actually the `disabled:opacity-50` state) but tapping it did nothing: no toast, no navigation. User retried several times, then quit the app.
+- **Root Cause:** Two compounding issues in `src/pages/Auth.tsx`:
+  1. **State/DOM desync from autofill.** Browser password managers populate `<input>` `value` attributes WITHOUT firing React's synthetic `onChange`. So the DOM had `password = "••••••••"` but our React state `password = ''`. Email may or may not be autofilled depending on whether the user saved the email-password pair.
+  2. **Silent disable.** The button was `disabled={loading || !email || !password}`. When state was empty, the button became `disabled` and Tailwind's `disabled:opacity-50` made it look only slightly dimmer (still the lime/olive primary color), so users could not tell it was inert. No toast, no error — pure silent failure.
+- **Fix:**
+  1. Wrapped the email/password fields in a real `<form onSubmit={handleSubmit} noValidate>` so the browser commits autofilled values to the DOM before submission and Enter-to-submit works on every keyboard.
+  2. Added `useRef` on both inputs. On submit, `handleSubmit` reads `inputRef.current.value` as a fallback when React state is empty (the autofill case) and uses these "effective" values for validation and Supabase calls. State is also patched so subsequent renders are consistent.
+  3. Removed `!email`/`!password` from the button's `disabled` prop. Now the button is only disabled while `loading`. If a user submits with truly blank fields, they get the existing zod validation toast ("Please enter a valid email" / "Password must be at least 6 characters") — a visible, recoverable error instead of a silent no-op.
+  4. Added `name="email"` / `name="password"` attributes so password managers reliably attribute the credential pair.
+- **Files Changed:** `src/pages/Auth.tsx`
+- **Detected via:** User-reported (screen recording showing repeated taps on Sign In with no response).
+- **Prevention / Regression Guards:**
+  - **Never disable a primary submit button purely on missing field state.** Validation must produce a visible toast, not a silent disable. Codify in review checklist.
+  - **All credential forms must use `<form onSubmit>` + refs**, not click handlers reading React state, because autofill ↔ React state is unreliable across Android browsers.
+  - Manual regression matrix executed before merge:
+    1. Fresh sign-in (typed email + password) → still works ✅
+    2. Autofilled email + autofilled password → submits with refs ✅
+    3. Autofilled password only, empty email → submits if DOM has email; else shows "Please enter a valid email" toast ✅
+    4. Empty both, tap Sign In → "Please enter a valid email" toast ✅
+    5. Invalid email format typed → "Please enter a valid email" toast ✅
+    6. Password < 6 chars → "Password must be at least 6 characters" toast ✅
+    7. Forgot password mode (no password field) → still validates email only ✅
+    8. Sign-up mode → same fixes apply, button enabled, validation surfaces toast ✅
+    9. Enter key on hardware keyboard → submits via form ✅
+    10. Wrong credentials → existing TW-009/TW-010 mapped error toasts still fire ✅
+    11. Loading state → button shows spinner and is disabled (only legitimate disable) ✅
+    12. Toggle between signin/signup/forgot → form re-mounts via `key={mode}`, refs re-bound ✅
