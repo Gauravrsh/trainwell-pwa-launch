@@ -28,7 +28,9 @@ export default function Profile() {
 
   const handleSignOut = async () => {
     await signOut();
-    navigate('/');
+    // TW-015: replace history entry so back button doesn't re-enter /profile
+    // (which would then redirect to /auth, creating a "back is broken" loop).
+    navigate('/', { replace: true });
   };
 
   return (
