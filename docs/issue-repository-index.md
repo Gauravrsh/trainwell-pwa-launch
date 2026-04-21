@@ -15,3 +15,4 @@ TW-010 | High | Fixed | HIBP pwned-password shown as generic error | errorUtils.
 TW-011 | High | Fixed | Invited client link loses trainer context for authenticated users | App.tsx / RoleSelection.tsx / ProfileSetup.tsx
 TW-012 | High | Fixed | Blank page after profile setup due to stale profile context + wrong redirect target | ProfileSetup.tsx
 TW-013 | High | Fixed | Sign In button silently does nothing when password is autofilled but email isn't (state/DOM desync) | Auth.tsx
+TW-014 | High | Fixed | PWA back button does not exit from root screen on Android | App.tsx / useAndroidBackExit.ts
