@@ -136,3 +136,23 @@
 ---
 
 *Last updated: 2026-04-21*
+
+---
+
+## TW-012: Blank Page After Profile Setup (Stale Profile Context + Wrong Redirect)
+- **Severity:** High
+- **Status:** ✅ Fixed
+- **Date Found:** 2026-04-21
+- **Symptom:** After successfully filling and submitting the Profile Setup form, the success toast appeared but the user was dropped on a blank page instead of the dashboard. Refreshing manually was the only way out.
+- **Root Cause:** Two compounding issues in `ProfileSetup.tsx`:
+  1. `navigate('/')` was used after submit. The root path renders `PublicLandingRoute`, which only checks `useAuth().user`. With a logged-in user it forwards to `/dashboard`, but `ProtectedRoute` then reads the **stale** `profile.profile_complete = false` from `useProfile` context (the form just updated the DB row, but the React context still held the pre-update snapshot).
+  2. `useProfile` was never told to re-fetch after the DB update, so `needsProfileSetup` stayed `true`. Combined with the `return null` gates in the route guards while a transition was in flight, the user saw a blank page (and on some renders bounced into a redirect loop until they hard-refreshed).
+- **Fix:** 
+  1. Imported `useProfile` in `ProfileSetup.tsx` and `await refetchProfile()` immediately after the `profiles.update()` succeeds, so the context reflects `profile_complete: true` before navigation.
+  2. Replaced `navigate('/')` with `navigate('/dashboard', { replace: true })` to skip the unnecessary public-landing bounce and prevent the user from going "back" to the profile form.
+- **Files Changed:** `src/pages/ProfileSetup.tsx`
+- **Detected via:** User report — same client who hit TW-011 finished profile setup and landed on a blank page.
+- **Prevention:**
+  - Any flow that mutates `profiles` MUST call `refetchProfile()` before navigating to a route guarded by `ProtectedRoute` / `ProfileSetupRoute`.
+  - Post-auth redirects should target the canonical authenticated route (`/dashboard`), never `/`, to avoid double-hop guard evaluation on stale context.
+  - Future audit candidate: add a generic post-mutation context invalidation pattern (e.g., subscribe `useProfile` to a Supabase realtime channel on `profiles` row) to make this class of bug structurally impossible.

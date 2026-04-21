@@ -13,3 +13,4 @@ TW-008 | Critical | Fixed | Supabase 7-day idle auto-pause | migrations/heartbea
 TW-009 | Critical | Fixed | Signup disabled blocked all new users | errorUtils.ts
 TW-010 | High | Fixed | HIBP pwned-password shown as generic error | errorUtils.ts
 TW-011 | High | Fixed | Invited client link loses trainer context for authenticated users | App.tsx / RoleSelection.tsx / ProfileSetup.tsx
+TW-012 | High | Fixed | Blank page after profile setup due to stale profile context + wrong redirect target | ProfileSetup.tsx
