@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate, Link, useSearchParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Mail, Lock, ArrowRight, Loader2, Eye, EyeOff, ArrowLeft } from 'lucide-react';
@@ -26,6 +26,12 @@ export default function Auth() {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  // Refs are used as a fallback for browser autofill: some Android keyboards and
+  // password managers (Samsung Internet, Chrome on Android, 1Password) populate
+  // <input> values WITHOUT firing React's onChange, leaving our state empty
+  // even though the DOM has the value. Bug TW-013.
+  const emailRef = useRef<HTMLInputElement>(null);
+  const passwordRef = useRef<HTMLInputElement>(null);
 
   // Capture trainer invite param (for clients) and referral param (for trainers)
   useEffect(() => {
