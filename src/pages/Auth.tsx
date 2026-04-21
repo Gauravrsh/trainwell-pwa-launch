@@ -80,12 +80,30 @@ export default function Auth() {
     return true;
   };
 
-  const handleSubmit = async () => {
+  const handleSubmit = async (e?: React.FormEvent) => {
+    e?.preventDefault();
+
+    // Recover values that browser autofill set without firing onChange (TW-013).
+    const domEmail = emailRef.current?.value ?? '';
+    const domPassword = passwordRef.current?.value ?? '';
+    const effectiveEmail = email || domEmail;
+    const effectivePassword = password || domPassword;
+    if (domEmail && domEmail !== email) setEmail(domEmail);
+    if (domPassword && domPassword !== password) setPassword(domPassword);
+
+    const emailResult = emailSchema.safeParse(effectiveEmail);
+    if (!emailResult.success) {
+      toast({
+        title: 'Invalid email',
+        description: emailResult.error.errors[0].message,
+        variant: 'destructive',
+      });
+      return;
+    }
+
     if (mode === 'forgot') {
-      if (!validateEmail()) return;
-      
       setLoading(true);
-      const { error } = await resetPassword(email);
+      const { error } = await resetPassword(effectiveEmail);
       setLoading(false);
 
       if (error) {
@@ -105,13 +123,21 @@ export default function Auth() {
       return;
     }
 
-    if (!validateInputs()) return;
+    const passwordResult = passwordSchema.safeParse(effectivePassword);
+    if (!passwordResult.success) {
+      toast({
+        title: 'Invalid password',
+        description: passwordResult.error.errors[0].message,
+        variant: 'destructive',
+      });
+      return;
+    }
 
     setLoading(true);
     
     const { error } = mode === 'signin' 
-      ? await signIn(email, password)
-      : await signUp(email, password);
+      ? await signIn(effectiveEmail, effectivePassword)
+      : await signUp(effectiveEmail, effectivePassword);
     
     setLoading(false);
 
