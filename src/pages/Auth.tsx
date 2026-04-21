@@ -331,7 +331,7 @@ export default function Auth() {
                 </button>
               </div>
             )}
-          </motion.div>
+          </motion.form>
         </AnimatePresence>
       </motion.div>
     </div>
