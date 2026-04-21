@@ -300,8 +300,8 @@ export default function Auth() {
 
             {/* Submit Button */}
             <Button
-              onClick={handleSubmit}
-              disabled={loading || !email || (mode !== 'forgot' && !password)}
+              type="submit"
+              disabled={loading}
               className="w-full h-14 text-lg font-semibold bg-primary text-primary-foreground hover:bg-primary/90"
             >
               {loading ? (
