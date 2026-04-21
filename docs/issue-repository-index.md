@@ -16,3 +16,5 @@ TW-011 | High | Fixed | Invited client link loses trainer context for authentica
 TW-012 | High | Fixed | Blank page after profile setup due to stale profile context + wrong redirect target | ProfileSetup.tsx
 TW-013 | High | Fixed | Sign In button silently does nothing when password is autofilled but email isn't (state/DOM desync) | Auth.tsx
 TW-014 | High | Fixed | PWA back button does not exit from root screen on Android | App.tsx / useAndroidBackExit.ts
+TW-015 | High | Fixed | Back button after sign-out re-enters /auth in browser due to stale history | Profile.tsx / useAuth.tsx
+TW-016 | Low | Fixed | Loading state placeholder lacks brand quote | App.tsx / LoadingQuote.tsx
