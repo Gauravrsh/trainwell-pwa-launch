@@ -18,8 +18,10 @@ const errorMappings: Array<{ pattern: RegExp; message: string }> = [
   { pattern: /Email not confirmed/i, message: 'Please confirm your email address before signing in.' },
   { pattern: /email.*rate.*limit|too many.*request/i, message: 'Too many attempts. Please wait a few minutes and try again.' },
   { pattern: /signups? not allowed|signup.*disabled|new users.*not allowed/i, message: 'New sign-ups are temporarily disabled. Please contact support.' },
-  { pattern: /password.*pwned|password.*compromised|password.*breach/i, message: 'This password has appeared in a data breach. Please choose a different password.' },
-  { pattern: /password.*should be at least|password.*too short|weak.password/i, message: 'Password is too weak. Use at least 6 characters.' },
+  // Supabase HIBP/pwned: "Password is known to be weak and easy to guess..." or error_code "weak_password" with reason "pwned"
+  { pattern: /password.*pwned|password.*compromised|password.*breach|password is known to be weak|known.*weak.*easy to guess/i, message: 'This password has appeared in a known data breach. Please choose a stronger, unique password.' },
+  { pattern: /password.*should be at least|password.*too short|password.*minimum|password.*at least \d/i, message: 'Password is too short. Use at least 6 characters.' },
+  { pattern: /^weak[_ ]password$|weak_password/i, message: 'This password is too weak or has appeared in a data breach. Please choose a stronger, unique password.' },
   { pattern: /invalid.*email|email.*invalid/i, message: 'Please enter a valid email address.' },
 ];
 
