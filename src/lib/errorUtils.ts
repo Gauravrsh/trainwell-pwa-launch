@@ -17,6 +17,10 @@ const errorMappings: Array<{ pattern: RegExp; message: string }> = [
   { pattern: /Invalid login credentials/i, message: 'Invalid email or password. Please try again.' },
   { pattern: /Email not confirmed/i, message: 'Please confirm your email address before signing in.' },
   { pattern: /email.*rate.*limit|too many.*request/i, message: 'Too many attempts. Please wait a few minutes and try again.' },
+  { pattern: /signups? not allowed|signup.*disabled|new users.*not allowed/i, message: 'New sign-ups are temporarily disabled. Please contact support.' },
+  { pattern: /password.*pwned|password.*compromised|password.*breach/i, message: 'This password has appeared in a data breach. Please choose a different password.' },
+  { pattern: /password.*should be at least|password.*too short|weak.password/i, message: 'Password is too weak. Use at least 6 characters.' },
+  { pattern: /invalid.*email|email.*invalid/i, message: 'Please enter a valid email address.' },
 ];
 
 /**
