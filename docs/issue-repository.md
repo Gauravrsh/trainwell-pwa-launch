@@ -1,5 +1,9 @@
 # TrainWell Issue Repository
 > Indexed tracker for all debugged issues. Each issue has a unique ID to prevent recurrence.
+>
+> **SOP-2 active.** Trigger keywords: `bug:` / `issue:` / `regression:`. Every debug response ends with a mandatory Closing Block. Quick-scan index lives at `docs/issue-repository-index.md`.
+>
+> **Entry template fields:** Severity, Status, Date Found, Symptom, Root Cause, Fix, Files Changed, Detected via, Prevention.
 
 ---
 
