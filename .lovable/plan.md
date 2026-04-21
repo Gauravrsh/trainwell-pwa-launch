@@ -1,79 +1,121 @@
 
+## Bug to log
+Create a new entry: `TW-011 | High | Investigating/Fixed | Invited client link loses trainer context for authenticated/incomplete users | Auth.tsx / App.tsx / RoleSelection.tsx`
 
-## Plan: Keyword-Triggered Bug Logging Protocol (SOP-2)
+## What is happening
+The screenshot is consistent with one specific failure path:
 
-Goal: zero-discretion bug repository updates. When you say a trigger word, a rigid protocol fires. When I finish a debug, a mandatory closing checklist fires. No "I forgot."
+1. Trainer shares `/auth?trainer=<code>`.
+2. Client is already authenticated or has a half-created account from a prior attempt.
+3. `AuthRoute` redirects authenticated users away from `/auth` before `Auth.tsx` mounts.
+4. Because `Auth.tsx` never mounts, its `useEffect` never stores `inviteTrainerCode` in `localStorage`.
+5. User lands on `RoleSelection` without invite context.
+6. Clicking “I’m a Client” triggers the hard block:
+   “Please use the Client Referral Link provided by your trainer to sign up.”
 
-### How it works (your side)
+So the issue is not that the trainer link is wrong. The issue is that **invite context is currently captured only inside the Auth page**, which is bypassed for already-authenticated users.
 
-Three trigger keywords in your messages activate the protocol automatically:
+## Why this happened
+Current implementation has two structural weaknesses:
 
-| Keyword | What it does |
-|---|---|
-| **`bug:`** or **`Bug:`** | Opens a new TW-### entry in `triage` status before any debugging starts. I quote your symptom verbatim into the entry. |
-| **`issue:`** or **`Issue:`** | Same as `bug:` — alias for natural phrasing. |
-| **`regression:`** | Same, but I'm forced to first search the repository for any prior TW-### with overlapping files/symptoms and link it. If found, the new entry becomes `TW-XXX-R1` (regression of XXX) — proves the prevention layer worked or didn't. |
+### Root cause A
+`src/pages/Auth.tsx` is the only place that reads `?trainer=` / `?ref=` and saves them.
 
-You don't have to use them — but when you do, the protocol is non-negotiable.
+### Root cause B
+`src/App.tsx` redirects authenticated users off `/auth` immediately, so invited users with an existing session never execute the capture logic.
 
-### How it works (my side — the enforcement)
+### Root cause C
+`src/pages/RoleSelection.tsx` clears `inviteTrainerCode` too early during role assignment, which makes the flow brittle if the user re-enters the route before profile setup completes.
 
-Every debug response I produce must end with a **Closing Block**. No closing block = response is malformed. The block has four lines, all mandatory:
+## Scenarios to cover in the fix
+I’ll implement against this full matrix so it does not recur:
 
-```
----
-TW-ID: TW-### (status: triage | investigating | fixed | known-nonblocking)
-Files touched: <list or "none">
-Repo updated: yes | no — <reason if no>
-Regression check: <prior TW-### searched, none found | linked to TW-###>
-```
+1. New unauthenticated client opens trainer invite link
+2. Existing authenticated but profile-incomplete client opens trainer invite link
+3. Existing authenticated trainer-invite recipient opens same link again after interruption
+4. Trainer referral signup via `?ref=`
+5. Standard trainer signup without referral
+6. Direct client role selection without invite link should still stay blocked
+7. Invalid / expired / mistyped trainer code
+8. Invite flow survives redirects between `/auth`, `/role-selection`, and `/profile-setup`
+9. Invite flow survives reload during profile setup
+10. Successful completion clears stale invite context only after trainer linking succeeds
 
-If `Repo updated: no` for any reason other than "no code change made," I must immediately update it in the same turn. No exceptions, no "I'll do it next time."
+## Implementation plan
 
-### What gets stored where
+### 1) Move invite/referral capture out of `Auth.tsx`
+Create a route-level invite-context capture mechanism that runs regardless of page:
+- read `location.search` globally
+- if `trainer` exists, store `inviteTrainerCode`
+- if `ref` exists, store `referralTrainerCode`
 
-**1. `docs/issue-repository.md`** (already exists, keeps growing)
-The human-readable log. One entry per TW-###. Adds two new fields to the existing template:
-- **Detected via:** (user-reported / security scan / linter / runtime error)
-- **Prevention:** (what guardrail was added — test, lint rule, RLS policy, error mapping, etc. "None" is allowed but flagged)
+This should happen in app-level routing logic, not only on the Auth screen.
 
-**2. New file: `docs/issue-repository-index.md`**
-A compact one-line-per-issue index for fast scanning and regression-search:
-```
-TW-001 | Critical | Fixed | Razorpay payment freeze | PlanSelectionModal.tsx
-TW-010 | High | Fixed | HIBP error generic message | errorUtils.ts
-```
-This is what I grep first on every `regression:` trigger and at the start of every debug session. Fast, cheap, complete.
+### 2) Preserve invite handling for authenticated users
+Update routing so that visiting `/auth?trainer=...` while signed in still captures the query before redirecting onward.
 
-**3. Update `mem://technical/issue-tracking-sop`** → rename to **SOP-2** with the new protocol baked in, including the trigger words and the mandatory closing block. This puts it in Core Memory (always-in-context), not buried in a referenced file.
+Result:
+- authenticated incomplete users keep the trainer code
+- they can land on `RoleSelection` with valid invite context
+- client selection no longer falsely throws “Incompatible Action”
 
-### Backfill (one-time)
+### 3) Stop clearing invite code too early in `RoleSelection.tsx`
+Change the flow so `inviteTrainerCode` is not removed immediately after role assignment.
+Keep it until the profile/setup step has successfully linked the client to a trainer.
 
-Audit the last ~30 days of conversation for any debugging work that wasn't logged. Specifically:
-- The `disable_signup` initial fix (already TW-009 ✓)
-- The HIBP password fix (already TW-010 ✓)
-- The heartbeat work (already TW-008 ✓)
-- **Possibly missing:** Group A/B profile cleanup, BMR fallback chart fix, security scan findings (trainer poaching, day_marks RLS) — these may not be "bugs" but qualify as fixes/prevention work and should at minimum get index entries with a `Severity: Hardening` tag.
+### 4) Make profile setup the definitive consume point
+`ProfileSetup.tsx` should be the single place where invite code is finally consumed and removed after successful trainer lookup + successful profile update.
 
-I'll review and add any missed entries when this plan is approved.
+If trainer lookup fails:
+- keep user recoverable
+- show a specific human-readable error
+- do not silently strand them in a broken state
 
-### What this does NOT do
+### 5) Harden manual client selection logic
+In `RoleSelection.tsx`:
+- keep blocking direct client signup without invite
+- but if user arrived from a link in the same browser session, allow selection consistently
+- add fallback messaging for invalid trainer codes vs missing invite context
 
-- **Does not auto-create entries for casual mentions.** "this thing is buggy" without the colon trigger does not fire the protocol — avoids noise.
-- **Does not auto-close entries.** I cannot mark `Fixed` without your confirmation that the symptom is gone in production. Default closing status is `awaiting-verification`.
-- **Does not replace the security scan flow.** Security findings still go through the security tooling first; only confirmed-and-fixed ones flow into the repository.
+### 6) Add regression-safe error handling
+Improve invite-specific error messaging so users see:
+- invalid invite link
+- trainer not found
+- session mismatch / stale partially-created account
+instead of generic failure or misleading “Incompatible Action”
 
-### Files changed
+### 7) Update bug repository
+Add `TW-011` to:
+- `docs/issue-repository.md`
+- `docs/issue-repository-index.md`
 
-1. `docs/issue-repository.md` — append template field updates (Detected via, Prevention) + any backfill entries
-2. `docs/issue-repository-index.md` — new file, compact index
-3. `mem://technical/issue-tracking-sop` — rewrite as SOP-2 with trigger words + mandatory closing block
-4. `mem://index.md` — promote SOP-2 to Core (replacing the current passive reference)
+Repository entry should include:
+- **Detected via:** user-reported
+- **Prevention:** global invite-context capture + delayed invite-code cleanup + flow audit matrix
 
-### Verification after apply
+## Files to update
+- `src/App.tsx`
+- `src/pages/Auth.tsx`
+- `src/pages/RoleSelection.tsx`
+- `src/pages/ProfileSetup.tsx`
+- `src/lib/errorUtils.ts` if invite-specific messages need mapping
+- `docs/issue-repository.md`
+- `docs/issue-repository-index.md`
 
-Next time you send a message with `bug:` or `issue:`, you should see:
-1. Immediate creation of a TW-### entry before I start debugging
-2. A Closing Block at the bottom of every debug response
-3. If I omit the block, you flag it once and I treat that as a P0 process failure to fix immediately
+## Expected outcome after fix
+If a client opens the trainer’s link:
+- it works whether they are signed out or already signed in
+- it works even if a previous attempt was interrupted
+- role selection retains trainer context
+- the client can complete setup and get linked to the trainer
+- direct non-invite client signup remains blocked
 
+## Verification checklist after implementation
+1. Fresh signed-out client via invite link
+2. Existing signed-in user with no profile via same invite link
+3. Reload on role-selection after invite capture
+4. Reload on profile-setup before submit
+5. Wrong trainer code
+6. Trainer referral flow still works
+7. Direct client signup without invite still blocked
+8. Bug repo shows new `TW-011` entry and index line
