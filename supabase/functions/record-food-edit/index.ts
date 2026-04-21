@@ -118,13 +118,19 @@ serve(async (req) => {
     }
 
     // action === 'edit'
-    const edited = body.edited as { kcal: number; protein: number; carbs: number; fat: number };
+    const rawEdited = body.edited as { kcal: number; protein: number; carbs: number; fat: number } | undefined;
     const foodName = typeof body.foodName === 'string' ? body.foodName.trim().slice(0, 200) : '';
-    if (!edited || !foodName) {
+    if (!rawEdited || !foodName) {
       return new Response(JSON.stringify({ error: 'edit requires edited macros + foodName' }), {
         status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
+    const edited = {
+      kcal: clamp(rawEdited.kcal, MAX_KCAL),
+      protein: clamp(rawEdited.protein, MAX_MACRO),
+      carbs: clamp(rawEdited.carbs, MAX_MACRO),
+      fat: clamp(rawEdited.fat, MAX_MACRO),
+    };
 
     const kcalDelta = original.kcal > 0
       ? ((edited.kcal - original.kcal) / original.kcal) * 100
