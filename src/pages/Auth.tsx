@@ -51,35 +51,6 @@ export default function Auth() {
     }
   }, [searchParams]);
 
-  const validateEmail = () => {
-    const emailResult = emailSchema.safeParse(email);
-    if (!emailResult.success) {
-      toast({
-        title: 'Invalid email',
-        description: emailResult.error.errors[0].message,
-        variant: 'destructive',
-      });
-      return false;
-    }
-    return true;
-  };
-
-  const validateInputs = () => {
-    if (!validateEmail()) return false;
-
-    const passwordResult = passwordSchema.safeParse(password);
-    if (!passwordResult.success) {
-      toast({
-        title: 'Invalid password',
-        description: passwordResult.error.errors[0].message,
-        variant: 'destructive',
-      });
-      return false;
-    }
-
-    return true;
-  };
-
   const handleSubmit = async (e?: React.FormEvent) => {
     e?.preventDefault();
 
