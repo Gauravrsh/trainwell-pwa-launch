@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { User, Calendar, MapPin, Ruler, Scale, ChevronDown, Check, Phone } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
+import { useProfile } from '@/hooks/useProfile';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { sanitizeErrorMessage, logError } from '@/lib/errorUtils';
@@ -34,6 +35,7 @@ const ProfileSetup = ({ role }: ProfileSetupProps) => {
   const [weight, setWeight] = useState('');
   
   const { user } = useAuth();
+  const { refetchProfile } = useProfile();
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -197,6 +199,11 @@ const ProfileSetup = ({ role }: ProfileSetupProps) => {
       localStorage.removeItem('inviteTrainerCode');
       localStorage.removeItem('referralTrainerCode');
 
+      // TW-012: refresh the profile context BEFORE navigating, otherwise
+      // ProtectedRoute reads stale `profile_complete: false` and bounces the
+      // user back to /profile-setup, leaving them on a blank screen.
+      await refetchProfile();
+
       toast({
         title: "Profile Complete!",
         description: role === 'client' && updateData.trainer_id 
@@ -204,7 +211,7 @@ const ProfileSetup = ({ role }: ProfileSetupProps) => {
           : "Your profile has been set up successfully.",
       });
 
-      navigate('/');
+      navigate('/dashboard', { replace: true });
     } catch (error: unknown) {
       logError('ProfileSetup.handleSubmit', error);
       toast({
