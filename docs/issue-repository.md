@@ -190,3 +190,31 @@
     10. Wrong credentials → existing TW-009/TW-010 mapped error toasts still fire ✅
     11. Loading state → button shows spinner and is disabled (only legitimate disable) ✅
     12. Toggle between signin/signup/forgot → form re-mounts via `key={mode}`, refs re-bound ✅
+
+---
+
+## TW-014: PWA Back Button Does Not Exit From Root Screen on Android
+- **Severity:** High
+- **Status:** ✅ Fixed
+- **Date Found:** 2026-04-21
+- **Symptom:** On installed Android PWA, pressing the hardware/gesture back button on the home/landing screen did nothing visible. App stayed put instead of exiting to the launcher. Reported via screen recording (initially misdiagnosed as TW-013 autofill issue).
+- **Root Cause:**
+  1. Route guards in `App.tsx` (`AuthRoute`, `RoleSelectionRoute`, `ProfileSetupRoute`, `PublicLandingRoute`, `ProtectedRoute`) used `<Navigate replace />` correctly already, BUT the splash-screen → first-paint transition combined with React Router's normalisation can still leave the user on top of an extra entry.
+  2. No explicit "exit on back from root" handler. Standalone Android PWAs only exit when the history stack is at its first entry — any stray push silently swallows the back press.
+  3. `InviteContextCapture` rewrote `localStorage` on every `location.search` change even when value was unchanged.
+- **Fix:**
+  1. New hook `src/hooks/useAndroidBackExit.ts`. Active only when `display-mode: standalone` (or iOS `navigator.standalone`). On root routes (`/`, `/dashboard`, `/auth`) it pushes a sentinel history entry. On `popstate`, intercepts once and shows toast "Press back again to exit"; second back within 2s lets the pop happen → Android exits the PWA.
+  2. Mounted hook inside `AppContent` so it runs on every route change.
+  3. Made `InviteContextCapture` idempotent — only writes to `localStorage` when value differs.
+- **Files Changed:** `src/App.tsx`, `src/hooks/useAndroidBackExit.ts`
+- **Detected via:** User-reported (screen recording, second pass after TW-013 misdiagnosis).
+- **Prevention / Regression Guards:**
+  - Browser tab on `/` → back returns to previous site (hook is no-op, not standalone) ✅
+  - Installed PWA on `/dashboard` → first back shows toast, second back exits ✅
+  - Installed PWA navigating `/dashboard` → `/calendar` → back returns to `/dashboard` (non-root, normal behaviour) ✅
+  - Login flow `/auth` → `/role-selection` → `/profile-setup` → `/dashboard`: all guards use `<Navigate replace />` so back from `/dashboard` does NOT walk into onboarding ✅
+  - Invite link `/auth?trainer=XXX` for authed user → captures code, lands on `/dashboard`, back exit works ✅
+  - Notification deep-link via SW `client.navigate(urlPath)` → back returns to previous in-app screen, unaffected ✅
+  - iOS Safari standalone — no hardware back button; hook is effectively a no-op, no regression ✅
+  - Modals (Radix Dialog) — back-to-close not implemented yet; flagged as candidate TW-015 if requested.
+- **Note on TW-013:** The autofill fix in `Auth.tsx` was based on a misread of this same screen recording. It is retained as defensive hardening (it does correctly handle Android autofill state desync) but was not the actual reported bug.
