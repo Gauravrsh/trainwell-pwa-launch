@@ -247,6 +247,9 @@ const AppContent = () => {
   const [showSplash, setShowSplash] = useState(true);
   const [maxTimeReached, setMaxTimeReached] = useState(false);
 
+  // TW-014: Android PWA back-button exit guard.
+  useAndroidBackExit();
+
   // Public auth routes never block on profile fetch.
   const isPublicRoute =
     location.pathname.startsWith("/auth") ||
