@@ -116,4 +116,23 @@
 
 ---
 
+## TW-011: Invited Client Link Loses Trainer Context for Authenticated/Incomplete Users
+- **Severity:** High
+- **Status:** ✅ Fixed
+- **Date Found:** 2026-04-21
+- **Symptom:** Client opened the trainer's invite link (`/auth?trainer=XXXXXX`), got bounced to Role Selection, clicked "I'm a Client", and saw "Incompatible Action — Please use the Client Referral Link provided by your trainer to sign up." Same link the trainer had sent.
+- **Root Cause:** Three structural weaknesses in invite-context handling:
+  1. `?trainer=` / `?ref=` were captured ONLY inside `Auth.tsx`'s `useEffect`.
+  2. `AuthRoute` in `App.tsx` redirects authenticated users away from `/auth` *before* `Auth.tsx` mounts. Any user with a stale session (half-completed prior signup, leftover login on the device) never executed the capture, so `localStorage.inviteTrainerCode` stayed empty.
+  3. `RoleSelection.tsx` cleared the invite code immediately after role assignment — if the user reloaded or the upsert failed mid-flight, context was permanently lost.
+- **Fix:**
+  1. Added `<InviteContextCapture />` in `App.tsx` — a route-level listener that reads `?trainer=` / `?ref=` on every navigation and persists them, regardless of auth state or which page is rendered.
+  2. Removed premature `localStorage.removeItem('inviteTrainerCode' / 'referralTrainerCode')` calls from `RoleSelection.tsx` (both happy-path and error-path).
+  3. Made `ProfileSetup.tsx` the single definitive consume point: invite/referral codes are only cleared after the profile `update` succeeds. If trainer lookup returns no match, the user sees a clear "Invalid invite link" toast instead of being silently linked to nobody.
+- **Files Changed:** `src/App.tsx`, `src/pages/RoleSelection.tsx`, `src/pages/ProfileSetup.tsx`
+- **Detected via:** user-reported (screenshot from invited client)
+- **Prevention:** (a) Global invite-context capture decoupled from any single page mount; (b) deferred cleanup until terminal success; (c) explicit recoverable-error path for invalid trainer codes; (d) audit matrix of 10 invite/auth scenarios (signed-out fresh, signed-in incomplete, reload mid-flow, invalid code, etc.) added to verification checklist.
+
+---
+
 *Last updated: 2026-04-21*

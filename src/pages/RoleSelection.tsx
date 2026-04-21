@@ -60,8 +60,8 @@ const RoleSelection = () => {
         if (trainerData && trainerData.length > 0) {
           trainerId = trainerData[0].id;
         }
-        // Clear the invite code after use
-        localStorage.removeItem('inviteTrainerCode');
+        // TW-011: Do NOT clear inviteTrainerCode here. ProfileSetup is the
+        // definitive consume point — clearing now strands users on reload.
       }
 
       // Check for trainer referral code (for trainer signups)
@@ -76,8 +76,7 @@ const RoleSelection = () => {
         if (referrerData && referrerData.length > 0) {
           referredByTrainerId = referrerData[0].id;
         }
-        // Clear the referral code after use
-        localStorage.removeItem('referralTrainerCode');
+        // TW-011: Defer cleanup to ProfileSetup completion.
       }
 
       // Use upsert to safely create or update profile (prevents duplicates)
@@ -137,9 +136,6 @@ const RoleSelection = () => {
         navigate('/auth');
         return;
       }
-      
-      // Clear invite code on error to prevent getting stuck
-      localStorage.removeItem('inviteTrainerCode');
       
       toast({
         title: "Error",

@@ -118,6 +118,31 @@ const PublicLandingRoute = () => {
   return <Landing />;
 };
 
+/**
+ * Global invite/referral context capture.
+ * Runs on EVERY route change, regardless of auth state.
+ * Fix for TW-011: previously only Auth.tsx captured ?trainer=/?ref=, but
+ * AuthRoute redirects authenticated users away before Auth mounts, losing context.
+ */
+const InviteContextCapture = () => {
+  const location = useLocation();
+
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const trainerCode = params.get("trainer");
+    const referralCode = params.get("ref");
+
+    if (trainerCode) {
+      localStorage.setItem("inviteTrainerCode", trainerCode);
+    }
+    if (referralCode) {
+      localStorage.setItem("referralTrainerCode", referralCode);
+    }
+  }, [location.search]);
+
+  return null;
+};
+
 const RouteFallback = () => (
   <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-background">
     <div className="flex flex-col items-center gap-6">
@@ -241,6 +266,7 @@ const AppContent = () => {
 
   return (
     <>
+      <InviteContextCapture />
       <AnimatePresence mode="wait">
         {showSplash && <SplashScreen key="splash" />}
       </AnimatePresence>

@@ -174,10 +174,15 @@ const ProfileSetup = ({ role }: ProfileSetupProps) => {
             updateData.trainer_id = trainerData[0].id;
           } else {
             logError('ProfileSetup.trainerNotFound', `Trainer not found with code: ${inviteTrainerCode}`);
+            // TW-011: surface a clear, recoverable error instead of silently linking nobody.
+            toast({
+              title: "Invalid invite link",
+              description: "We couldn't find your trainer. Please ask them to resend the link.",
+              variant: "destructive",
+            });
+            setLoading(false);
+            return;
           }
-
-          // Clean up the invite code from localStorage
-          localStorage.removeItem('inviteTrainerCode');
         }
       }
 
@@ -187,6 +192,10 @@ const ProfileSetup = ({ role }: ProfileSetupProps) => {
         .eq('user_id', user.id);
 
       if (error) throw error;
+
+      // TW-011: clear invite/referral context only after successful profile save.
+      localStorage.removeItem('inviteTrainerCode');
+      localStorage.removeItem('referralTrainerCode');
 
       toast({
         title: "Profile Complete!",
