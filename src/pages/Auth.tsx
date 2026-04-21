@@ -205,12 +205,14 @@ export default function Auth() {
         </div>
 
         <AnimatePresence mode="wait">
-          <motion.div
+          <motion.form
             key={mode}
             initial={{ opacity: 0, x: mode === 'signin' ? -20 : 20 }}
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: mode === 'signin' ? 20 : -20 }}
             className="space-y-5"
+            onSubmit={handleSubmit}
+            noValidate
           >
             {mode === 'forgot' && (
               <button
