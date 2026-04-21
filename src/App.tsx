@@ -11,6 +11,7 @@ import { AnimatePresence } from "framer-motion";
 import SplashScreen from "@/components/SplashScreen";
 import ErrorBoundary from "@/components/ErrorBoundary";
 import { useAndroidBackExit } from "@/hooks/useAndroidBackExit";
+import { LoadingQuote } from "@/components/LoadingQuote";
 
 // Auth + Landing are eager (entry routes the user hits cold)
 import Auth from "./pages/Auth";
@@ -156,6 +157,7 @@ const RouteFallback = () => (
         Effort | Direction | Discipline
       </p>
     </div>
+    <LoadingQuote />
   </div>
 );
 

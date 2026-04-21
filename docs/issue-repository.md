@@ -218,3 +218,44 @@
   - iOS Safari standalone — no hardware back button; hook is effectively a no-op, no regression ✅
   - Modals (Radix Dialog) — back-to-close not implemented yet; flagged as candidate TW-015 if requested.
 - **Note on TW-013:** The autofill fix in `Auth.tsx` was based on a misread of this same screen recording. It is retained as defensive hardening (it does correctly handle Android autofill state desync) but was not the actual reported bug.
+
+---
+
+## TW-015: Back Button After Sign-Out Re-Enters /auth In Browser Due To Stale History
+- **Severity:** High
+- **Status:** ✅ Fixed
+- **Date Found:** 2026-04-21
+- **Symptom:** In Chrome on Android (NOT installed PWA), after signing out from `/profile`, pressing back from the landing page or `/auth` repeatedly bounced the user back to `/auth` instead of exiting. TW-014's PWA fix did not cover this because it deliberately no-ops outside `display-mode: standalone`.
+- **Root Cause:**
+  1. `Profile.handleSignOut` called `navigate('/')` without `replace`, leaving `/profile` in the history stack.
+  2. No global "auth flipped to signed-out" handler purged stale protected entries from the stack at the moment of sign-out.
+  3. Result: pressing back hit `/profile`, `ProtectedRoute` saw no user, did `<Navigate to="/auth" replace />`, URL snapped to `/auth`. To the user this looked like "back is broken — it just reloads /auth".
+- **Fix:**
+  1. `src/pages/Profile.tsx` — `navigate('/', { replace: true })` on sign-out.
+  2. `src/hooks/useAuth.tsx` — on `SIGNED_OUT` event, if current path is non-public, `window.history.replaceState(null, '', '/')`. Guarantees the protected route the user was on is overwritten in the stack at the exact moment auth dies, so back can never walk back into a re-redirect loop. Also covers session expiry / token refresh failure paths, not just explicit sign-out.
+- **Files Changed:** `src/pages/Profile.tsx`, `src/hooks/useAuth.tsx`
+- **Detected via:** User-reported (screen recording, Chrome on Android).
+- **Prevention / Regression Guards:**
+  - Sign in → `/dashboard` → `/profile` → Sign Out → lands on `/`. Back exits to previous site/tab (does NOT bounce into `/auth`) ✅
+  - Sign in → `/plans` → `/profile` → Sign Out → `/` → tap "Sign In" → `/auth`. Back → `/`. Back again → exits ✅
+  - Session expiry mid-app → `SIGNED_OUT` listener replaces history entry → back behaves correctly ✅
+  - Signed-in normal in-app navigation → unchanged (no `replace` added to in-app nav) ✅
+  - Standalone PWA paths from TW-014 → unchanged (sentinel + double-tap exit) ✅
+  - `ProtectedRoute` already uses `<Navigate replace />` — no double-push from redirect itself.
+
+---
+
+## TW-016: Loading State Placeholder Lacks Brand Quote
+- **Severity:** Low
+- **Status:** ✅ Fixed
+- **Date Found:** 2026-04-21
+- **Symptom:** During lazy-loaded route chunk fetches (Calendar → Progress → Plans, etc.), the `RouteFallback` showed only the bare "VECTO" wordmark + tagline. Visually identical to the cold-start splash, so navigations felt frozen / re-launched.
+- **Root Cause:** `RouteFallback` rendered only the wordmark with no signal that the app was loading the next screen.
+- **Fix:** New component `src/components/LoadingQuote.tsx` renders one of 10 consistency-themed quotes (italic, attributed) under the wordmark. Picked at random per mount, so each navigation may show a different quote. Cold-start `SplashScreen` is intentionally NOT changed — it's visible <1s and shouldn't be a reading exercise.
+- **Files Changed:** `src/components/LoadingQuote.tsx` (new), `src/App.tsx`
+- **Detected via:** User-reported.
+- **Prevention / Regression Guards:**
+  - Cold start → splash unchanged, <1s ✅
+  - Logged-in navigation between code-split routes → quote visible under wordmark ✅
+  - Cached chunk re-nav → no fallback shown (no flicker) ✅
+  - Quote uses `text-muted-foreground` semantic token, no hardcoded colors ✅

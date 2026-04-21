@@ -27,6 +27,29 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         setSession(session);
         setUser(session?.user ?? null);
         setLoading(false);
+
+        // TW-015: When auth flips to signed-out, replace the current history
+        // entry with `/`. Without this, any protected route still sitting in
+        // history (e.g. /profile, /plans) becomes a trap: pressing back walks
+        // into it, ProtectedRoute redirects to /auth, and the user sees
+        // "back just reloads /auth". Replacing the entry purges the most
+        // recent protected URL from the stack at the exact moment auth dies.
+        if (event === 'SIGNED_OUT') {
+          try {
+            const path = window.location.pathname;
+            const isPublic =
+              path === '/' ||
+              path.startsWith('/auth') ||
+              path.startsWith('/reset-password') ||
+              path === '/terms' ||
+              path === '/pitch';
+            if (!isPublic) {
+              window.history.replaceState(null, '', '/');
+            }
+          } catch {
+            // History API can throw in sandboxed contexts; safe to ignore.
+          }
+        }
       }
     );
 
