@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate, Link, useSearchParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Mail, Lock, ArrowRight, Loader2, Eye, EyeOff, ArrowLeft } from 'lucide-react';
@@ -26,6 +26,12 @@ export default function Auth() {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  // Refs are used as a fallback for browser autofill: some Android keyboards and
+  // password managers (Samsung Internet, Chrome on Android, 1Password) populate
+  // <input> values WITHOUT firing React's onChange, leaving our state empty
+  // even though the DOM has the value. Bug TW-013.
+  const emailRef = useRef<HTMLInputElement>(null);
+  const passwordRef = useRef<HTMLInputElement>(null);
 
   // Capture trainer invite param (for clients) and referral param (for trainers)
   useEffect(() => {
@@ -45,41 +51,30 @@ export default function Auth() {
     }
   }, [searchParams]);
 
-  const validateEmail = () => {
-    const emailResult = emailSchema.safeParse(email);
+  const handleSubmit = async (e?: React.FormEvent) => {
+    e?.preventDefault();
+
+    // Recover values that browser autofill set without firing onChange (TW-013).
+    const domEmail = emailRef.current?.value ?? '';
+    const domPassword = passwordRef.current?.value ?? '';
+    const effectiveEmail = email || domEmail;
+    const effectivePassword = password || domPassword;
+    if (domEmail && domEmail !== email) setEmail(domEmail);
+    if (domPassword && domPassword !== password) setPassword(domPassword);
+
+    const emailResult = emailSchema.safeParse(effectiveEmail);
     if (!emailResult.success) {
       toast({
         title: 'Invalid email',
         description: emailResult.error.errors[0].message,
         variant: 'destructive',
       });
-      return false;
-    }
-    return true;
-  };
-
-  const validateInputs = () => {
-    if (!validateEmail()) return false;
-
-    const passwordResult = passwordSchema.safeParse(password);
-    if (!passwordResult.success) {
-      toast({
-        title: 'Invalid password',
-        description: passwordResult.error.errors[0].message,
-        variant: 'destructive',
-      });
-      return false;
+      return;
     }
 
-    return true;
-  };
-
-  const handleSubmit = async () => {
     if (mode === 'forgot') {
-      if (!validateEmail()) return;
-      
       setLoading(true);
-      const { error } = await resetPassword(email);
+      const { error } = await resetPassword(effectiveEmail);
       setLoading(false);
 
       if (error) {
@@ -99,13 +94,21 @@ export default function Auth() {
       return;
     }
 
-    if (!validateInputs()) return;
+    const passwordResult = passwordSchema.safeParse(effectivePassword);
+    if (!passwordResult.success) {
+      toast({
+        title: 'Invalid password',
+        description: passwordResult.error.errors[0].message,
+        variant: 'destructive',
+      });
+      return;
+    }
 
     setLoading(true);
     
     const { error } = mode === 'signin' 
-      ? await signIn(email, password)
-      : await signUp(email, password);
+      ? await signIn(effectiveEmail, effectivePassword)
+      : await signUp(effectiveEmail, effectivePassword);
     
     setLoading(false);
 
@@ -173,12 +176,14 @@ export default function Auth() {
         </div>
 
         <AnimatePresence mode="wait">
-          <motion.div
+          <motion.form
             key={mode}
             initial={{ opacity: 0, x: mode === 'signin' ? -20 : 20 }}
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: mode === 'signin' ? 20 : -20 }}
             className="space-y-5"
+            onSubmit={handleSubmit}
+            noValidate
           >
             {mode === 'forgot' && (
               <button
@@ -207,6 +212,8 @@ export default function Auth() {
               <div className="relative">
                 <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
                 <Input
+                  ref={emailRef}
+                  name="email"
                   type="email"
                   placeholder="you@example.com"
                   value={email}
@@ -226,6 +233,8 @@ export default function Auth() {
                 <div className="relative">
                   <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
                   <Input
+                    ref={passwordRef}
+                    name="password"
                     type={showPassword ? 'text' : 'password'}
                     placeholder="••••••••"
                     value={password}
@@ -262,8 +271,8 @@ export default function Auth() {
 
             {/* Submit Button */}
             <Button
-              onClick={handleSubmit}
-              disabled={loading || !email || (mode !== 'forgot' && !password)}
+              type="submit"
+              disabled={loading}
               className="w-full h-14 text-lg font-semibold bg-primary text-primary-foreground hover:bg-primary/90"
             >
               {loading ? (
@@ -297,7 +306,7 @@ export default function Auth() {
                 </button>
               </div>
             )}
-          </motion.div>
+          </motion.form>
         </AnimatePresence>
       </motion.div>
     </div>
