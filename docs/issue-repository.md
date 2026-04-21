@@ -79,4 +79,37 @@
 
 ---
 
-*Last updated: 2026-04-06*
+## TW-008: Supabase Project Auto-Paused After 7 Days of Idle Activity
+- **Severity:** Critical
+- **Status:** ✅ Fixed
+- **Date Found:** 2026-04-20
+- **Symptom:** Supabase Free-tier project paused itself after a quiet week. All API/DB calls failed until manually resumed. No proactive guard was in place.
+- **Root Cause:** Free-tier auto-pauses after ~7 consecutive days of zero API/DB activity. The platform had no scheduled job to keep the database "warm".
+- **Fix:** Added a `pg_cron` job `vecto-daily-heartbeat` (runs daily at 03:17 UTC / 08:47 IST) that calls `record_heartbeat()` — inserts one row into internal `_system_heartbeat` table and prunes rows older than 90 days. RLS-locked with zero policies (invisible to all app users). Pure in-DB write, no edge function dependency.
+- **Files Changed:** `supabase/migrations/20260420091139_*.sql`
+
+---
+
+## TW-009: Signup Disabled in Supabase Auth Blocked All New Users
+- **Severity:** Critical
+- **Status:** ✅ Fixed
+- **Date Found:** 2026-04-21
+- **Symptom:** Trainer `unja284@gmail.com` could not sign up. Frontend showed generic "Something went wrong" instead of the real reason.
+- **Root Cause:** `disable_signup = true` was set on the Supabase Auth config, blocking all registration. Compounded by `errorUtils.ts` lacking a regex pattern for the "Signups not allowed" response, so it fell through to the default message.
+- **Fix:** Re-enabled signups via `configure_auth` (client direct-signup remains gated by `RoleSelection.tsx` invite-link logic). Added explicit error mappings for `signups not allowed`, `weak_password`, `invalid email` in `errorUtils.ts`.
+- **Files Changed:** `src/lib/errorUtils.ts`
+
+---
+
+## TW-010: HIBP "Pwned Password" Error Shown as Generic Message
+- **Severity:** High
+- **Status:** ✅ Fixed
+- **Date Found:** 2026-04-21
+- **Symptom:** Same user reported the issue persisted after TW-009 fix. End-to-end auth audit traced it to Supabase's HIBP (Have I Been Pwned) check returning `"Password is known to be weak and easy to guess, please choose a different one."` — not matched by any existing regex, so users saw "Something went wrong" with no guidance.
+- **Root Cause:** `errorUtils.ts` regex patterns didn't cover Supabase's specific HIBP wording or the `weak_password` error code variant returned by the breach-database lookup.
+- **Fix:** Added precise patterns: `password is known to be weak`, `known.*weak.*easy to guess`, `^weak[_ ]password$`, plus broader `pwned|compromised|breach` matchers. Audited 11 auth scenarios (direct signup, invite signup, referral signup, signin, password reset, rate-limit) — all now surface human-readable errors.
+- **Files Changed:** `src/lib/errorUtils.ts`
+
+---
+
+*Last updated: 2026-04-21*
