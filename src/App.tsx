@@ -10,6 +10,7 @@ import { AppLayout } from "@/components/layout/AppLayout";
 import { AnimatePresence } from "framer-motion";
 import SplashScreen from "@/components/SplashScreen";
 import ErrorBoundary from "@/components/ErrorBoundary";
+import { useAndroidBackExit } from "@/hooks/useAndroidBackExit";
 
 // Auth + Landing are eager (entry routes the user hits cold)
 import Auth from "./pages/Auth";
@@ -132,10 +133,12 @@ const InviteContextCapture = () => {
     const trainerCode = params.get("trainer");
     const referralCode = params.get("ref");
 
-    if (trainerCode) {
+    // TW-014: idempotent — only write if value actually changed, to avoid
+    // any chance of triggering downstream effects on every render.
+    if (trainerCode && localStorage.getItem("inviteTrainerCode") !== trainerCode) {
       localStorage.setItem("inviteTrainerCode", trainerCode);
     }
-    if (referralCode) {
+    if (referralCode && localStorage.getItem("referralTrainerCode") !== referralCode) {
       localStorage.setItem("referralTrainerCode", referralCode);
     }
   }, [location.search]);
