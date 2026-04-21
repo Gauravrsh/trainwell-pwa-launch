@@ -58,9 +58,9 @@ serve(async (req) => {
     const body = await req.json();
     const action = body.action as 'edit' | 'delete';
     const dictionaryId = body.dictionaryId as string;
-    const original = body.original as { kcal: number; protein: number; carbs: number; fat: number };
+    const rawOriginal = body.original as { kcal: number; protein: number; carbs: number; fat: number } | undefined;
 
-    if (!action || !dictionaryId || !original) {
+    if (!action || !dictionaryId || !rawOriginal) {
       return new Response(JSON.stringify({ error: 'Missing required fields' }), {
         status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
@@ -70,6 +70,18 @@ serve(async (req) => {
         status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
+
+    // Bounds-validate macros to prevent dictionary pollution
+    const MAX_KCAL = 10000;
+    const MAX_MACRO = 1000;
+    const clamp = (v: unknown, max: number) =>
+      Math.max(0, Math.min(max, Number.isFinite(Number(v)) ? Number(v) : 0));
+    const original = {
+      kcal: clamp(rawOriginal.kcal, MAX_KCAL),
+      protein: clamp(rawOriginal.protein, MAX_MACRO),
+      carbs: clamp(rawOriginal.carbs, MAX_MACRO),
+      fat: clamp(rawOriginal.fat, MAX_MACRO),
+    };
 
     const adminClient = createClient(supabaseUrl, serviceKey);
 
