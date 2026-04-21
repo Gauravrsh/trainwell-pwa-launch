@@ -241,6 +241,8 @@ export default function Auth() {
               <div className="relative">
                 <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
                 <Input
+                  ref={emailRef}
+                  name="email"
                   type="email"
                   placeholder="you@example.com"
                   value={email}
@@ -260,6 +262,8 @@ export default function Auth() {
                 <div className="relative">
                   <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
                   <Input
+                    ref={passwordRef}
+                    name="password"
                     type={showPassword ? 'text' : 'password'}
                     placeholder="••••••••"
                     value={password}
