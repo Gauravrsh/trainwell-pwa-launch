@@ -11,6 +11,7 @@ import { AnimatePresence } from "framer-motion";
 import SplashScreen from "@/components/SplashScreen";
 import ErrorBoundary from "@/components/ErrorBoundary";
 import { useAndroidBackExit } from "@/hooks/useAndroidBackExit";
+import { useKeyboardInset } from "@/hooks/useKeyboardInset";
 import { LoadingQuote } from "@/components/LoadingQuote";
 
 // Auth + Landing are eager (entry routes the user hits cold)
@@ -243,6 +244,9 @@ const AppContent = () => {
 
   // TW-014: Android PWA back-button exit guard.
   useAndroidBackExit();
+
+  // TW-017: track on-screen keyboard height so modals stay above it.
+  useKeyboardInset();
 
   // Public auth routes never block on profile fetch.
   const isPublicRoute =
