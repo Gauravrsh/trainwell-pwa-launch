@@ -18,3 +18,5 @@ TW-013 | High | Fixed | Sign In button silently does nothing when password is au
 TW-014 | High | Fixed | PWA back button does not exit from root screen on Android | App.tsx / useAndroidBackExit.ts
 TW-015 | High | Fixed | Back button after sign-out re-enters /auth in browser due to stale history | Profile.tsx / useAuth.tsx
 TW-016 | Low | Fixed | Loading state placeholder lacks brand quote | App.tsx / LoadingQuote.tsx
+TW-017 | High | Fixed | Modals (workout, weight, create plan) overlapped by on-screen keyboard on Android | index.css / useKeyboardInset.tsx
+TW-018 | Low | Fixed | Loading screen still showed VECTO wordmark + tagline above quote | App.tsx
