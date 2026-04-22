@@ -11,6 +11,7 @@ import { AnimatePresence } from "framer-motion";
 import SplashScreen from "@/components/SplashScreen";
 import ErrorBoundary from "@/components/ErrorBoundary";
 import { useAndroidBackExit } from "@/hooks/useAndroidBackExit";
+import { useKeyboardInset } from "@/hooks/useKeyboardInset";
 import { LoadingQuote } from "@/components/LoadingQuote";
 
 // Auth + Landing are eager (entry routes the user hits cold)
@@ -149,14 +150,6 @@ const InviteContextCapture = () => {
 
 const RouteFallback = () => (
   <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-background">
-    <div className="flex flex-col items-center gap-6">
-      <h1 className="text-6xl font-bold text-foreground tracking-tight">
-        <span className="text-primary">V</span>ECTO
-      </h1>
-      <p className="text-lg text-muted-foreground">
-        Effort | Direction | Discipline
-      </p>
-    </div>
     <LoadingQuote />
   </div>
 );
@@ -251,6 +244,9 @@ const AppContent = () => {
 
   // TW-014: Android PWA back-button exit guard.
   useAndroidBackExit();
+
+  // TW-017: track on-screen keyboard height so modals stay above it.
+  useKeyboardInset();
 
   // Public auth routes never block on profile fetch.
   const isPublicRoute =
