@@ -308,7 +308,14 @@
   /* Dialog content wrapper - flex centering with vendor prefixes */
   .dialog-wrapper {
     position: fixed;
-    inset: 0;
+    /* TW-017: keyboard-aware. JS sets --kb-inset to the on-screen
+       keyboard height (via VisualViewport). When open, the wrapper
+       shrinks from the bottom so flex-centering recenters the modal
+       within the visible area instead of behind the keyboard. */
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: var(--kb-inset, 0px);
     z-index: 50;
     display: -webkit-box;
     display: -webkit-flex;
@@ -324,6 +331,7 @@
     justify-content: center;
     padding: 1rem;
     pointer-events: none;
+    transition: bottom 0.15s ease-out;
   }
 
   /* Dialog content - scrollable with cross-browser support */
@@ -341,8 +349,9 @@
     flex-direction: column;
     width: 100%;
     max-width: 32rem;
-    max-height: calc(100vh - 2rem);
-    max-height: calc(100dvh - 2rem);
+    /* Keep content within wrapper (which already excludes keyboard area). */
+    max-height: calc(100vh - var(--kb-inset, 0px) - 2rem);
+    max-height: calc(100dvh - var(--kb-inset, 0px) - 2rem);
     border-radius: 0.5rem;
     border: 1px solid hsl(var(--border));
     background-color: hsl(var(--background));

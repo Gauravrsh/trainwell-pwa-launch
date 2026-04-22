@@ -149,14 +149,6 @@ const InviteContextCapture = () => {
 
 const RouteFallback = () => (
   <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-background">
-    <div className="flex flex-col items-center gap-6">
-      <h1 className="text-6xl font-bold text-foreground tracking-tight">
-        <span className="text-primary">V</span>ECTO
-      </h1>
-      <p className="text-lg text-muted-foreground">
-        Effort | Direction | Discipline
-      </p>
-    </div>
     <LoadingQuote />
   </div>
 );
