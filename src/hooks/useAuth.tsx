@@ -1,6 +1,7 @@
 import { useState, useEffect, createContext, useContext, ReactNode } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
+import { clearSelectedClientStorage } from '@/hooks/useSelectedClient';
 
 interface AuthContextType {
   user: User | null;
@@ -84,6 +85,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const signOut = async () => {
+    // Item 5: clear session-scoped trainer→client selection so the next
+    // user signing in on the same tab doesn't inherit the prior selection.
+    clearSelectedClientStorage();
     await supabase.auth.signOut();
   };
 

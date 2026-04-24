@@ -20,3 +20,5 @@ TW-015 | High | Fixed | Back button after sign-out re-enters /auth in browser du
 TW-016 | Low | Fixed | Loading state placeholder lacks brand quote | App.tsx / LoadingQuote.tsx
 TW-017 | High | Fixed | Modals (workout, weight, create plan) overlapped by on-screen keyboard on Android | index.css / useKeyboardInset.tsx
 TW-018 | Low | Fixed | Loading screen still showed VECTO wordmark + tagline above quote | App.tsx
+TW-019 | Medium | Fixed | Stale "14 bonus days" copy in Refer page after pricing model changed | Refer.tsx
+TW-020 | High | Fixed | Invited client briefly lands on Role Selection instead of going straight to Profile Setup | App.tsx / RoleSelection.tsx

@@ -259,3 +259,38 @@
   - Logged-in navigation between code-split routes → quote visible under wordmark ✅
   - Cached chunk re-nav → no fallback shown (no flicker) ✅
   - Quote uses `text-muted-foreground` semantic token, no hardcoded colors ✅
+
+---
+
+## TW-019: Stale "14 Bonus Days" Copy in Refer Page After Pricing Model Changed
+- **Severity:** Medium
+- **Status:** ✅ Fixed
+- **Date Found:** 2026-04-24
+- **Symptom:** The trainer Refer page still advertised "get 14 bonus days on your first subscription" in the Web-Share text and in step 4 of "How Trainer Referral Works". This contradicted the live Smart-tier free model (3 free clients, no bonus days for the referee).
+- **Root Cause:** Pricing model evolved from "trial + bonus days" to "Smart free tier (3 clients) + paid Monthly/Annual". The referral copy was not updated when pricing memory was updated.
+- **Fix:**
+  1. Trainer share text replaced with: *"Run your 1:1 coaching practice on Vecto. Start free on Smart (3 clients). Sign up with my link."*
+  2. "How Trainer Referral Works" step 4 replaced with: *"They start free on Smart (3 clients). When they upgrade, you get the validity bonus."*
+  3. Client share text tightened per user spec: *"I'd like to track your training on Vecto. A platform that drives consistency and discipline, which gets us results. Sign up with this link — it auto-connects you to me. Logging starts day one."*
+- **Files Changed:** `src/pages/Refer.tsx`
+- **Detected via:** PRD review round (Item 4) — copy audit against `mem://brand/pricing-strategy`.
+- **Prevention / Regression Guards:** Copy now matches the single source of truth in `mem://brand/pricing-strategy`. Refer page renders for trainers only — unchanged. Reward Matrix table (Monthly/Monthly→15d, Monthly/Annual→30d, Annual/Annual→90d) was already correct and untouched.
+
+---
+
+## TW-020: Invited Client Briefly Lands on Role Selection Instead of Going Straight to Profile Setup
+- **Severity:** High
+- **Status:** ✅ Fixed
+- **Date Found:** 2026-04-24
+- **Symptom:** A client signing up via a trainer's invite link saw the Role Selection screen flash for 1–2 seconds before being moved on. Worse, while that screen was visible the role tiles were rendered but click handlers were no-ops (gated by `autoProcessing` state) — clicking either tile did nothing. If the auto-link RPC failed transiently, the user fell back to the live role tiles, an invalid path for an invited client.
+- **Root Cause:** `RoleSelection.tsx` mounted the role-tiles UI first, then fired the RPC chain inside a `useEffect`, then disabled tile clicks while `autoProcessing` was true. The intermediate render window exposed the wrong UI and made the page feel broken.
+- **Fix:** Moved the auto-link logic into `RoleSelectionRoute` in `App.tsx`. When `localStorage.inviteTrainerCode` is present and the user has no profile, the route guard runs `generate_unique_id` → `lookup_trainer_by_unique_id` → `profiles` upsert → `refetchProfile`, then ProtectedRoute redirects to `/profile-setup` automatically. While in flight, the route renders only a minimal "Linking you to your trainer…" status surface — never the role tiles. On RPC failure, a Sonner toast offers a Retry action; the role tiles remain unreachable for invited clients. Removed the entire `autoProcessing` branch from `RoleSelection.tsx`.
+- **Files Changed:** `src/App.tsx`, `src/pages/RoleSelection.tsx`
+- **Detected via:** User-reported, verified via session replay (clicks on tiles produced no navigation).
+- **Prevention / Regression Guards:**
+  - Trainer signup with `referralTrainerCode` only (no `inviteTrainerCode`) → still sees Role Selection ✅
+  - Trainer signup with no codes → unchanged ✅
+  - Direct client signup with no code → already blocked by `mem://features/client-invite/signup-restriction-policy` ✅
+  - TW-011 (invite context preservation through ProfileSetup) preserved — `inviteTrainerCode` is still consumed at ProfileSetup completion only ✅
+  - TW-012 (refetch profile before navigate) preserved — auto-link calls `refetchProfile` before redirect ✅
+  - TW-014 / TW-015 history hygiene preserved — guard uses `<Navigate replace />`, no stack pollution ✅
