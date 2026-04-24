@@ -536,7 +536,7 @@ const Calendar = () => {
     }
   };
 
-  const handleTrainerWorkoutSave = async (exercises: { name: string; sets: { weight: number; reps: number }[] }[]) => {
+  const handleTrainerWorkoutSave = async (exercises: PlannedExercisePayload[]) => {
     if (!selectedClientId || !selectedDate) return;
 
     try {
@@ -571,15 +571,47 @@ const Calendar = () => {
         .map(ex => ({ ...ex, name: ex.name.trim() }))
         .filter(ex => ex.name.length > 0);
 
-      const exerciseInserts = normalizedExercises.flatMap(ex =>
-        ex.sets.map(set => ({
+      // Build metric-aware inserts. Reps-based metrics fan out per set;
+      // other metric types produce a single row per exercise.
+      const exerciseInserts = normalizedExercises.flatMap(ex => {
+        const baseRow = {
           workout_id: workoutId,
           exercise_name: ex.name,
-          recommended_sets: 1,
-          recommended_reps: set.reps,
-          recommended_weight: set.weight,
-        }))
-      );
+          metric_type: ex.metricType,
+        };
+        switch (ex.metricType) {
+          case 'reps_weight':
+          case 'reps_only':
+            return (ex.sets ?? []).map(set => ({
+              ...baseRow,
+              recommended_sets: 1,
+              recommended_reps: set.reps,
+              recommended_weight: ex.metricType === 'reps_weight' ? set.weight : null,
+            }));
+          case 'time':
+            return [{ ...baseRow, recommended_duration_seconds: ex.durationSeconds ?? 0 }];
+          case 'distance_time':
+            return [{
+              ...baseRow,
+              recommended_distance_meters: ex.distanceMeters ?? 0,
+              recommended_duration_seconds: ex.durationSeconds ?? null,
+            }];
+          case 'amrap':
+            return [{
+              ...baseRow,
+              recommended_emom_minutes: ex.emomMinutes ?? 0,
+              recommended_rounds: ex.rounds ?? null,
+            }];
+          case 'emom':
+            return [{
+              ...baseRow,
+              recommended_emom_minutes: ex.emomMinutes ?? 0,
+              recommended_reps: ex.emomReps ?? 0,
+            }];
+          default:
+            return [];
+        }
+      });
 
       const { error: exerciseError } = await supabase
         .from('exercises')
@@ -596,7 +628,7 @@ const Calendar = () => {
     }
   };
 
-  const handleWorkoutSave = async (exercises: { name: string; sets: number; reps: number; weight: number }[]) => {
+  const handleWorkoutSave = async (exercises: ClientLoggedExercise[]) => {
     if (!profile || !selectedDate) return;
 
     try {
@@ -635,6 +667,26 @@ const Calendar = () => {
         workoutId = newWorkout.id;
       }
 
+      // Flatten client payload into per-set entries for reps-based metrics
+      // (preserves matching to planned rows). Non-reps metrics produce one
+      // synthetic entry so we can insert a single actual row.
+      const flatActuals: { name: string; metricType: MetricType; sets: number; reps: number; weight: number; durationSeconds?: number; distanceMeters?: number; rounds?: number; emomMinutes?: number }[] = [];
+      cleanedExercises.forEach(ex => {
+        if (ex.metricType === 'reps_weight' || ex.metricType === 'reps_only') {
+          (ex.sets ?? []).forEach(s => flatActuals.push({
+            name: ex.name, metricType: ex.metricType, sets: 1, reps: s.reps, weight: s.weight,
+          }));
+        } else {
+          flatActuals.push({
+            name: ex.name, metricType: ex.metricType, sets: 0, reps: ex.emomReps ?? 0, weight: 0,
+            durationSeconds: ex.durationSeconds,
+            distanceMeters: ex.distanceMeters,
+            rounds: ex.rounds,
+            emomMinutes: ex.emomMinutes,
+          });
+        }
+      });
+
       const { error: cleanupError } = await supabase
         .from('exercises')
         .delete()
@@ -659,47 +711,46 @@ const Calendar = () => {
         plannedByName.set(name, list);
       });
 
-      const actualByName = new Map<string, { sets: number; reps: number; weight: number }[]>();
-      cleanedExercises.forEach(ex => {
-        const list = actualByName.get(ex.name) || [];
-        list.push({ sets: ex.sets, reps: ex.reps, weight: ex.weight });
-        actualByName.set(ex.name, list);
+      const actualByName = new Map<string, typeof flatActuals>();
+      flatActuals.forEach(a => {
+        const list = actualByName.get(a.name) || [];
+        list.push(a);
+        actualByName.set(a.name, list);
       });
 
-      const updates: { id: string; sets: number; reps: number; weight: number }[] = [];
-      const inserts: { workout_id: string; exercise_name: string; actual_sets: number; actual_reps: number; actual_weight: number }[] = [];
+      const updates: { id: string; actual: typeof flatActuals[number] }[] = [];
+      const inserts: Record<string, unknown>[] = [];
+
+      const buildActualRow = (name: string, a: typeof flatActuals[number]) => ({
+        workout_id: workoutId,
+        exercise_name: name,
+        metric_type: a.metricType,
+        actual_sets: a.metricType === 'reps_weight' || a.metricType === 'reps_only' ? a.sets : null,
+        actual_reps: a.metricType === 'reps_weight' || a.metricType === 'reps_only' || a.metricType === 'emom' ? a.reps : null,
+        actual_weight: a.metricType === 'reps_weight' ? a.weight : null,
+        actual_duration_seconds: a.durationSeconds ?? null,
+        actual_distance_meters: a.distanceMeters ?? null,
+        actual_rounds: a.rounds ?? null,
+        actual_emom_minutes: a.emomMinutes ?? null,
+      });
 
       for (const [name, planned] of plannedByName.entries()) {
         const actual = actualByName.get(name) || [];
 
         const count = Math.min(planned.length, actual.length);
         for (let i = 0; i < count; i++) {
-          updates.push({ id: planned[i].id, ...actual[i] });
+          updates.push({ id: planned[i].id, actual: actual[i] });
         }
 
         for (let i = count; i < actual.length; i++) {
-          inserts.push({
-            workout_id: workoutId,
-            exercise_name: name,
-            actual_sets: actual[i].sets,
-            actual_reps: actual[i].reps,
-            actual_weight: actual[i].weight,
-          });
+          inserts.push(buildActualRow(name, actual[i]));
         }
 
         actualByName.delete(name);
       }
 
       for (const [name, actual] of actualByName.entries()) {
-        actual.forEach(set => {
-          inserts.push({
-            workout_id: workoutId,
-            exercise_name: name,
-            actual_sets: set.sets,
-            actual_reps: set.reps,
-            actual_weight: set.weight,
-          });
-        });
+        actual.forEach(a => inserts.push(buildActualRow(name, a)));
       }
 
       if (updates.length > 0) {
@@ -708,9 +759,14 @@ const Calendar = () => {
             supabase
               .from('exercises')
               .update({
-                actual_sets: u.sets,
-                actual_reps: u.reps,
-                actual_weight: u.weight,
+                metric_type: u.actual.metricType,
+                actual_sets: u.actual.metricType === 'reps_weight' || u.actual.metricType === 'reps_only' ? u.actual.sets : null,
+                actual_reps: u.actual.metricType === 'reps_weight' || u.actual.metricType === 'reps_only' || u.actual.metricType === 'emom' ? u.actual.reps : null,
+                actual_weight: u.actual.metricType === 'reps_weight' ? u.actual.weight : null,
+                actual_duration_seconds: u.actual.durationSeconds ?? null,
+                actual_distance_meters: u.actual.distanceMeters ?? null,
+                actual_rounds: u.actual.rounds ?? null,
+                actual_emom_minutes: u.actual.emomMinutes ?? null,
               })
               .eq('id', u.id)
           )
@@ -722,7 +778,7 @@ const Calendar = () => {
       if (inserts.length > 0) {
         const { error: exerciseError } = await supabase
           .from('exercises')
-          .insert(inserts);
+          .insert(inserts as never);
         if (exerciseError) throw exerciseError;
       }
 
