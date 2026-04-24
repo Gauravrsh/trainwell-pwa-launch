@@ -22,3 +22,4 @@ TW-017 | High | Fixed | Modals (workout, weight, create plan) overlapped by on-s
 TW-018 | Low | Fixed | Loading screen still showed VECTO wordmark + tagline above quote | App.tsx
 TW-019 | Medium | Fixed | Stale "14 bonus days" copy in Refer page after pricing model changed | Refer.tsx
 TW-020 | High | Fixed | Invited client briefly lands on Role Selection instead of going straight to Profile Setup | App.tsx / RoleSelection.tsx
+TW-021 | Medium | Fixed | Steps OCR assist \u2014 user scans fitness-tracker screenshot, Tesseract pre-fills step count, confirm-before-save | StepLogModal.tsx / stepOcr.ts

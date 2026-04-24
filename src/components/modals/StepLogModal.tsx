@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { Footprints } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
+import { Footprints, ScanLine, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -7,6 +7,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import { scanStepCountFromImage } from '@/lib/stepOcr';
+import { logError } from '@/lib/errorUtils';
 
 interface StepLogModalProps {
   open: boolean;
@@ -26,10 +28,15 @@ export function StepLogModal({
   loading,
 }: StepLogModalProps) {
   const [stepCount, setStepCount] = useState('');
+  const [ocrRunning, setOcrRunning] = useState(false);
+  const [ocrNotice, setOcrNotice] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (open) {
       setStepCount(existingStepLog ? String(existingStepLog.step_count) : '');
+      setOcrNotice(null);
+      setOcrRunning(false);
     }
   }, [open, existingStepLog]);
 
@@ -37,6 +44,35 @@ export function StepLogModal({
     const count = parseInt(stepCount);
     if (isNaN(count) || count <= 0) return;
     await onSave(count);
+  };
+
+  const handleScanClick = () => {
+    setOcrNotice(null);
+    fileInputRef.current?.click();
+  };
+
+  const handleScanFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    // Reset input so picking the same file twice still fires onChange.
+    if (e.target) e.target.value = '';
+    if (!file) return;
+
+    setOcrRunning(true);
+    setOcrNotice(null);
+    try {
+      const detected = await scanStepCountFromImage(file);
+      if (detected == null) {
+        setOcrNotice("Couldn't read a step count from this image. Please type it in.");
+      } else {
+        setStepCount(String(detected));
+        setOcrNotice(`Detected ${detected.toLocaleString()} — confirm or edit before saving.`);
+      }
+    } catch (err) {
+      logError('StepLogModal.ocr', err);
+      setOcrNotice("Couldn't read the screenshot. Please type the number in.");
+    } finally {
+      setOcrRunning(false);
+    }
   };
 
   return (
@@ -66,6 +102,36 @@ export function StepLogModal({
               className="w-full h-12 rounded-md border border-input bg-background px-3 py-2 text-base ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
               autoFocus
             />
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={handleScanFile}
+            />
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={handleScanClick}
+              disabled={ocrRunning || loading}
+              className="w-full"
+            >
+              {ocrRunning ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Reading step count…
+                </>
+              ) : (
+                <>
+                  <ScanLine className="w-4 h-4 mr-2" />
+                  Scan screenshot
+                </>
+              )}
+            </Button>
+            {ocrNotice && (
+              <p className="text-xs text-muted-foreground">{ocrNotice}</p>
+            )}
           </div>
 
           {stepCount && parseInt(stepCount) > 0 && (
