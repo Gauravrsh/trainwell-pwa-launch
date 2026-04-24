@@ -1,3 +1,4 @@
+import { forwardRef } from 'react';
 import { motion } from 'framer-motion';
 import { Lock, Calendar, FileText } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -28,9 +29,9 @@ const rules = [
   },
 ];
 
-export default function HouseRules() {
+const HouseRules = forwardRef<HTMLElement>((_, ref) => {
   return (
-    <section className="px-4 py-16 sm:py-24 bg-secondary/20">
+    <section ref={ref} className="px-4 py-16 sm:py-24 bg-secondary/20">
       <div className="mx-auto max-w-4xl">
         <motion.h2
           className="text-center text-2xl font-extrabold sm:text-3xl"
@@ -71,4 +72,6 @@ export default function HouseRules() {
       </div>
     </section>
   );
-}
+});
+HouseRules.displayName = 'HouseRules';
+export default HouseRules;
