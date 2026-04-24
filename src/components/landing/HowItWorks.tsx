@@ -1,3 +1,4 @@
+import { forwardRef } from 'react';
 import { motion } from 'framer-motion';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
@@ -27,9 +28,9 @@ const steps = [
   },
 ];
 
-export default function HowItWorks() {
+const HowItWorks = forwardRef<HTMLElement>((_, ref) => {
   return (
-    <section className="px-4 py-16 sm:py-24">
+    <section ref={ref} className="px-4 py-16 sm:py-24">
       <div className="mx-auto max-w-4xl">
         <motion.p
           className="text-center text-xs font-semibold uppercase tracking-widest text-primary mb-3"
@@ -77,4 +78,6 @@ export default function HowItWorks() {
       </div>
     </section>
   );
-}
+});
+HowItWorks.displayName = 'HowItWorks';
+export default HowItWorks;
