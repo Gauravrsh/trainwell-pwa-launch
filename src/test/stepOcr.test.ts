@@ -42,6 +42,12 @@ describe("extractStepCount", () => {
     ).toBe(3925);
   });
 
+  it("Apple Watch photo OCR: stitches split thousands group near steps", () => {
+    expect(
+      extractStepCount("Today Steps 3,92 5 Distance 2.54 KM Flights Climbed 1"),
+    ).toBe(3925);
+  });
+
   it("Samsung Health: picks actual steps over step goal and kcal", () => {
     // Reads like: "6,729 / 15,000 steps ... 2,397 kcal"
     expect(
