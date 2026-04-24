@@ -1,6 +1,14 @@
+import { useEffect } from 'react';
 import flywheel from '@/assets/flywheel-mockups/option1-final-v7.png';
 
 export default function FlywheelReview() {
+  useEffect(() => {
+    const meta = document.createElement('meta');
+    meta.name = 'robots';
+    meta.content = 'noindex, nofollow';
+    document.head.appendChild(meta);
+    return () => { document.head.removeChild(meta); };
+  }, []);
   return (
     <div className="min-h-screen bg-background text-foreground px-4 py-10">
       <div className="mx-auto max-w-4xl">
