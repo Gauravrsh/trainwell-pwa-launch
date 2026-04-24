@@ -19,6 +19,7 @@ import { SubscriptionEnforcementBanner } from '@/components/subscription/Subscri
 import { PlanSelectionModal } from '@/components/subscription/PlanSelectionModal';
 import { useTrainerSubscription } from '@/hooks/useTrainerSubscription';
 import { usePushSubscription } from '@/hooks/usePushSubscription';
+import { useSelectedClient } from '@/hooks/useSelectedClient';
 
 interface Workout {
   id: string;
@@ -62,7 +63,8 @@ const Calendar = () => {
   const [showWorkoutModal, setShowWorkoutModal] = useState(false);
   const [showTrainerWorkoutModal, setShowTrainerWorkoutModal] = useState(false);
   const [showFoodModal, setShowFoodModal] = useState(false);
-  const [selectedClientId, setSelectedClientId] = useState<string | null>(null);
+  // Item 5: session-shared client selection across Calendar/Progress/Plans.
+  const { selectedClientId, setSelectedClientId } = useSelectedClient();
   const [existingExercises, setExistingExercises] = useState<{ name: string; sets: { weight: number; reps: number }[] }[]>([]);
   const [clientHasLogged, setClientHasLogged] = useState(false);
   const [clientTrainerExercises, setClientTrainerExercises] = useState<{ name: string; sets: { weight: number; reps: number }[] }[]>([]);
