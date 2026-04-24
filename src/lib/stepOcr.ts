@@ -26,9 +26,10 @@ const MIN_STEPS = 100;
 const MAX_STEPS = 100000;
 
 const NEG_UNIT = /\b(k?cal|calorie|kilocalorie|km|m|bpm|min|mins|minute|minutes|%)\b/i;
+const NEG_ACTIVITY = /\b(session|sessions|workout|workouts?)\b/i;
 const NEG_GOAL = /\b(goal|target|daily\s*goal|of)\b/i;
 const POS_STEP = /\b(steps?)\b/i;
-const CLOCK = /^(?:[01]?\d|2[0-3]):[0-5]\d$/;
+const CLOCK = /^(?:[01]?\d|2[0-3]):[0-5]\d(?::[0-5]\d)?$/;
 const DIGIT_WORD = /^[\d,\s]+$/;
 
 function stitchBrokenThousandsGroups(rawText: string): string {
@@ -45,6 +46,8 @@ interface Candidate {
   raw: string;
   score: number;
   source?: "bbox" | "text";
+  positiveSignals?: number;
+  negativeSignals?: number;
 }
 
 function scoreFromText(
@@ -52,37 +55,96 @@ function scoreFromText(
   idx: number,
   raw: string,
   value: number,
-): number {
+): Pick<Candidate, "score" | "positiveSignals" | "negativeSignals"> {
   let score = 0;
+  let positiveSignals = 0;
+  let negativeSignals = 0;
 
   // Decimal → distance, not steps.
-  if (/[.,]\d{1,2}\s*(km|m)?$/i.test(raw) && /\./.test(raw)) score -= 250;
+  if (/[.,]\d{1,2}\s*(km|m)?$/i.test(raw) && /\./.test(raw)) {
+    score -= 250;
+    negativeSignals += 1;
+  }
 
   // Context windows.
   const before = rawText.slice(Math.max(0, idx - 20), idx);
   const after = rawText.slice(idx + raw.length, idx + raw.length + 20);
+  const beforeExtended = rawText.slice(Math.max(0, idx - 40), idx);
+  const afterExtended = rawText.slice(idx + raw.length, idx + raw.length + 40);
   // Goal is only meaningful if it's the IMMEDIATELY preceding label.
   const immediateBefore = rawText.slice(Math.max(0, idx - 12), idx);
 
-  if (POS_STEP.test(after) || POS_STEP.test(before)) score += 100;
-  if (NEG_UNIT.test(after)) score -= 200;
-  if (NEG_GOAL.test(immediateBefore) || NEG_GOAL.test(after)) score -= 150;
+  if (POS_STEP.test(after) || POS_STEP.test(before) || POS_STEP.test(afterExtended) || POS_STEP.test(beforeExtended)) {
+    score += 100;
+    positiveSignals += 1;
+  }
+
+  if (/^\s*\/\s*\d[\d,\s]{0,12}\s*steps?\b/i.test(afterExtended)) {
+    score += 180;
+    positiveSignals += 2;
+  }
+
+  if (NEG_UNIT.test(afterExtended) || NEG_UNIT.test(beforeExtended)) {
+    score -= 200;
+    negativeSignals += 1;
+  }
+
+  if (NEG_ACTIVITY.test(afterExtended) || NEG_ACTIVITY.test(beforeExtended)) {
+    score -= 220;
+    negativeSignals += 1;
+  }
+
+  if (NEG_GOAL.test(immediateBefore) || NEG_GOAL.test(afterExtended)) {
+    score -= 150;
+    negativeSignals += 1;
+  }
 
   // "/15,000 steps" → goal.
-  if (/\/\s*$/.test(before)) score -= 150;
+  if (/\/\s*$/.test(before) || /\/\s*$/.test(rawText.slice(Math.max(0, idx - 6), idx))) {
+    score -= 200;
+    negativeSignals += 1;
+  }
 
   // Clock times in original text (e.g. " 8:47 ").
-  const surrounding = rawText.slice(Math.max(0, idx - 2), idx + raw.length + 3);
-  if (/\b\d{1,2}:\d{2}\b/.test(surrounding)) {
+  const surrounding = rawText.slice(Math.max(0, idx - 8), idx + raw.length + 8);
+  if (/\b\d{1,2}:\d{2}(?::\d{2})?\b/.test(surrounding)) {
     // Only penalise if THIS number is part of the clock match.
-    const clockMatch = surrounding.match(/\b(\d{1,2}:\d{2})\b/);
+    const clockMatch = surrounding.match(/\b(\d{1,2}:\d{2}(?::\d{2})?)\b/);
     if (clockMatch && clockMatch[1].includes(value.toString())) score -= 300;
+    negativeSignals += 1;
   }
 
   // Favour middle-of-range step counts slightly.
   if (value >= 1000 && value <= 30000) score += 10;
 
-  return score;
+  return { score, positiveSignals, negativeSignals };
+}
+
+function candidateRank(candidate: Candidate): number {
+  let rank = candidate.score;
+
+  if (candidate.source === "bbox") rank += 80;
+  rank += (candidate.positiveSignals ?? 0) * 25;
+  rank -= (candidate.negativeSignals ?? 0) * 20;
+
+  return rank;
+}
+
+function pickBestCandidate(...options: Array<Candidate | null>): Candidate | null {
+  const candidates = options.filter((candidate): candidate is Candidate => Boolean(candidate));
+  if (candidates.length === 0) return null;
+
+  candidates.sort((a, b) => candidateRank(b) - candidateRank(a) || b.score - a.score || a.value - b.value);
+
+  const [best, second] = candidates;
+  const bestRank = candidateRank(best);
+  const secondRank = second ? candidateRank(second) : Number.NEGATIVE_INFINITY;
+  const hasStrongPositiveSignal = (best.positiveSignals ?? 0) > 0;
+
+  if (bestRank < 60) return null;
+  if (second && bestRank - secondRank < 25 && !hasStrongPositiveSignal) return null;
+
+  return best;
 }
 
 /**
