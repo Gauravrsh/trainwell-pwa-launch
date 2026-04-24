@@ -1,26 +1,46 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { User, LogOut, ChevronRight, FileText, Weight, AlertTriangle, Activity } from 'lucide-react';
+import { User, LogOut, ChevronRight, FileText, Weight, AlertTriangle, Activity, UserCog, Users } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useProfile } from '@/hooks/useProfile';
 import { useNavigate } from 'react-router-dom';
 import { SubscriptionSection } from '@/components/subscription/SubscriptionSection';
 import { WeightLogModal } from '@/components/modals/WeightLogModal';
 import { BMRLogModal } from '@/components/modals/BMRLogModal';
+import { TrainerProfileEditModal } from '@/components/trainer-profile/TrainerProfileEditModal';
 import { Button } from '@/components/ui/button';
 import { differenceInDays, format } from 'date-fns';
 
-const menuItems = [
-  { icon: FileText, label: 'Terms & Conditions', href: '/terms' },
-];
-
 export default function Profile() {
   const { user, signOut } = useAuth();
-  const { profile, refetchProfile, isClient } = useProfile();
+  const { profile, refetchProfile, isClient, isTrainer } = useProfile();
   const navigate = useNavigate();
   
   const [weightModalOpen, setWeightModalOpen] = useState(false);
   const [bmrModalOpen, setBmrModalOpen] = useState(false);
+  const [trainerProfileOpen, setTrainerProfileOpen] = useState(false);
+
+  // Item 6 — role-aware menu items.
+  const menuItems: Array<{ icon: typeof FileText; label: string; onClick: () => void }> = [];
+  if (isTrainer) {
+    menuItems.push({
+      icon: UserCog,
+      label: 'Trainer Profile',
+      onClick: () => setTrainerProfileOpen(true),
+    });
+  }
+  if (isClient && profile?.trainer_id) {
+    menuItems.push({
+      icon: Users,
+      label: 'My Trainer',
+      onClick: () => navigate('/my-trainer'),
+    });
+  }
+  menuItems.push({
+    icon: FileText,
+    label: 'Terms & Conditions',
+    onClick: () => navigate('/terms'),
+  });
 
   // Check if BMR is stale
   const bmrUpdatedAt = profile?.bmr_updated_at ? new Date(profile.bmr_updated_at) : null;
@@ -147,12 +167,11 @@ export default function Profile() {
       >
         {menuItems.map((item) => {
           const Icon = item.icon;
-          const isClickable = item.href !== '#';
           return (
             <motion.button
               key={item.label}
               whileTap={{ scale: 0.98 }}
-              onClick={() => isClickable && navigate(item.href)}
+              onClick={item.onClick}
               className="w-full flex items-center justify-between px-4 py-4 border-b border-border last:border-b-0"
             >
               <div className="flex items-center gap-3">
@@ -193,6 +212,15 @@ export default function Profile() {
         onOpenChange={setBmrModalOpen}
         onSuccess={refetchProfile}
       />
+
+      {/* Trainer Profile editor — trainers only */}
+      {isTrainer && (
+        <TrainerProfileEditModal
+          open={trainerProfileOpen}
+          onOpenChange={setTrainerProfileOpen}
+          onSaved={refetchProfile}
+        />
+      )}
     </div>
   );
 }

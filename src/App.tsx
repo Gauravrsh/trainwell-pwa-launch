@@ -32,6 +32,7 @@ const Progress = lazy(() => import("./pages/Progress"));
 const Refer = lazy(() => import("./pages/Refer"));
 const Profile = lazy(() => import("./pages/Profile"));
 const Terms = lazy(() => import("./pages/Terms"));
+const MyTrainer = lazy(() => import("./pages/MyTrainer"));
 const Pitch = lazy(() => import("./pages/Pitch"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 const IconReview = lazy(() => import("./pages/IconReview"));
@@ -306,6 +307,14 @@ const AppRoutes = () => (
         }
       />
       <Route path="/terms" element={<Terms />} />
+      <Route
+        path="/my-trainer"
+        element={
+          <ProtectedRoute>
+            <MyTrainer />
+          </ProtectedRoute>
+        }
+      />
       <Route path="/pitch" element={<Pitch />} />
       <Route path="/icon-review" element={<IconReview />} />
       <Route path="/flywheel-review" element={<FlywheelReview />} />
