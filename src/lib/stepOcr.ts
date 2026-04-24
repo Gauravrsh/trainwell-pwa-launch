@@ -240,15 +240,14 @@ function buildBboxCandidate(
 function extractFromWords(words: WordLike[]): number | null {
   if (!words || words.length === 0) return null;
 
-  const currentYear = new Date().getFullYear();
   const candidates: Candidate[] = [];
 
   // Find the visually largest digit-word height to use as a "hero number" anchor.
   let maxDigitHeight = 0;
   for (const w of words) {
     const t = (w.text || "").trim();
-    if (/^[\d,\s]+$/.test(t) && !CLOCK.test(t)) {
-      const h = Math.max(1, w.bbox.y1 - w.bbox.y0);
+    if (isDigitWord(t)) {
+      const h = bboxHeight(w.bbox);
       if (h > maxDigitHeight) maxDigitHeight = h;
     }
   }
@@ -258,64 +257,26 @@ function extractFromWords(words: WordLike[]): number | null {
     const t = (w.text || "").trim();
     if (!t) continue;
 
-    // Skip decimals (distances) and clocks.
-    if (/\d\.\d/.test(t)) continue;
-    if (CLOCK.test(t)) continue;
+    if (!isDigitWord(t)) continue;
 
-    const digitMatch = t.match(/^[\d,\s]+$/);
-    if (!digitMatch) continue;
+    let raw = t;
+    let bbox = { ...w.bbox };
+    let endIndex = i;
+    while (endIndex + 1 < words.length && canMergeDigitFragments(raw, bbox, words[endIndex + 1])) {
+      const nextWord = words[endIndex + 1];
+      raw = `${raw}${nextWord.text.trim()}`;
+      bbox = {
+        x0: Math.min(bbox.x0, nextWord.bbox.x0),
+        y0: Math.min(bbox.y0, nextWord.bbox.y0),
+        x1: Math.max(bbox.x1, nextWord.bbox.x1),
+        y1: Math.max(bbox.y1, nextWord.bbox.y1),
+      };
+      endIndex += 1;
+    }
 
-    const normalized = parseInt(t.replace(/[,\s]/g, ""), 10);
-    if (!Number.isFinite(normalized)) continue;
-    if (normalized === currentYear) continue;
-    if (normalized < MIN_STEPS || normalized > MAX_STEPS) continue;
-
-    const height = Math.max(1, w.bbox.y1 - w.bbox.y0);
-
-    // Collect neighbour words (prev 3 + next 3 + same row).
-    const neighbourText = [
-      words[i - 3]?.text,
-      words[i - 2]?.text,
-      words[i - 1]?.text,
-      words[i + 1]?.text,
-      words[i + 2]?.text,
-      words[i + 3]?.text,
-      ...words.filter(
-        (ow, oi) =>
-          oi !== i &&
-          Math.abs((ow.bbox.y0 + ow.bbox.y1) / 2 - (w.bbox.y0 + w.bbox.y1) / 2) <
-            height,
-      ).map((ow) => ow.text),
-    ]
-      .filter(Boolean)
-      .join(" ");
-
-    let score = height; // visually biggest wins ties
-
-    // Hero-number bonus: by far the tallest digit on screen is almost always
-    // the live step count on fitness apps. Goals are rendered smaller.
-    if (maxDigitHeight > 0 && height >= maxDigitHeight * 0.9) score += 200;
-    // Penalise small numbers when a much larger digit exists elsewhere — these
-    // are almost certainly secondary stats (kcal, distance, goal).
-    if (maxDigitHeight > 0 && height < maxDigitHeight * 0.6) score -= 150;
-
-    if (POS_STEP.test(neighbourText)) score += 100;
-    if (NEG_UNIT.test(neighbourText)) score -= 200;
-    if (NEG_GOAL.test(neighbourText)) score -= 150;
-
-    // If the previous word is "/" this is a goal denominator.
-    const prev = words[i - 1]?.text?.trim();
-    if (prev === "/") score -= 150;
-    // "6,729 / 15,000" — the value AFTER the slash is the goal.
-    if (prev && /\/$/.test(prev)) score -= 200;
-    // "of 15,000" — goal phrasing.
-    if (prev && /^of$/i.test(prev)) score -= 200;
-
-    // Hard reject kcal adjacency.
-    const next = words[i + 1]?.text?.trim() || "";
-    if (/^(k?cal|calorie|kilocalorie)/i.test(next)) continue;
-
-    candidates.push({ value: normalized, raw: t, score, source: "bbox" });
+    const candidate = buildBboxCandidate(words, i, endIndex, raw, bbox, maxDigitHeight);
+    if (candidate) candidates.push(candidate);
+    i = endIndex;
   }
 
   if (candidates.length === 0) return null;
@@ -371,13 +332,15 @@ export async function scanStepCountFromImage(file: File): Promise<number | null>
     });
   }
 
+  const fromText = extractStepCount(data?.text ?? "");
   const fromWords = words.length > 0 ? extractFromWords(words) : null;
-  if (fromWords != null) {
+  if (fromWords != null && (fromText == null || fromWords >= fromText)) {
     if (typeof console !== "undefined") console.info("[stepOcr] result via bbox:", fromWords);
     return fromWords;
   }
-
-  const fromText = extractStepCount(data?.text ?? "");
-  if (typeof console !== "undefined") console.info("[stepOcr] result via text fallback:", fromText);
-  return fromText;
+  if (fromText != null) {
+    if (typeof console !== "undefined") console.info("[stepOcr] result via text fallback:", fromText);
+    return fromText;
+  }
+  return fromWords;
 }
