@@ -24,19 +24,16 @@ export function extractStepCount(rawText: string): number | null {
   const currentYear = new Date().getFullYear();
 
   // Matches "8,432", "12 345", "1,20,453", "9876".
-  // No leading \b — a digit that follows a comma is not at a word boundary,
-  // which would cause Indian lakh groupings to be split.
-  const numberPattern = /\d{1,3}(?:[,\s]\d{2,3})+|\d{3,6}/g;
+  // The lookbehind ensures we start at a true boundary (not mid-group), so
+  // Indian lakh groupings like "1,20,453" match as ONE token instead of
+  // splitting into "20,453" + "453".
+  const numberPattern = /(?<![\d,])\d{1,3}(?:[,\s]\d{2,3})+|(?<!\d)\d{3,6}(?!\d)/g;
 
   const candidates: number[] = [];
 
   for (const match of text.matchAll(numberPattern)) {
     const raw = match[0];
     const idx = match.index ?? 0;
-    // Skip if this match is a tail of a larger grouped number we'll also see.
-    // e.g. "1,20,453" — avoid re-picking "20,453" or "453" as separate hits.
-    const prevChar = idx > 0 ? text[idx - 1] : "";
-    if (prevChar === "," || prevChar === " " && /\d/.test(text[idx - 2] ?? "")) continue;
 
     // Look at a small window after the number for unit context.
     const tail = text.slice(idx + raw.length, idx + raw.length + 16);
