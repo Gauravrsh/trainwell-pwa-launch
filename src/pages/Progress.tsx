@@ -4,15 +4,15 @@ import { TrendingUp, AlertTriangle, BarChart3, Scale, Footprints } from 'lucide-
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useProfile } from '@/hooks/useProfile';
 import { useProgressData } from '@/hooks/useProgressData';
+import { useSelectedClient } from '@/hooks/useSelectedClient';
 import { ActionChart, OutcomeChart, DateRangeFilter, ClientSelector, StepsChart } from '@/components/progress';
 import { differenceInDays } from 'date-fns';
 
 export default function Progress() {
   const { profile, isTrainer } = useProfile();
   const [dateRange, setDateRange] = useState(30);
-  const [selectedClientId, setSelectedClientId] = useState<string | null>(
-    isTrainer ? null : profile?.id || null
-  );
+  // Item 5: cross-page session-shared client selection for trainers.
+  const { selectedClientId, setSelectedClientId } = useSelectedClient();
 
   // For trainers, use selected client; for clients, use own profile
   const targetClientId = isTrainer ? selectedClientId : profile?.id || null;
