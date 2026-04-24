@@ -26,7 +26,7 @@ const MIN_STEPS = 100;
 const MAX_STEPS = 100000;
 
 const NEG_UNIT = /\b(k?cal|calorie|kilocalorie|km|m|bpm|min|mins|minute|minutes|%)\b/i;
-const NEG_GOAL = /\b(goal|target|daily\s*goal)\b/i;
+const NEG_GOAL = /\b(goal|target|daily\s*goal|of)\b/i;
 const POS_STEP = /\b(steps?)\b/i;
 const CLOCK = /^(?:[01]?\d|2[0-3]):[0-5]\d$/;
 
@@ -34,6 +34,7 @@ interface Candidate {
   value: number;
   raw: string;
   score: number;
+  source?: "bbox" | "text";
 }
 
 function scoreFromText(
