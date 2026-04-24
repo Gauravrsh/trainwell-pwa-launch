@@ -262,7 +262,7 @@ export default function Refer() {
                   'Share your referral link with fellow trainers',
                   'They sign up and subscribe to a paid plan',
                   'You earn 15-90 days validity based on plans',
-                  'They get 14 bonus days on their first subscription',
+                  'They start free on Smart (3 clients). When they upgrade, you get the validity bonus.',
                 ].map((step, index) => (
                   <div key={index} className="flex items-center gap-3">
                     <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
