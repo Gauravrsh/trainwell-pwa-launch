@@ -312,3 +312,43 @@
   - OCR failure (worker crash, bad image) falls back to the existing manual flow with a clear message; `logError('StepLogModal.ocr', err)` ✅
   - No DB schema change; no new RLS policy; no new edge function ✅
   - Unit tests cover the top confusion cases: calorie adjacency, current-year header, Indian comma grouping ✅
+
+---
+
+## TW-022: Steps OCR Picks Goal/kcal/Distance Instead of Actual Steps (Regression on TW-021)
+- **Severity:** High
+- **Status:** ✅ Fixed
+- **Date Found:** 2026-04-24
+- **Reported by:** Trainer debugging client 6486580 (Gaurav Sharma) — reported wrong step counts on 4+ consecutive uploads (Apple Watch + Samsung Health screenshots).
+- **Symptom:** The OCR consistently pre-filled the step *goal*, *calorie burn*, or *distance* instead of the actual step count.
+  - Samsung Health "6,729 / 15,000 steps / 2,397 kcal" → pre-filled **15,000** (goal) or **2,397** (kcal).
+  - Apple Watch "Steps 6,419 / Distance 4.34 KM / 8:47" → pre-filled **434** (distance decimal stripped) or random value.
+- **Root causes:**
+  1. Tesseract was called with a digit-only whitelist (`0123456789,. `). That stripped *every letter* from the OCR output, so the regex filter for "kcal" / "steps" / "goal" context had nothing to match against.
+  2. Extraction used `Math.max(...candidates)` — but on fitness screens the step goal and kcal are often larger than the actual step count.
+  3. No spatial / visual signal was used, even though on every tracker the step count is rendered as the biggest number.
+  4. `MAX_STEPS = 100000` let numbers like 15000 (goal), 10000 (goal) and 2397 (kcal) through unchallenged.
+  5. Clock times like "8:47" partially leaked as `847` candidates.
+- **Fix (`src/lib/stepOcr.ts`):**
+  - Dropped the Tesseract character whitelist — now reads full text incl. keywords.
+  - Replaced `Math.max` with a **scoring algorithm**:
+    - `+100` if "step"/"steps" appears in the adjacent text window (20 chars before/after).
+    - `−200` if "kcal", "calorie", "km", "m", "bpm", "min", "%" follows the number.
+    - `−150` if "goal"/"target" is the *immediately* preceding label (12 chars), or if "/" precedes the number ("/15,000 steps" = goal denominator).
+    - `−300` / hard-reject for clock patterns (`HH:MM`).
+    - `−250` / hard-reject for decimals (distances, not steps).
+    - `+height_in_px` (bbox-level path only) so visually biggest wins ties.
+  - Added a bbox-aware extraction path (`extractFromWords`) that consumes Tesseract's word-level output with bounding boxes and scores neighbours on the same visual row; falls back to the text-only `extractStepCount` if blocks are unavailable.
+- **Files Changed:** `src/lib/stepOcr.ts` (rewrite), `src/test/stepOcr.test.ts` (+5 real-world layout tests), `docs/issue-repository*.md`, memory file.
+- **Tests Added:**
+  - Apple Watch layout with 4.34 KM distance + 8:47 clock.
+  - Apple Watch variant with 2.54 KM + 8:51 clock.
+  - Samsung Health "6,729 / 15,000 steps / 2,397 kcal".
+  - Mi Fit "Goal 10,000 Steps 7,245".
+  - Google Fit "8,432 steps • 2,134 kcal".
+- **Test Status:** 14/14 stepOcr tests green, 156/156 full suite, typecheck clean ✅
+- **Regression Guards:**
+  - All 9 original TW-021 unit tests still pass (including calorie adjacency, current-year header, Indian grouping) ✅
+  - No bundle impact — `tesseract.js` is still lazy-imported inside `scanStepCountFromImage` only ✅
+  - Manual input path unchanged; OCR still never writes to DB directly — user must confirm and Save ✅
+  - No DB / RLS / edge function changes ✅
