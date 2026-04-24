@@ -573,7 +573,8 @@ const Calendar = () => {
 
       // Build metric-aware inserts. Reps-based metrics fan out per set;
       // other metric types produce a single row per exercise.
-      const exerciseInserts = normalizedExercises.flatMap(ex => {
+      const exerciseInserts: Record<string, unknown>[] = [];
+      normalizedExercises.forEach(ex => {
         const baseRow = {
           workout_id: workoutId,
           exercise_name: ex.name,
@@ -582,40 +583,43 @@ const Calendar = () => {
         switch (ex.metricType) {
           case 'reps_weight':
           case 'reps_only':
-            return (ex.sets ?? []).map(set => ({
+            (ex.sets ?? []).forEach(set => exerciseInserts.push({
               ...baseRow,
               recommended_sets: 1,
               recommended_reps: set.reps,
               recommended_weight: ex.metricType === 'reps_weight' ? set.weight : null,
             }));
+            break;
           case 'time':
-            return [{ ...baseRow, recommended_duration_seconds: ex.durationSeconds ?? 0 }];
+            exerciseInserts.push({ ...baseRow, recommended_duration_seconds: ex.durationSeconds ?? 0 });
+            break;
           case 'distance_time':
-            return [{
+            exerciseInserts.push({
               ...baseRow,
               recommended_distance_meters: ex.distanceMeters ?? 0,
               recommended_duration_seconds: ex.durationSeconds ?? null,
-            }];
+            });
+            break;
           case 'amrap':
-            return [{
+            exerciseInserts.push({
               ...baseRow,
               recommended_emom_minutes: ex.emomMinutes ?? 0,
               recommended_rounds: ex.rounds ?? null,
-            }];
+            });
+            break;
           case 'emom':
-            return [{
+            exerciseInserts.push({
               ...baseRow,
               recommended_emom_minutes: ex.emomMinutes ?? 0,
               recommended_reps: ex.emomReps ?? 0,
-            }];
-          default:
-            return [];
+            });
+            break;
         }
       });
 
       const { error: exerciseError } = await supabase
         .from('exercises')
-        .insert(exerciseInserts);
+        .insert(exerciseInserts as never);
 
       if (exerciseError) throw exerciseError;
 
