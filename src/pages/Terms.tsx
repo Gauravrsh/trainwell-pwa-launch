@@ -3,6 +3,7 @@ import { FileText, ArrowLeft } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useProfile } from '@/hooks/useProfile';
 import { ReferralTermsAccordion } from '@/components/referral/ReferralTermsAccordion';
+import { ClientPlanAgreement } from '@/components/terms/ClientPlanAgreement';
 import {
   Accordion,
   AccordionContent,
@@ -12,7 +13,7 @@ import {
 
 export default function Terms() {
   const navigate = useNavigate();
-  const { isTrainer } = useProfile();
+  const { isTrainer, isClient } = useProfile();
 
   return (
     <div className="min-h-screen px-4 pt-12 pb-24">
@@ -52,7 +53,11 @@ export default function Terms() {
         transition={{ delay: 0.1 }}
         className="space-y-4"
       >
-        {/* General Terms */}
+        {/* Client Plan Agreement — clients only, surfaced first so it's the
+            first thing they see when they open Terms. */}
+        {isClient && <ClientPlanAgreement />}
+
+        {/* General Terms — everyone */}
         <Accordion type="single" collapsible className="w-full">
           <AccordionItem value="general-tnc" className="border border-border rounded-2xl px-4 bg-card">
             <AccordionTrigger className="text-left py-4">
@@ -97,7 +102,7 @@ export default function Terms() {
           </AccordionItem>
         </Accordion>
 
-        {/* Privacy Policy */}
+        {/* Privacy Policy — everyone */}
         <Accordion type="single" collapsible className="w-full">
           <AccordionItem value="privacy" className="border border-border rounded-2xl px-4 bg-card">
             <AccordionTrigger className="text-left py-4">
@@ -134,7 +139,8 @@ export default function Terms() {
           </AccordionItem>
         </Accordion>
 
-        {/* Subscription Terms — 3-tier model */}
+        {/* Subscription Terms — TRAINER ONLY (clients don't pay Vecto). */}
+        {isTrainer && (
         <Accordion type="single" collapsible className="w-full">
           <AccordionItem value="subscription" className="border border-border rounded-2xl px-4 bg-card">
             <AccordionTrigger className="text-left py-4">
@@ -202,8 +208,9 @@ export default function Terms() {
             </AccordionContent>
           </AccordionItem>
         </Accordion>
+        )}
 
-        {/* Calendar & Day-Mark Rules */}
+        {/* Calendar & Day-Mark Rules — everyone */}
         <Accordion type="single" collapsible className="w-full">
           <AccordionItem value="calendar-rules" className="border border-border rounded-2xl px-4 bg-card">
             <AccordionTrigger className="text-left py-4">
