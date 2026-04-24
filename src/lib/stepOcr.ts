@@ -174,7 +174,7 @@ export function extractStepCount(rawText: string): number | null {
     if (normalized === currentYear) continue;
     if (normalized < MIN_STEPS || normalized > MAX_STEPS) continue;
 
-    const score = scoreFromText(text, idx, raw, normalized);
+    const { score, positiveSignals, negativeSignals } = scoreFromText(text, idx, raw, normalized);
 
     // Hard-reject clocks: if immediately preceded or followed by ":dd" pattern.
     const tail = text.slice(idx + raw.length, idx + raw.length + 3);
@@ -186,13 +186,12 @@ export function extractStepCount(rawText: string): number | null {
       continue;
     }
 
-    candidates.push({ value: normalized, raw, score });
+    candidates.push({ value: normalized, raw, score, positiveSignals, negativeSignals, source: "text" });
   }
 
   if (candidates.length === 0) return null;
 
-  candidates.sort((a, b) => b.score - a.score || b.value - a.value);
-  return candidates[0].value;
+  return pickBestCandidate(...candidates)?.value ?? null;
 }
 
 /**
