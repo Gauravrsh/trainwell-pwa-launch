@@ -235,6 +235,60 @@ const Calendar = () => {
     return workoutList.find(w => isSameDay(new Date(w.date), date));
   };
 
+  // Build trainer-planned exercise payloads from raw `exercises` rows.
+  // For reps_weight / reps_only we group per exercise_name and collect per-set rows.
+  // For other metric types (time / distance_time / amrap / emom) one row = one exercise.
+  const parsePlannedExercises = (rows: Exercise[]): PlannedExercisePayload[] => {
+    const planned = rows.filter(isRecommended);
+    const repsBased: Map<string, { weight: number; reps: number }[]> = new Map();
+    const result: PlannedExercisePayload[] = [];
+
+    for (const ex of planned) {
+      const name = ex.exercise_name?.trim();
+      if (!name) continue;
+      const metricType = (ex.metric_type ?? DEFAULT_METRIC_TYPE) as MetricType;
+
+      if (metricType === 'reps_weight' || metricType === 'reps_only') {
+        const sets = repsBased.get(name) ?? [];
+        sets.push({
+          weight: ex.recommended_weight ?? 0,
+          reps: ex.recommended_reps ?? 0,
+        });
+        repsBased.set(name, sets);
+        // Remember the metric for this exercise group (first one wins)
+        if (!result.find(r => r.name === name)) {
+          result.push({ name, metricType, sets });
+        }
+      } else if (metricType === 'time') {
+        result.push({ name, metricType, durationSeconds: ex.recommended_duration_seconds ?? 0 });
+      } else if (metricType === 'distance_time') {
+        result.push({
+          name, metricType,
+          distanceMeters: ex.recommended_distance_meters ?? 0,
+          durationSeconds: ex.recommended_duration_seconds ?? 0,
+        });
+      } else if (metricType === 'amrap') {
+        result.push({
+          name, metricType,
+          emomMinutes: ex.recommended_emom_minutes ?? 0,
+          rounds: ex.recommended_rounds ?? 0,
+        });
+      } else if (metricType === 'emom') {
+        result.push({
+          name, metricType,
+          emomMinutes: ex.recommended_emom_minutes ?? 0,
+          emomReps: ex.recommended_reps ?? 0,
+        });
+      }
+    }
+    // Ensure reps-based entries reference the grouped sets array
+    return result.map(r =>
+      (r.metricType === 'reps_weight' || r.metricType === 'reps_only')
+        ? { ...r, sets: repsBased.get(r.name) ?? [] }
+        : r
+    );
+  };
+
   const getDayMarkForDate = (date: Date): DayMark | undefined => {
     return dayMarks.find(m => isSameDay(new Date(m.mark_date), date));
   };
