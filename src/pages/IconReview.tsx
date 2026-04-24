@@ -1,4 +1,13 @@
+import { useEffect } from 'react';
+
 const IconReview = () => {
+  useEffect(() => {
+    const meta = document.createElement('meta');
+    meta.name = 'robots';
+    meta.content = 'noindex, nofollow';
+    document.head.appendChild(meta);
+    return () => { document.head.removeChild(meta); };
+  }, []);
   const sizes = [512, 192, 128, 64, 48];
 
   return (

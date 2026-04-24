@@ -12,3 +12,6 @@ Allow: /
 
 User-agent: *
 Allow: /
+Disallow: /icon-review
+Disallow: /flywheel-review
+Disallow: /pitch

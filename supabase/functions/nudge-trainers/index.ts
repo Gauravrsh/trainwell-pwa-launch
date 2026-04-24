@@ -5,6 +5,45 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+// ── VAPID JWT signing ────────────────────────────────────────────────────────
+function b64urlToBytes(b64url: string): Uint8Array {
+  const b64 = b64url.replace(/-/g, '+').replace(/_/g, '/');
+  const padded = b64 + '==='.slice((b64.length + 3) % 4);
+  const bin = atob(padded);
+  const out = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
+  return out;
+}
+function bytesToB64url(bytes: Uint8Array): string {
+  let bin = '';
+  for (let i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]);
+  return btoa(bin).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+async function importVapidPrivateKey(privateKeyB64: string, publicKeyB64: string): Promise<CryptoKey> {
+  const d = b64urlToBytes(privateKeyB64);
+  const pub = b64urlToBytes(publicKeyB64);
+  if (d.length !== 32) throw new Error('VAPID private key must be 32 bytes');
+  if (pub.length !== 65 || pub[0] !== 0x04) throw new Error('VAPID public key must be 65 bytes uncompressed');
+  const jwk: JsonWebKey = {
+    kty: 'EC', crv: 'P-256',
+    d: bytesToB64url(d),
+    x: bytesToB64url(pub.slice(1, 33)),
+    y: bytesToB64url(pub.slice(33, 65)),
+    ext: true,
+  };
+  return await crypto.subtle.importKey('jwk', jwk, { name: 'ECDSA', namedCurve: 'P-256' }, false, ['sign']);
+}
+async function signVapidJwt(audience: string, subject: string, privateKey: CryptoKey): Promise<string> {
+  const header = { typ: 'JWT', alg: 'ES256' };
+  const payload = { aud: audience, exp: Math.floor(Date.now() / 1000) + 12 * 60 * 60, sub: subject };
+  const enc = new TextEncoder();
+  const headerB64 = bytesToB64url(enc.encode(JSON.stringify(header)));
+  const payloadB64 = bytesToB64url(enc.encode(JSON.stringify(payload)));
+  const signingInput = `${headerB64}.${payloadB64}`;
+  const sig = await crypto.subtle.sign({ name: 'ECDSA', hash: 'SHA-256' }, privateKey, enc.encode(signingInput));
+  return `${signingInput}.${bytesToB64url(new Uint8Array(sig))}`;
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -33,8 +72,12 @@ Deno.serve(async (req) => {
   try {
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    const vapidPublicKey = Deno.env.get('VAPID_PUBLIC_KEY')!;
+    const vapidPrivateKey = Deno.env.get('VAPID_PRIVATE_KEY')!;
+    const vapidSubject = Deno.env.get('VAPID_SUBJECT') || 'mailto:hello@vecto.fit';
 
     const supabase = createClient(supabaseUrl, serviceRoleKey);
+    const privateKey = await importVapidPrivateKey(vapidPrivateKey, vapidPublicKey);
 
     // Today's date in IST
     const now = new Date();
@@ -62,15 +105,22 @@ Deno.serve(async (req) => {
     let trainersNudged = 0;
 
     for (const trainer of trainers) {
-      // Check if trainer has active subscription
+      // AUDIT-002: verify trainer has an active subscription, including valid grace window.
       const { data: subData } = await supabase
         .from('trainer_platform_subscriptions')
-        .select('id, status')
+        .select('id, status, grace_end_date, plan_type')
         .eq('trainer_id', trainer.id)
-        .in('status', ['trial', 'active', 'grace'])
+        .order('created_at', { ascending: false })
         .limit(1);
 
       if (!subData?.length) continue;
+      const sub = subData[0];
+      const isActive =
+        sub.plan_type === 'free' ||
+        sub.status === 'trial' ||
+        sub.status === 'active' ||
+        (sub.status === 'grace' && sub.grace_end_date && sub.grace_end_date >= today);
+      if (!isActive) continue;
 
       // Get trainer's clients
       const { data: clients } = await supabase
@@ -118,11 +168,20 @@ Deno.serve(async (req) => {
 
       for (const sub of subs) {
         try {
+          // AUDIT-007: sign with VAPID JWT so Chrome/Edge accept the push.
+          const url = new URL(sub.endpoint);
+          const audience = `${url.protocol}//${url.host}`;
+          const jwt = await signVapidJwt(audience, vapidSubject, privateKey);
           const response = await fetch(sub.endpoint, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/octet-stream', 'TTL': '86400' },
+            headers: {
+              'Content-Type': 'application/octet-stream',
+              'TTL': '86400',
+              'Authorization': `vapid t=${jwt}, k=${vapidPublicKey}`,
+            },
             body: JSON.stringify(payload),
           });
+          await response.arrayBuffer().catch(() => {});
 
           if (response.ok) sent++;
           else {
