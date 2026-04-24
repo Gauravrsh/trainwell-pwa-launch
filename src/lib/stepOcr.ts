@@ -227,13 +227,22 @@ function extractFromWords(words: WordLike[]): number | null {
  * Lazy-imports tesseract.js so it never ships in the initial bundle.
  */
 export async function scanStepCountFromImage(file: File): Promise<number | null> {
-  const { recognize } = await import("tesseract.js");
+  const { createWorker } = await import("tesseract.js");
   // NOTE: no char whitelist — we NEED context words (steps/kcal/goal/km).
-  // Tesseract v5+ requires explicit output flags to receive word-level bboxes.
-  const { data } = await recognize(file, "eng", undefined, {
-    blocks: true,
-    text: true,
-  } as unknown as Record<string, unknown>);
+  // Tesseract v5+ disables `blocks` (word bboxes) by default. Must use a
+  // worker and pass an explicit output spec to get word-level data.
+  const worker = await createWorker("eng");
+  let data: { text?: string; blocks?: unknown };
+  try {
+    const result = await worker.recognize(
+      file,
+      {},
+      { text: true, blocks: true } as unknown as Record<string, boolean>,
+    );
+    data = result.data as unknown as { text?: string; blocks?: unknown };
+  } finally {
+    await worker.terminate();
+  }
 
   // Collect word-level output with bboxes if available.
   const words: WordLike[] = [];
