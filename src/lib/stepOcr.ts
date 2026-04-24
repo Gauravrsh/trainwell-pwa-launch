@@ -139,6 +139,16 @@ function extractFromWords(words: WordLike[]): number | null {
   const currentYear = new Date().getFullYear();
   const candidates: Candidate[] = [];
 
+  // Find the visually largest digit-word height to use as a "hero number" anchor.
+  let maxDigitHeight = 0;
+  for (const w of words) {
+    const t = (w.text || "").trim();
+    if (/^[\d,\s]+$/.test(t) && !CLOCK.test(t)) {
+      const h = Math.max(1, w.bbox.y1 - w.bbox.y0);
+      if (h > maxDigitHeight) maxDigitHeight = h;
+    }
+  }
+
   for (let i = 0; i < words.length; i++) {
     const w = words[i];
     const t = (w.text || "").trim();
@@ -178,6 +188,13 @@ function extractFromWords(words: WordLike[]): number | null {
 
     let score = height; // visually biggest wins ties
 
+    // Hero-number bonus: by far the tallest digit on screen is almost always
+    // the live step count on fitness apps. Goals are rendered smaller.
+    if (maxDigitHeight > 0 && height >= maxDigitHeight * 0.9) score += 200;
+    // Penalise small numbers when a much larger digit exists elsewhere — these
+    // are almost certainly secondary stats (kcal, distance, goal).
+    if (maxDigitHeight > 0 && height < maxDigitHeight * 0.6) score -= 150;
+
     if (POS_STEP.test(neighbourText)) score += 100;
     if (NEG_UNIT.test(neighbourText)) score -= 200;
     if (NEG_GOAL.test(neighbourText)) score -= 150;
@@ -185,16 +202,23 @@ function extractFromWords(words: WordLike[]): number | null {
     // If the previous word is "/" this is a goal denominator.
     const prev = words[i - 1]?.text?.trim();
     if (prev === "/") score -= 150;
+    // "6,729 / 15,000" — the value AFTER the slash is the goal.
+    if (prev && /\/$/.test(prev)) score -= 200;
+    // "of 15,000" — goal phrasing.
+    if (prev && /^of$/i.test(prev)) score -= 200;
 
     // Hard reject kcal adjacency.
     const next = words[i + 1]?.text?.trim() || "";
     if (/^(k?cal|calorie|kilocalorie)/i.test(next)) continue;
 
-    candidates.push({ value: normalized, raw: t, score });
+    candidates.push({ value: normalized, raw: t, score, source: "bbox" });
   }
 
   if (candidates.length === 0) return null;
   candidates.sort((a, b) => b.score - a.score || b.value - a.value);
+  if (typeof console !== "undefined") {
+    console.info("[stepOcr] bbox candidates", candidates.slice(0, 5));
+  }
   return candidates[0].value;
 }
 
@@ -205,7 +229,11 @@ function extractFromWords(words: WordLike[]): number | null {
 export async function scanStepCountFromImage(file: File): Promise<number | null> {
   const { recognize } = await import("tesseract.js");
   // NOTE: no char whitelist — we NEED context words (steps/kcal/goal/km).
-  const { data } = await recognize(file, "eng");
+  // Tesseract v5+ requires explicit output flags to receive word-level bboxes.
+  const { data } = await recognize(file, "eng", undefined, {
+    blocks: true,
+    text: true,
+  } as unknown as Record<string, unknown>);
 
   // Collect word-level output with bboxes if available.
   const words: WordLike[] = [];
@@ -222,8 +250,21 @@ export async function scanStepCountFromImage(file: File): Promise<number | null>
     }
   }
 
-  const fromWords = words.length > 0 ? extractFromWords(words) : null;
-  if (fromWords != null) return fromWords;
+  if (typeof console !== "undefined") {
+    console.info("[stepOcr] tesseract returned", {
+      wordCount: words.length,
+      textLength: (data?.text ?? "").length,
+      textSample: (data?.text ?? "").slice(0, 200),
+    });
+  }
 
-  return extractStepCount(data?.text ?? "");
+  const fromWords = words.length > 0 ? extractFromWords(words) : null;
+  if (fromWords != null) {
+    if (typeof console !== "undefined") console.info("[stepOcr] result via bbox:", fromWords);
+    return fromWords;
+  }
+
+  const fromText = extractStepCount(data?.text ?? "");
+  if (typeof console !== "undefined") console.info("[stepOcr] result via text fallback:", fromText);
+  return fromText;
 }
