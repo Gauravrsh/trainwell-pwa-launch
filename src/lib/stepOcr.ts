@@ -1,54 +1,198 @@
 /**
- * Step OCR helper — extracts a plausible step count from OCR text.
+ * Step OCR — extracts a step count from a fitness-tracker screenshot.
  *
- * Strategy:
- *  - Find all number-like tokens including Indian lakh grouping (1,20,453) and
- *    space-separated thousands (12 345).
- *  - Normalize to integers.
- *  - Reject values that are:
- *      - adjacent to "kcal" / "cal" / "calorie" (calorie burn, not steps)
- *      - equal to the current year (header dates)
- *      - below 100 (too small to be a real day count)
- *      - above 100000 (sanity cap; nobody did a million steps)
- *  - Among the survivors, pick the LARGEST — on every fitness-tracker
- *    screenshot the step count is rendered as the biggest number on screen.
+ * Problem with Math.max-based extraction: fitness screens always contain
+ * multiple numbers — step goal (often bigger), calories, distance, clock,
+ * heart rate, distance decimals. Picking "largest number" routinely picks
+ * the goal (e.g. 15,000) or kcal (e.g. 2,397) instead of actual steps.
+ *
+ * Approach (TW-022):
+ *  1. Let Tesseract read FULL text (no digit-only whitelist) so context
+ *     words like "steps", "kcal", "goal", "km" survive to drive scoring.
+ *  2. Score every number candidate using surrounding tokens:
+ *       + near "step"/"steps"                     +100
+ *       + visually large (bbox height)            + height_in_px
+ *       - near kcal/cal/calorie/km/bpm/%/min      -200
+ *       - near goal/target or preceded by "/"     -150
+ *       - matches clock HH:MM / H:MM              -300
+ *       - contains decimal point (distance)       -250
+ *  3. Pick the highest scoring candidate in range [100, 100000].
+ *
+ * Fallback when bbox data is unavailable (plain text tests): identical
+ * scoring using regex-based neighbour tokens in a text window.
  */
 
 const MIN_STEPS = 100;
 const MAX_STEPS = 100000;
 
+const NEG_UNIT = /\b(k?cal|calorie|kilocalorie|km|m|bpm|min|mins|minute|minutes|%)\b/i;
+const NEG_GOAL = /\b(goal|target|daily\s*goal)\b/i;
+const POS_STEP = /\b(steps?)\b/i;
+const CLOCK = /^(?:[01]?\d|2[0-3]):[0-5]\d$/;
+
+interface Candidate {
+  value: number;
+  raw: string;
+  score: number;
+}
+
+function scoreFromText(
+  rawText: string,
+  idx: number,
+  raw: string,
+  value: number,
+): number {
+  let score = 0;
+
+  // Decimal → distance, not steps.
+  if (/[.,]\d{1,2}\s*(km|m)?$/i.test(raw) && /\./.test(raw)) score -= 250;
+
+  // Context window: 24 chars before and 16 after the number.
+  const before = rawText.slice(Math.max(0, idx - 24), idx);
+  const after = rawText.slice(idx + raw.length, idx + raw.length + 20);
+
+  if (POS_STEP.test(after) || POS_STEP.test(before)) score += 100;
+  if (NEG_UNIT.test(after)) score -= 200;
+  if (NEG_GOAL.test(before) || NEG_GOAL.test(after)) score -= 150;
+
+  // "/15,000 steps" → goal.
+  if (/\/\s*$/.test(before)) score -= 150;
+
+  // Clock times in original text (e.g. " 8:47 ").
+  const surrounding = rawText.slice(Math.max(0, idx - 2), idx + raw.length + 3);
+  if (/\b\d{1,2}:\d{2}\b/.test(surrounding)) {
+    // Only penalise if THIS number is part of the clock match.
+    const clockMatch = surrounding.match(/\b(\d{1,2}:\d{2})\b/);
+    if (clockMatch && clockMatch[1].includes(value.toString())) score -= 300;
+  }
+
+  // Favour middle-of-range step counts slightly.
+  if (value >= 1000 && value <= 30000) score += 10;
+
+  return score;
+}
+
+/**
+ * Text-only extraction (used by unit tests and as fallback).
+ */
 export function extractStepCount(rawText: string): number | null {
   if (!rawText) return null;
 
-  const text = rawText.replace(/\s+/g, " ").toLowerCase();
+  const text = rawText.replace(/\s+/g, " ");
   const currentYear = new Date().getFullYear();
 
-  // Matches "8,432", "12 345", "1,20,453", "9876".
-  // The lookbehind ensures we start at a true boundary (not mid-group), so
-  // Indian lakh groupings like "1,20,453" match as ONE token instead of
-  // splitting into "20,453" + "453".
-  const numberPattern = /(?<![\d,])\d{1,3}(?:[,\s]\d{2,3})+|(?<!\d)\d{3,6}(?!\d)/g;
+  // Matches "8,432", "12 345", "1,20,453", "9876", also "4.34" (so we can reject it).
+  const numberPattern =
+    /(?<![\d,.])\d{1,3}(?:[,\s]\d{2,3})+(?!\d)|(?<![\d.])\d+\.\d+(?!\d)|(?<!\d)\d{3,6}(?!\d)/g;
 
-  const candidates: number[] = [];
+  const candidates: Candidate[] = [];
 
   for (const match of text.matchAll(numberPattern)) {
     const raw = match[0];
     const idx = match.index ?? 0;
 
-    // Look at a small window after the number for unit context.
-    const tail = text.slice(idx + raw.length, idx + raw.length + 16);
-    if (/\s*(k?cal|calorie|kilocalorie)/i.test(tail)) continue;
+    // Reject decimals outright — distances, not steps.
+    if (raw.includes(".")) continue;
 
     const normalized = parseInt(raw.replace(/[,\s]/g, ""), 10);
     if (!Number.isFinite(normalized)) continue;
     if (normalized === currentYear) continue;
     if (normalized < MIN_STEPS || normalized > MAX_STEPS) continue;
 
-    candidates.push(normalized);
+    const score = scoreFromText(text, idx, raw, normalized);
+
+    // Hard-reject clocks: if immediately preceded or followed by ":dd" pattern.
+    const tail = text.slice(idx + raw.length, idx + raw.length + 3);
+    const head = text.slice(Math.max(0, idx - 3), idx);
+    if (/^:\d{2}/.test(tail) || /\d{1,2}:$/.test(head)) continue;
+
+    // Hard-reject kcal/cal/calorie adjacency (preserves prior behaviour).
+    if (/\s*(k?cal|calorie|kilocalorie)\b/i.test(tail + text.slice(idx + raw.length + 3, idx + raw.length + 16))) {
+      continue;
+    }
+
+    candidates.push({ value: normalized, raw, score });
   }
 
   if (candidates.length === 0) return null;
-  return Math.max(...candidates);
+
+  candidates.sort((a, b) => b.score - a.score || b.value - a.value);
+  return candidates[0].value;
+}
+
+/**
+ * Bbox-aware extraction. Uses Tesseract word-level output so the visually
+ * largest number on the screen gets a tiebreaker boost — on every fitness
+ * app the step count is rendered as the biggest figure.
+ */
+interface WordLike {
+  text: string;
+  bbox: { x0: number; y0: number; x1: number; y1: number };
+}
+
+function extractFromWords(words: WordLike[]): number | null {
+  if (!words || words.length === 0) return null;
+
+  const currentYear = new Date().getFullYear();
+  const candidates: Candidate[] = [];
+
+  for (let i = 0; i < words.length; i++) {
+    const w = words[i];
+    const t = (w.text || "").trim();
+    if (!t) continue;
+
+    // Skip decimals (distances) and clocks.
+    if (/\d\.\d/.test(t)) continue;
+    if (CLOCK.test(t)) continue;
+
+    const digitMatch = t.match(/^[\d,\s]+$/);
+    if (!digitMatch) continue;
+
+    const normalized = parseInt(t.replace(/[,\s]/g, ""), 10);
+    if (!Number.isFinite(normalized)) continue;
+    if (normalized === currentYear) continue;
+    if (normalized < MIN_STEPS || normalized > MAX_STEPS) continue;
+
+    const height = Math.max(1, w.bbox.y1 - w.bbox.y0);
+
+    // Collect neighbour words (prev 3 + next 3 + same row).
+    const neighbourText = [
+      words[i - 3]?.text,
+      words[i - 2]?.text,
+      words[i - 1]?.text,
+      words[i + 1]?.text,
+      words[i + 2]?.text,
+      words[i + 3]?.text,
+      ...words.filter(
+        (ow, oi) =>
+          oi !== i &&
+          Math.abs((ow.bbox.y0 + ow.bbox.y1) / 2 - (w.bbox.y0 + w.bbox.y1) / 2) <
+            height,
+      ).map((ow) => ow.text),
+    ]
+      .filter(Boolean)
+      .join(" ");
+
+    let score = height; // visually biggest wins ties
+
+    if (POS_STEP.test(neighbourText)) score += 100;
+    if (NEG_UNIT.test(neighbourText)) score -= 200;
+    if (NEG_GOAL.test(neighbourText)) score -= 150;
+
+    // If the previous word is "/" this is a goal denominator.
+    const prev = words[i - 1]?.text?.trim();
+    if (prev === "/") score -= 150;
+
+    // Hard reject kcal adjacency.
+    const next = words[i + 1]?.text?.trim() || "";
+    if (/^(k?cal|calorie|kilocalorie)/i.test(next)) continue;
+
+    candidates.push({ value: normalized, raw: t, score });
+  }
+
+  if (candidates.length === 0) return null;
+  candidates.sort((a, b) => b.score - a.score || b.value - a.value);
+  return candidates[0].value;
 }
 
 /**
@@ -57,9 +201,26 @@ export function extractStepCount(rawText: string): number | null {
  */
 export async function scanStepCountFromImage(file: File): Promise<number | null> {
   const { recognize } = await import("tesseract.js");
-  const { data } = await recognize(file, "eng", {
-    // @ts-expect-error — tessedit options are runtime-only
-    tessedit_char_whitelist: "0123456789,. ",
-  });
+  // NOTE: no char whitelist — we NEED context words (steps/kcal/goal/km).
+  const { data } = await recognize(file, "eng");
+
+  // Collect word-level output with bboxes if available.
+  const words: WordLike[] = [];
+  const blocks = (data as unknown as { blocks?: Array<{ paragraphs?: Array<{ lines?: Array<{ words?: WordLike[] }> }> }> }).blocks;
+  if (blocks) {
+    for (const b of blocks) {
+      for (const p of b.paragraphs ?? []) {
+        for (const l of p.lines ?? []) {
+          for (const w of l.words ?? []) {
+            if (w?.text && w.bbox) words.push({ text: w.text, bbox: w.bbox });
+          }
+        }
+      }
+    }
+  }
+
+  const fromWords = words.length > 0 ? extractFromWords(words) : null;
+  if (fromWords != null) return fromWords;
+
   return extractStepCount(data?.text ?? "");
 }
