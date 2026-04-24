@@ -29,6 +29,16 @@ const NEG_UNIT = /\b(k?cal|calorie|kilocalorie|km|m|bpm|min|mins|minute|minutes|
 const NEG_GOAL = /\b(goal|target|daily\s*goal|of)\b/i;
 const POS_STEP = /\b(steps?)\b/i;
 const CLOCK = /^(?:[01]?\d|2[0-3]):[0-5]\d$/;
+const DIGIT_WORD = /^[\d,\s]+$/;
+
+function stitchBrokenThousandsGroups(rawText: string): string {
+  return rawText
+    .replace(/\b(\d{1,3},\d{1,2})\s+(\d{1,2})\b/g, (match, left, right) => {
+      const digitsAfterComma = (left.split(",").pop() ?? "").length;
+      return digitsAfterComma + right.length === 3 ? `${left}${right}` : match;
+    })
+    .replace(/\b(\d{1,3},)\s+(\d{1,3})\b/g, (_match, left, right) => `${left}${right}`);
+}
 
 interface Candidate {
   value: number;
@@ -81,7 +91,7 @@ function scoreFromText(
 export function extractStepCount(rawText: string): number | null {
   if (!rawText) return null;
 
-  const text = rawText.replace(/\s+/g, " ");
+  const text = stitchBrokenThousandsGroups(rawText).replace(/\s+/g, " ");
   const currentYear = new Date().getFullYear();
 
   // Matches "8,432", "12 345", "1,20,453", "9876", also "4.34" (so we can reject it).
@@ -133,18 +143,111 @@ interface WordLike {
   bbox: { x0: number; y0: number; x1: number; y1: number };
 }
 
+function bboxHeight(bbox: WordLike["bbox"]): number {
+  return Math.max(1, bbox.y1 - bbox.y0);
+}
+
+function bboxCenterY(bbox: WordLike["bbox"]): number {
+  return (bbox.y0 + bbox.y1) / 2;
+}
+
+function isDigitWord(text: string): boolean {
+  const trimmed = (text || "").trim();
+  return Boolean(trimmed) && DIGIT_WORD.test(trimmed) && !CLOCK.test(trimmed) && !/\d\.\d/.test(trimmed);
+}
+
+function canMergeDigitFragments(
+  currentText: string,
+  currentBbox: WordLike["bbox"],
+  nextWord: WordLike,
+): boolean {
+  const compactCurrent = currentText.replace(/\s+/g, "");
+  const compactNext = nextWord.text.trim().replace(/\s+/g, "");
+
+  if (!isDigitWord(compactCurrent) || !isDigitWord(compactNext)) return false;
+  if (!/^\d{1,3},\d{0,2}$/.test(compactCurrent) && !/^\d{1,3},$/.test(compactCurrent)) {
+    return false;
+  }
+
+  const nextDigits = compactNext.replace(/,/g, "");
+  if (nextDigits.length === 0 || nextDigits.length > 2) return false;
+
+  const currentHeight = bboxHeight(currentBbox);
+  const nextHeight = bboxHeight(nextWord.bbox);
+  const gap = nextWord.bbox.x0 - currentBbox.x1;
+
+  if (gap < 0 || gap > Math.max(24, Math.min(currentHeight, nextHeight) * 0.18)) return false;
+  if (Math.abs(bboxCenterY(currentBbox) - bboxCenterY(nextWord.bbox)) > Math.max(currentHeight, nextHeight) * 0.35) {
+    return false;
+  }
+
+  const mergedDigitsLength = `${compactCurrent}${compactNext}`.replace(/,/g, "").length;
+  return mergedDigitsLength >= 4 && mergedDigitsLength <= 6;
+}
+
+function buildBboxCandidate(
+  words: WordLike[],
+  startIndex: number,
+  endIndex: number,
+  rawText: string,
+  bbox: WordLike["bbox"],
+  maxDigitHeight: number,
+): Candidate | null {
+  const trimmed = (rawText || "").trim();
+  if (!isDigitWord(trimmed)) return null;
+
+  const currentYear = new Date().getFullYear();
+  const normalized = parseInt(trimmed.replace(/[,\s]/g, ""), 10);
+  if (!Number.isFinite(normalized)) return null;
+  if (normalized === currentYear) return null;
+  if (normalized < MIN_STEPS || normalized > MAX_STEPS) return null;
+
+  const height = bboxHeight(bbox);
+  const centerY = bboxCenterY(bbox);
+  const neighbourText = [
+    ...words.slice(Math.max(0, startIndex - 3), startIndex).map((word) => word.text),
+    ...words.slice(endIndex + 1, endIndex + 4).map((word) => word.text),
+    ...words
+      .filter(
+        (word, index) =>
+          (index < startIndex || index > endIndex) && Math.abs(bboxCenterY(word.bbox) - centerY) < height,
+      )
+      .map((word) => word.text),
+  ]
+    .filter(Boolean)
+    .join(" ");
+
+  let score = height;
+
+  if (maxDigitHeight > 0 && height >= maxDigitHeight * 0.9) score += 200;
+  if (maxDigitHeight > 0 && height < maxDigitHeight * 0.6) score -= 150;
+
+  if (POS_STEP.test(neighbourText)) score += 100;
+  if (NEG_UNIT.test(neighbourText)) score -= 200;
+  if (NEG_GOAL.test(neighbourText)) score -= 150;
+
+  const prev = words[startIndex - 1]?.text?.trim();
+  if (prev === "/") score -= 150;
+  if (prev && /\/$/.test(prev)) score -= 200;
+  if (prev && /^of$/i.test(prev)) score -= 200;
+
+  const next = words[endIndex + 1]?.text?.trim() || "";
+  if (/^(k?cal|calorie|kilocalorie)/i.test(next)) return null;
+
+  return { value: normalized, raw: trimmed, score, source: "bbox" };
+}
+
 function extractFromWords(words: WordLike[]): number | null {
   if (!words || words.length === 0) return null;
 
-  const currentYear = new Date().getFullYear();
   const candidates: Candidate[] = [];
 
   // Find the visually largest digit-word height to use as a "hero number" anchor.
   let maxDigitHeight = 0;
   for (const w of words) {
     const t = (w.text || "").trim();
-    if (/^[\d,\s]+$/.test(t) && !CLOCK.test(t)) {
-      const h = Math.max(1, w.bbox.y1 - w.bbox.y0);
+    if (isDigitWord(t)) {
+      const h = bboxHeight(w.bbox);
       if (h > maxDigitHeight) maxDigitHeight = h;
     }
   }
@@ -154,64 +257,26 @@ function extractFromWords(words: WordLike[]): number | null {
     const t = (w.text || "").trim();
     if (!t) continue;
 
-    // Skip decimals (distances) and clocks.
-    if (/\d\.\d/.test(t)) continue;
-    if (CLOCK.test(t)) continue;
+    if (!isDigitWord(t)) continue;
 
-    const digitMatch = t.match(/^[\d,\s]+$/);
-    if (!digitMatch) continue;
+    let raw = t;
+    let bbox = { ...w.bbox };
+    let endIndex = i;
+    while (endIndex + 1 < words.length && canMergeDigitFragments(raw, bbox, words[endIndex + 1])) {
+      const nextWord = words[endIndex + 1];
+      raw = `${raw}${nextWord.text.trim()}`;
+      bbox = {
+        x0: Math.min(bbox.x0, nextWord.bbox.x0),
+        y0: Math.min(bbox.y0, nextWord.bbox.y0),
+        x1: Math.max(bbox.x1, nextWord.bbox.x1),
+        y1: Math.max(bbox.y1, nextWord.bbox.y1),
+      };
+      endIndex += 1;
+    }
 
-    const normalized = parseInt(t.replace(/[,\s]/g, ""), 10);
-    if (!Number.isFinite(normalized)) continue;
-    if (normalized === currentYear) continue;
-    if (normalized < MIN_STEPS || normalized > MAX_STEPS) continue;
-
-    const height = Math.max(1, w.bbox.y1 - w.bbox.y0);
-
-    // Collect neighbour words (prev 3 + next 3 + same row).
-    const neighbourText = [
-      words[i - 3]?.text,
-      words[i - 2]?.text,
-      words[i - 1]?.text,
-      words[i + 1]?.text,
-      words[i + 2]?.text,
-      words[i + 3]?.text,
-      ...words.filter(
-        (ow, oi) =>
-          oi !== i &&
-          Math.abs((ow.bbox.y0 + ow.bbox.y1) / 2 - (w.bbox.y0 + w.bbox.y1) / 2) <
-            height,
-      ).map((ow) => ow.text),
-    ]
-      .filter(Boolean)
-      .join(" ");
-
-    let score = height; // visually biggest wins ties
-
-    // Hero-number bonus: by far the tallest digit on screen is almost always
-    // the live step count on fitness apps. Goals are rendered smaller.
-    if (maxDigitHeight > 0 && height >= maxDigitHeight * 0.9) score += 200;
-    // Penalise small numbers when a much larger digit exists elsewhere — these
-    // are almost certainly secondary stats (kcal, distance, goal).
-    if (maxDigitHeight > 0 && height < maxDigitHeight * 0.6) score -= 150;
-
-    if (POS_STEP.test(neighbourText)) score += 100;
-    if (NEG_UNIT.test(neighbourText)) score -= 200;
-    if (NEG_GOAL.test(neighbourText)) score -= 150;
-
-    // If the previous word is "/" this is a goal denominator.
-    const prev = words[i - 1]?.text?.trim();
-    if (prev === "/") score -= 150;
-    // "6,729 / 15,000" — the value AFTER the slash is the goal.
-    if (prev && /\/$/.test(prev)) score -= 200;
-    // "of 15,000" — goal phrasing.
-    if (prev && /^of$/i.test(prev)) score -= 200;
-
-    // Hard reject kcal adjacency.
-    const next = words[i + 1]?.text?.trim() || "";
-    if (/^(k?cal|calorie|kilocalorie)/i.test(next)) continue;
-
-    candidates.push({ value: normalized, raw: t, score, source: "bbox" });
+    const candidate = buildBboxCandidate(words, i, endIndex, raw, bbox, maxDigitHeight);
+    if (candidate) candidates.push(candidate);
+    i = endIndex;
   }
 
   if (candidates.length === 0) return null;
@@ -267,13 +332,15 @@ export async function scanStepCountFromImage(file: File): Promise<number | null>
     });
   }
 
+  const fromText = extractStepCount(data?.text ?? "");
   const fromWords = words.length > 0 ? extractFromWords(words) : null;
-  if (fromWords != null) {
+  if (fromWords != null && (fromText == null || fromWords >= fromText)) {
     if (typeof console !== "undefined") console.info("[stepOcr] result via bbox:", fromWords);
     return fromWords;
   }
-
-  const fromText = extractStepCount(data?.text ?? "");
-  if (typeof console !== "undefined") console.info("[stepOcr] result via text fallback:", fromText);
-  return fromText;
+  if (fromText != null) {
+    if (typeof console !== "undefined") console.info("[stepOcr] result via text fallback:", fromText);
+    return fromText;
+  }
+  return fromWords;
 }

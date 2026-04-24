@@ -9,7 +9,7 @@
 
 ## TW-001: Razorpay Payment Button Embedded Script Freezes Mobile Browsers
 - **Severity:** Critical
-- **Status:** ✅ Fixed
+- **Status:** ✅ Fixed (reopened once for Apple Watch photo OCR fragmentation, then re-fixed)
 - **Date Found:** 2026-04-05
 - **Symptom:** After clicking "Proceed to Pay", the modal and entire app froze on Android. Back button, typing, and scrolling all became unresponsive.
 - **Root Cause:** Injecting Razorpay's `payment-button.js` script created an iframe overlay that captured all touch/click events. The Radix Dialog's focus trap (`onInteractOutside`, `onEscapeKeyDown`) conflicted with the iframe.
@@ -352,3 +352,4 @@
   - No bundle impact — `tesseract.js` is still lazy-imported inside `scanStepCountFromImage` only ✅
   - Manual input path unchanged; OCR still never writes to DB directly — user must confirm and Save ✅
   - No DB / RLS / edge function changes ✅
+  - Apple Watch photo OCR now stitches fragmented thousands groups (e.g. `3,92` + `5` → `3,925`) before scoring, preventing false low values or fallback misses ✅
