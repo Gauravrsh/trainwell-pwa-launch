@@ -15,6 +15,7 @@ import { useSubscriptionAccess } from '@/hooks/useSubscriptionAccess';
 import { SubscriptionEnforcementBanner } from '@/components/subscription/SubscriptionEnforcementBanner';
 import { PlanSelectionModal } from '@/components/subscription/PlanSelectionModal';
 import { useTrainerSubscription } from '@/hooks/useTrainerSubscription';
+import { useSelectedClient } from '@/hooks/useSelectedClient';
 interface Client {
   id: string;
   unique_id: string;
@@ -28,6 +29,8 @@ export function PlansList() {
   const [showBillingModal, setShowBillingModal] = useState(false);
   const [selectedPlanForBilling, setSelectedPlanForBilling] = useState<TrainingPlanWithClient | null>(null);
   const [activeTab, setActiveTab] = useState('active');
+  // Item 5: cross-page client default — pre-fills the new-plan client picker.
+  const { selectedClientId } = useSelectedClient();
 
   // Subscription access for trainers
   const { isReadOnly, reason, loading: subscriptionLoading, isFree, freeClientsRemaining, canInviteClients } = useSubscriptionAccess();
@@ -242,6 +245,7 @@ export function PlansList() {
         clients={clients}
         onSubmit={handleCreatePlan}
         isSubmitting={isCreating}
+        preselectedClientId={selectedClientId || undefined}
       />
 
       {/* Plan Selection Modal */}
