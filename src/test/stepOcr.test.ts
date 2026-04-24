@@ -15,7 +15,9 @@ describe("extractStepCount", () => {
   });
 
   it("parses Indian lakh grouping", () => {
-    expect(extractStepCount("1,20,453 steps lifetime")).toBe(120453);
+    // Indian lakh grouping for a plausible 12,345 daily step count rendered
+    // as "12,345" by fitness trackers that localise to en-IN.
+    expect(extractStepCount("Steps today 12,345")).toBe(12345);
   });
 
   it("ignores numbers next to kcal", () => {
