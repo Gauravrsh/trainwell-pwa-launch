@@ -265,9 +265,11 @@ function buildBboxCandidate(
 
   const height = bboxHeight(bbox);
   const centerY = bboxCenterY(bbox);
+  const beforeWords = words.slice(Math.max(0, startIndex - 4), startIndex).map((word) => word.text);
+  const afterWords = words.slice(endIndex + 1, endIndex + 5).map((word) => word.text);
   const neighbourText = [
-    ...words.slice(Math.max(0, startIndex - 3), startIndex).map((word) => word.text),
-    ...words.slice(endIndex + 1, endIndex + 4).map((word) => word.text),
+    ...beforeWords,
+    ...afterWords,
     ...words
       .filter(
         (word, index) =>
@@ -277,25 +279,60 @@ function buildBboxCandidate(
   ]
     .filter(Boolean)
     .join(" ");
+  const afterText = afterWords.filter(Boolean).join(" ");
 
   let score = height;
+  let positiveSignals = 0;
+  let negativeSignals = 0;
 
-  if (maxDigitHeight > 0 && height >= maxDigitHeight * 0.9) score += 200;
-  if (maxDigitHeight > 0 && height < maxDigitHeight * 0.6) score -= 150;
+  if (maxDigitHeight > 0 && height >= maxDigitHeight * 0.9) {
+    score += 200;
+    positiveSignals += 1;
+  }
+  if (maxDigitHeight > 0 && height < maxDigitHeight * 0.6) {
+    score -= 150;
+    negativeSignals += 1;
+  }
 
-  if (POS_STEP.test(neighbourText)) score += 100;
-  if (NEG_UNIT.test(neighbourText)) score -= 200;
-  if (NEG_GOAL.test(neighbourText)) score -= 150;
+  if (POS_STEP.test(neighbourText)) {
+    score += 100;
+    positiveSignals += 1;
+  }
+  if (NEG_UNIT.test(neighbourText)) {
+    score -= 200;
+    negativeSignals += 1;
+  }
+  if (NEG_ACTIVITY.test(neighbourText)) {
+    score -= 220;
+    negativeSignals += 1;
+  }
+  if (NEG_GOAL.test(neighbourText)) {
+    score -= 150;
+    negativeSignals += 1;
+  }
 
   const prev = words[startIndex - 1]?.text?.trim();
-  if (prev === "/") score -= 150;
-  if (prev && /\/$/.test(prev)) score -= 200;
-  if (prev && /^of$/i.test(prev)) score -= 200;
-
   const next = words[endIndex + 1]?.text?.trim() || "";
+  if ((next === "/" || /\/$/.test(next)) && /\d[\d,\s]{0,12}\s+steps?\b/i.test(afterText)) {
+    score += 180;
+    positiveSignals += 2;
+  }
+  if (prev === "/") {
+    score -= 150;
+    negativeSignals += 1;
+  }
+  if (prev && /\/$/.test(prev)) {
+    score -= 200;
+    negativeSignals += 1;
+  }
+  if (prev && /^of$/i.test(prev)) {
+    score -= 200;
+    negativeSignals += 1;
+  }
+
   if (/^(k?cal|calorie|kilocalorie)/i.test(next)) return null;
 
-  return { value: normalized, raw: trimmed, score, source: "bbox" };
+  return { value: normalized, raw: trimmed, score, source: "bbox", positiveSignals, negativeSignals };
 }
 
 function extractFromWords(words: WordLike[]): number | null {
@@ -341,11 +378,13 @@ function extractFromWords(words: WordLike[]): number | null {
   }
 
   if (candidates.length === 0) return null;
-  candidates.sort((a, b) => b.score - a.score || b.value - a.value);
   if (typeof console !== "undefined") {
-    console.info("[stepOcr] bbox candidates", candidates.slice(0, 5));
+    console.info("[stepOcr] bbox candidates", candidates.slice(0, 5).map((candidate) => ({
+      ...candidate,
+      rank: candidateRank(candidate),
+    })));
   }
-  return candidates[0].value;
+  return pickBestCandidate(...candidates)?.value ?? null;
 }
 
 /**
@@ -357,7 +396,7 @@ export async function scanStepCountFromImage(file: File): Promise<number | null>
   // NOTE: no char whitelist — we NEED context words (steps/kcal/goal/km).
   // Tesseract v5+ disables `blocks` (word bboxes) by default. Must use a
   // worker and pass an explicit output spec to get word-level data.
-  const worker = await createWorker("eng");
+  const worker = await createWorker("eng", 1, { cacheMethod: "refresh" });
   let data: { text?: string; blocks?: unknown };
   try {
     const result = await worker.recognize(
@@ -393,15 +432,16 @@ export async function scanStepCountFromImage(file: File): Promise<number | null>
     });
   }
 
-  const fromText = extractStepCount(data?.text ?? "");
-  const fromWords = words.length > 0 ? extractFromWords(words) : null;
-  if (fromWords != null && (fromText == null || fromWords >= fromText)) {
-    if (typeof console !== "undefined") console.info("[stepOcr] result via bbox:", fromWords);
-    return fromWords;
+  const fromTextValue = extractStepCount(data?.text ?? "");
+  const fromWordsValue = words.length > 0 ? extractFromWords(words) : null;
+  const finalValue = pickBestCandidate(
+    fromWordsValue != null ? { value: fromWordsValue, raw: String(fromWordsValue), score: 120, source: "bbox", positiveSignals: 1, negativeSignals: 0 } : null,
+    fromTextValue != null ? { value: fromTextValue, raw: String(fromTextValue), score: 80, source: "text", positiveSignals: 1, negativeSignals: 0 } : null,
+  )?.value ?? null;
+
+  if (typeof console !== "undefined") {
+    console.info("[stepOcr] result summary", { fromWordsValue, fromTextValue, finalValue });
   }
-  if (fromText != null) {
-    if (typeof console !== "undefined") console.info("[stepOcr] result via text fallback:", fromText);
-    return fromText;
-  }
-  return fromWords;
+
+  return finalValue;
 }
