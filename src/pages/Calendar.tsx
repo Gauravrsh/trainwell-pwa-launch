@@ -806,6 +806,8 @@ const Calendar = () => {
     fat: number;
     pendingAnalysis?: boolean;
     matchedDictionaryId?: string | null;
+    quantityValue?: number | null;
+    quantityUnit?: string | null;
   }) => {
     if (!selectedDate) return;
     const clientId = isTrainer ? selectedClientId : profile?.id;
@@ -825,6 +827,8 @@ const Calendar = () => {
           fat: data.fat,
           pending_analysis: data.pendingAnalysis ?? false,
           matched_dictionary_id: data.matchedDictionaryId ?? null,
+          quantity_value: data.quantityValue ?? null,
+          quantity_unit: data.quantityUnit ?? null,
         });
 
       if (error) throw error;
