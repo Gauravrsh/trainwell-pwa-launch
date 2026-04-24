@@ -133,8 +133,8 @@ export function CreatePlanModal({
 
         <form onSubmit={handleSubmit} className="space-y-5">
           {trainerProfileIncomplete && (
-            <div className="flex items-start gap-2 p-3 rounded-xl bg-amber-500/10 border border-amber-500/30">
-              <AlertTriangle className="w-4 h-4 text-amber-500 flex-shrink-0 mt-0.5" />
+            <div className="flex items-start gap-2 p-3 rounded-xl bg-primary/10 border border-primary/30">
+              <AlertTriangle className="w-4 h-4 text-primary flex-shrink-0 mt-0.5" />
               <div className="flex-1 text-xs">
                 <p className="text-foreground font-medium">Your client doesn't know who you are yet.</p>
                 <p className="text-muted-foreground mt-0.5">
@@ -146,7 +146,7 @@ export function CreatePlanModal({
                     onOpenChange(false);
                     navigate('/profile');
                   }}
-                  className="mt-1.5 text-amber-500 font-medium hover:underline"
+                  className="mt-1.5 text-primary font-medium hover:underline"
                 >
                   Update Trainer Profile →
                 </button>
