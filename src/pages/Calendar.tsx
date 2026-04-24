@@ -9,6 +9,9 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sh
 import { Button } from '@/components/ui/button';
 import { ClientWorkoutLogModal } from '@/components/modals/ClientWorkoutLogModal';
 import { TrainerWorkoutLogModal } from '@/components/modals/TrainerWorkoutLogModal';
+import type { TrainerPlannedExercise, ClientLoggedExercise } from '@/components/modals/ClientWorkoutLogModal';
+import type { PlannedExercisePayload } from '@/components/modals/TrainerWorkoutLogModal';
+import { MetricType, DEFAULT_METRIC_TYPE, isActualLogged, isRecommended } from '@/types/exerciseMetrics';
 import { FoodLogModal } from '@/components/modals/FoodLogModal';
 import { StepLogModal } from '@/components/modals/StepLogModal';
 import { ClientFilter } from '@/components/calendar/ClientFilter';
@@ -32,12 +35,21 @@ interface Exercise {
   id: string;
   workout_id: string;
   exercise_name: string;
+  metric_type: string | null;
   recommended_sets: number | null;
   recommended_reps: number | null;
   recommended_weight: number | null;
+  recommended_duration_seconds: number | null;
+  recommended_distance_meters: number | null;
+  recommended_rounds: number | null;
+  recommended_emom_minutes: number | null;
   actual_sets: number | null;
   actual_reps: number | null;
   actual_weight: number | null;
+  actual_duration_seconds: number | null;
+  actual_distance_meters: number | null;
+  actual_rounds: number | null;
+  actual_emom_minutes: number | null;
 }
 
 interface Client {
