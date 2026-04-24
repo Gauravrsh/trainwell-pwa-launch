@@ -1,3 +1,4 @@
+import { forwardRef } from 'react';
 import { motion } from 'framer-motion';
 import { X, Check } from 'lucide-react';
 
@@ -15,9 +16,9 @@ const rows = [
   { label: 'Client retention', whatsapp: '3–6 months average', vecto: '18+ months with results' },
 ];
 
-export default function ComparisonTable() {
+const ComparisonTable = forwardRef<HTMLElement>((_, ref) => {
   return (
-    <section className="px-4 py-16 sm:py-24">
+    <section ref={ref} className="px-4 py-16 sm:py-24">
       <div className="mx-auto max-w-3xl">
         <motion.h2
           className="text-center text-2xl font-extrabold sm:text-3xl"
@@ -66,4 +67,6 @@ export default function ComparisonTable() {
       </div>
     </section>
   );
-}
+});
+ComparisonTable.displayName = 'ComparisonTable';
+export default ComparisonTable;
