@@ -294,3 +294,21 @@
   - TW-011 (invite context preservation through ProfileSetup) preserved — `inviteTrainerCode` is still consumed at ProfileSetup completion only ✅
   - TW-012 (refetch profile before navigate) preserved — auto-link calls `refetchProfile` before redirect ✅
   - TW-014 / TW-015 history hygiene preserved — guard uses `<Navigate replace />`, no stack pollution ✅
+
+---
+
+## TW-021: Steps OCR Assist — Fitness-Tracker Screenshot Pre-Fills Step Count
+- **Severity:** Medium (feature-add, not a regression)
+- **Status:** ✅ Shipped
+- **Date Found:** 2026-04-24
+- **Symptom / Need:** Clients were typing step counts from their phone's fitness tracker manually, which is friction and error-prone. Wanted a one-tap way to import the count without adding an API key or server dependency.
+- **Approach:** Added a "Scan screenshot" action inside `StepLogModal`. When tapped, the user picks a screenshot from their camera roll; Tesseract.js runs OCR entirely client-side (no API key, no data leaving the device), extracts candidate numbers, and pre-fills the step count field. **User must still tap Save** — OCR never writes to the DB directly, matching the "manual tracking" DNA.
+- **Extraction Heuristic (`src/lib/stepOcr.ts → extractStepCount`):** Matches comma-grouped, space-grouped, and Indian lakh-grouped numbers. Rejects anything adjacent to "kcal" / "calorie" (calorie burn), equal to the current year (date headers), below 100, or above 100,000. Picks the largest surviving candidate, since on every fitness-tracker screenshot the step count is rendered as the biggest number on screen.
+- **Files Changed:** `src/components/modals/StepLogModal.tsx` (new Scan button + notice), `src/lib/stepOcr.ts` (new helper), `src/test/stepOcr.test.ts` (9 unit tests), `package.json` (`tesseract.js` dependency, lazy-loaded).
+- **Detected via:** Planned Phase 5 enhancement (Item 3 of 8-item roadmap).
+- **Prevention / Regression Guards:**
+  - `tesseract.js` is dynamically imported inside `scanStepCountFromImage`, so it never ships in the initial bundle and public landing/auth stay as fast as before ✅
+  - Manual input path unchanged — existing `stepCount` state, `onSave` callback, and validation (`parseInt > 0`) all untouched ✅
+  - OCR failure (worker crash, bad image) falls back to the existing manual flow with a clear message; `logError('StepLogModal.ocr', err)` ✅
+  - No DB schema change; no new RLS policy; no new edge function ✅
+  - Unit tests cover the top confusion cases: calorie adjacency, current-year header, Indian comma grouping ✅
