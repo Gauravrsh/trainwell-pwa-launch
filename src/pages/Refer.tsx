@@ -58,7 +58,9 @@ export default function Refer() {
       try {
         await navigator.share({
           title: 'Join Vecto as a Trainer',
-          text: `Start your fitness training business with Vecto! Use my referral link to get 14 bonus days on your first subscription.`,
+          // TW-019: stale "14 bonus days" copy removed — referee benefit is
+          // now the free Smart tier (3 clients), not bonus days.
+          text: `Run your 1:1 coaching practice on Vecto. Start free on Smart (3 clients). Sign up with my link.`,
           url: referralLink,
         });
       } catch (error) {
@@ -74,7 +76,7 @@ export default function Refer() {
       try {
         await navigator.share({
           title: 'Join me on Vecto',
-          text: `Track your workouts, nutrition, and progress with me on Vecto! Use my invite link to get started.`,
+          text: `I'd like to track your training on Vecto. A platform that drives consistency and discipline, which gets us results. Sign up with this link — it auto-connects you to me. Logging starts day one.`,
           url: clientInviteLink,
         });
       } catch (error) {
