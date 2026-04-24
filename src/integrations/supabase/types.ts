@@ -157,39 +157,66 @@ export type Database = {
       }
       exercises: {
         Row: {
+          actual_distance_meters: number | null
+          actual_duration_seconds: number | null
+          actual_emom_minutes: number | null
           actual_reps: number | null
+          actual_rounds: number | null
           actual_sets: number | null
           actual_weight: number | null
           created_at: string | null
           exercise_name: string
           id: string
+          metric_type: string
+          recommended_distance_meters: number | null
+          recommended_duration_seconds: number | null
+          recommended_emom_minutes: number | null
           recommended_reps: number | null
+          recommended_rounds: number | null
           recommended_sets: number | null
           recommended_weight: number | null
           updated_at: string | null
           workout_id: string
         }
         Insert: {
+          actual_distance_meters?: number | null
+          actual_duration_seconds?: number | null
+          actual_emom_minutes?: number | null
           actual_reps?: number | null
+          actual_rounds?: number | null
           actual_sets?: number | null
           actual_weight?: number | null
           created_at?: string | null
           exercise_name: string
           id?: string
+          metric_type?: string
+          recommended_distance_meters?: number | null
+          recommended_duration_seconds?: number | null
+          recommended_emom_minutes?: number | null
           recommended_reps?: number | null
+          recommended_rounds?: number | null
           recommended_sets?: number | null
           recommended_weight?: number | null
           updated_at?: string | null
           workout_id: string
         }
         Update: {
+          actual_distance_meters?: number | null
+          actual_duration_seconds?: number | null
+          actual_emom_minutes?: number | null
           actual_reps?: number | null
+          actual_rounds?: number | null
           actual_sets?: number | null
           actual_weight?: number | null
           created_at?: string | null
           exercise_name?: string
           id?: string
+          metric_type?: string
+          recommended_distance_meters?: number | null
+          recommended_duration_seconds?: number | null
+          recommended_emom_minutes?: number | null
           recommended_reps?: number | null
+          recommended_rounds?: number | null
           recommended_sets?: number | null
           recommended_weight?: number | null
           updated_at?: string | null
@@ -328,6 +355,8 @@ export type Database = {
           meal_type: Database["public"]["Enums"]["meal_type"]
           pending_analysis: boolean
           protein: number | null
+          quantity_unit: string | null
+          quantity_value: number | null
           raw_text: string | null
           updated_at: string | null
         }
@@ -343,6 +372,8 @@ export type Database = {
           meal_type: Database["public"]["Enums"]["meal_type"]
           pending_analysis?: boolean
           protein?: number | null
+          quantity_unit?: string | null
+          quantity_value?: number | null
           raw_text?: string | null
           updated_at?: string | null
         }
@@ -358,6 +389,8 @@ export type Database = {
           meal_type?: Database["public"]["Enums"]["meal_type"]
           pending_analysis?: boolean
           protein?: number | null
+          quantity_unit?: string | null
+          quantity_value?: number | null
           raw_text?: string | null
           updated_at?: string | null
         }
