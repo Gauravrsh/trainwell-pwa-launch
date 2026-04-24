@@ -47,8 +47,8 @@ function scoreFromText(
   // Decimal → distance, not steps.
   if (/[.,]\d{1,2}\s*(km|m)?$/i.test(raw) && /\./.test(raw)) score -= 250;
 
-  // Context window: 24 chars before and 16 after the number.
-  const before = rawText.slice(Math.max(0, idx - 24), idx);
+  // Context window: 32 chars before and 20 after the number.
+  const before = rawText.slice(Math.max(0, idx - 32), idx);
   const after = rawText.slice(idx + raw.length, idx + raw.length + 20);
 
   if (POS_STEP.test(after) || POS_STEP.test(before)) score += 100;
