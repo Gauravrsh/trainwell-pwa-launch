@@ -13,6 +13,7 @@ import { logError } from '@/lib/errorUtils';
 import { FoodSessionSummary } from './FoodSessionSummary';
 import { FoodDiaryPanel } from './FoodDiaryPanel';
 import { format } from 'date-fns';
+import { FOOD_UNITS, FoodUnit, parseQuantity } from '@/lib/foodUnits';
 
 type MealType = 'breakfast' | 'lunch' | 'dinner' | 'snack';
 type TabValue = 'snap' | 'describe' | 'recent';
@@ -25,6 +26,10 @@ interface FoodItem {
   carbs: number;
   fat: number;
   qty: number;
+  // Structured quantity — derived from `quantity` on ingest, editable via UI,
+  // persisted into food_logs.quantity_value / quantity_unit on single-item saves.
+  quantityValue: number;
+  quantityUnit: FoodUnit;
   // Cache provenance — only set for Describe-tab cache hits
   source?: 'cache' | 'ai';
   matchedDictionaryId?: string;
@@ -66,6 +71,8 @@ interface FoodLogModalProps {
     fat: number;
     pendingAnalysis?: boolean;
     matchedDictionaryId?: string | null;
+    quantityValue?: number | null;
+    quantityUnit?: string | null;
   }) => void | Promise<void>;
   /** The profile id whose food we're logging — own id (client) or selectedClientId (trainer). */
   clientId?: string | null;
@@ -276,16 +283,21 @@ export const FoodLogModal = ({ open, onOpenChange, onSave, clientId = null, logg
       };
       const isCacheHit = result.source === 'cache';
       setItems(
-        (result.items || []).map((it) => ({
-          ...it,
-          qty: 1,
-          source: result.source,
-          matchedDictionaryId: isCacheHit ? result.matched_dictionary_id : undefined,
-          originalCalories: isCacheHit ? it.calories : undefined,
-          originalProtein: isCacheHit ? it.protein : undefined,
-          originalCarbs: isCacheHit ? it.carbs : undefined,
-          originalFat: isCacheHit ? it.fat : undefined,
-        }))
+        (result.items || []).map((it) => {
+          const parsed = parseQuantity(it.quantity);
+          return {
+            ...it,
+            qty: 1,
+            quantityValue: parsed.value,
+            quantityUnit: parsed.unit,
+            source: result.source,
+            matchedDictionaryId: isCacheHit ? result.matched_dictionary_id : undefined,
+            originalCalories: isCacheHit ? it.calories : undefined,
+            originalProtein: isCacheHit ? it.protein : undefined,
+            originalCarbs: isCacheHit ? it.carbs : undefined,
+            originalFat: isCacheHit ? it.fat : undefined,
+          };
+        })
       );
     } catch (err) {
       logError('FoodLogModal.analyzeFood', err);
@@ -300,6 +312,18 @@ export const FoodLogModal = ({ open, onOpenChange, onSave, clientId = null, logg
       prev.map((it, i) =>
         i === idx ? { ...it, qty: Math.max(0.25, round(it.qty + delta, 2)) } : it
       )
+    );
+  };
+
+  const updateItemQuantityValue = (idx: number, value: number) => {
+    setItems((prev) =>
+      prev.map((it, i) => (i === idx ? { ...it, quantityValue: value } : it))
+    );
+  };
+
+  const updateItemQuantityUnit = (idx: number, unit: FoodUnit) => {
+    setItems((prev) =>
+      prev.map((it, i) => (i === idx ? { ...it, quantityUnit: unit } : it))
     );
   };
 
@@ -351,6 +375,8 @@ export const FoodLogModal = ({ open, onOpenChange, onSave, clientId = null, logg
         carbs: m.carbs,
         fat: m.fat,
         qty: 1,
+        quantityValue: 1,
+        quantityUnit: 'serving',
       },
     ]);
     setFoodText(m.rawText || '');
@@ -389,6 +415,12 @@ export const FoodLogModal = ({ open, onOpenChange, onSave, clientId = null, logg
       return false;
     }
     const cachedItem = items.find((i) => i.source === 'cache' && i.matchedDictionaryId);
+    // Structured quantity is only persisted when the meal is a single item —
+    // multi-item meals aggregate into one food_logs row whose unit would be
+    // ambiguous.
+    const single = items.length === 1 ? items[0] : null;
+    const quantityValue = single ? round(single.quantityValue * single.qty, 2) : null;
+    const quantityUnit = single ? single.quantityUnit : null;
     await onSave({
       mealType,
       rawText: foodText || items.map((i) => `${i.name} (${i.qty}x ${i.quantity})`).join(', '),
@@ -398,6 +430,8 @@ export const FoodLogModal = ({ open, onOpenChange, onSave, clientId = null, logg
       fat: round(totals.fat, 1),
       pendingAnalysis: false,
       matchedDictionaryId: cachedItem?.matchedDictionaryId ?? null,
+      quantityValue,
+      quantityUnit,
     });
     setSessionMeals((prev) => [...prev, { mealType, ...totals }]);
     return true;
