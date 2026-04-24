@@ -341,27 +341,7 @@ const Calendar = () => {
           .eq('workout_id', workout.id);
         
         if (!error && exercises) {
-          const exerciseMap = new Map<string, { weight: number; reps: number }[]>();
-          exercises.forEach(ex => {
-            const name = ex.exercise_name.trim();
-            const isPlannedSet =
-              ex.recommended_sets !== null ||
-              ex.recommended_reps !== null ||
-              ex.recommended_weight !== null;
-
-            if (!name || !isPlannedSet) return;
-
-            const sets = exerciseMap.get(name) || [];
-            sets.push({
-              weight: ex.recommended_weight ?? 0,
-              reps: ex.recommended_reps ?? 0,
-            });
-            exerciseMap.set(name, sets);
-          });
-          
-          setClientTrainerExercises(
-            Array.from(exerciseMap.entries()).map(([name, sets]) => ({ name, sets }))
-          );
+          setClientTrainerExercises(parsePlannedExercises(exercises as unknown as Exercise[]));
         } else {
           setClientTrainerExercises([]);
         }
@@ -387,32 +367,9 @@ const Calendar = () => {
         .eq('workout_id', workout.id);
       
       if (!error && exercises) {
-        const hasActualValues = exercises.some(ex => 
-          ex.actual_sets !== null || ex.actual_reps !== null || ex.actual_weight !== null
-        );
+        const hasActualValues = (exercises as unknown as Exercise[]).some(isActualLogged);
         setClientHasLogged(hasActualValues);
-        
-        const exerciseMap = new Map<string, { weight: number; reps: number }[]>();
-        exercises.forEach(ex => {
-          const name = ex.exercise_name.trim();
-          const isPlannedSet =
-            ex.recommended_sets !== null ||
-            ex.recommended_reps !== null ||
-            ex.recommended_weight !== null;
-
-          if (!name || !isPlannedSet) return;
-
-          const sets = exerciseMap.get(name) || [];
-          sets.push({
-            weight: ex.recommended_weight ?? 0,
-            reps: ex.recommended_reps ?? 0,
-          });
-          exerciseMap.set(name, sets);
-        });
-        
-        setExistingExercises(
-          Array.from(exerciseMap.entries()).map(([name, sets]) => ({ name, sets }))
-        );
+        setExistingExercises(parsePlannedExercises(exercises as unknown as Exercise[]));
       }
     } else {
       setExistingExercises([]);
