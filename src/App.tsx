@@ -1,4 +1,4 @@
-import { useState, useEffect, lazy, Suspense } from "react";
+import { useState, useEffect, lazy, Suspense, useRef } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -13,6 +13,9 @@ import ErrorBoundary from "@/components/ErrorBoundary";
 import { useAndroidBackExit } from "@/hooks/useAndroidBackExit";
 import { useKeyboardInset } from "@/hooks/useKeyboardInset";
 import { LoadingQuote } from "@/components/LoadingQuote";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
+import { logError } from "@/lib/errorUtils";
 
 // Auth + Landing are eager (entry routes the user hits cold)
 import Auth from "./pages/Auth";
@@ -61,7 +64,67 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
 
 const RoleSelectionRoute = ({ children }: { children: React.ReactNode }) => {
   const { user, loading: authLoading } = useAuth();
-  const { profile, loading: profileLoading } = useProfile();
+  const { profile, loading: profileLoading, refetchProfile } = useProfile();
+  const inviteCode = typeof window !== "undefined" ? localStorage.getItem("inviteTrainerCode") : null;
+  const autoLinkAttempted = useRef(false);
+  const [autoLinkError, setAutoLinkError] = useState<string | null>(null);
+
+  // TW-020: invited clients must NEVER see the role tiles. As soon as we
+  // know there's an authenticated user with no profile and a stored invite
+  // code, do the role assignment server-side and redirect to /profile-setup.
+  // The full RPC chain (generate id, lookup trainer, upsert profile) lives
+  // here so the route never renders <RoleSelection /> for invited clients.
+  useEffect(() => {
+    if (authLoading || profileLoading) return;
+    if (!user || profile || !inviteCode) return;
+    if (autoLinkAttempted.current) return;
+    autoLinkAttempted.current = true;
+
+    (async () => {
+      try {
+        const { data: newId, error: idError } = await supabase
+          .rpc("generate_unique_id", { p_role: "client" });
+        if (idError) throw idError;
+
+        const { data: trainerData, error: lookupErr } = await supabase
+          .rpc("lookup_trainer_by_unique_id", { p_unique_id: inviteCode });
+        if (lookupErr) throw lookupErr;
+        const trainerId = trainerData && trainerData.length > 0 ? trainerData[0].id : null;
+
+        const profilePayload: Record<string, unknown> = {
+          user_id: user.id,
+          role: "client",
+          unique_id: newId,
+        };
+        if (trainerId) profilePayload.trainer_id = trainerId;
+
+        const { error: upsertError } = await supabase
+          .from("profiles")
+          .upsert(profilePayload, { onConflict: "user_id" });
+        if (upsertError) throw upsertError;
+
+        localStorage.setItem("selectedRole", "client");
+        await refetchProfile();
+      } catch (err) {
+        logError("RoleSelectionRoute.autoLinkInvitedClient", err);
+        autoLinkAttempted.current = false; // allow Retry
+        setAutoLinkError("link_failed");
+        toast.error("Couldn't link to your trainer right now.", {
+          action: {
+            label: "Retry",
+            onClick: () => {
+              setAutoLinkError(null);
+              autoLinkAttempted.current = false;
+              // re-trigger by touching state — useEffect deps will re-run
+              // because autoLinkAttempted is a ref, force a no-op state update
+              setAutoLinkError((v) => v); // trigger re-render
+            },
+          },
+          duration: 8000,
+        });
+      }
+    })();
+  }, [authLoading, profileLoading, user, profile, inviteCode, refetchProfile]);
 
   if (authLoading || profileLoading) {
     return null;
@@ -73,6 +136,24 @@ const RoleSelectionRoute = ({ children }: { children: React.ReactNode }) => {
 
   if (profile) {
     return <Navigate to="/dashboard" replace />;
+  }
+
+  // TW-020: invited clients never see the role tiles. While the auto-link
+  // RPC is in flight (or after a transient failure waiting for Retry),
+  // render a minimal status surface — NEVER the role-selection UI.
+  if (inviteCode) {
+    return (
+      <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-background p-6 text-center">
+        <h1 className="text-3xl font-bold text-foreground mb-3">
+          <span className="text-primary">V</span>ECTO
+        </h1>
+        <p className="text-sm text-muted-foreground">
+          {autoLinkError
+            ? "Couldn't link to your trainer. Tap Retry in the toast."
+            : "Linking you to your trainer\u2026"}
+        </p>
+      </div>
+    );
   }
 
   return <>{children}</>;
