@@ -77,9 +77,9 @@ const Calendar = () => {
   const [showFoodModal, setShowFoodModal] = useState(false);
   // Item 5: session-shared client selection across Calendar/Progress/Plans.
   const { selectedClientId, setSelectedClientId } = useSelectedClient();
-  const [existingExercises, setExistingExercises] = useState<{ name: string; sets: { weight: number; reps: number }[] }[]>([]);
+  const [existingExercises, setExistingExercises] = useState<PlannedExercisePayload[]>([]);
   const [clientHasLogged, setClientHasLogged] = useState(false);
-  const [clientTrainerExercises, setClientTrainerExercises] = useState<{ name: string; sets: { weight: number; reps: number }[] }[]>([]);
+  const [clientTrainerExercises, setClientTrainerExercises] = useState<TrainerPlannedExercise[]>([]);
   const [showPlanModal, setShowPlanModal] = useState(false);
   const [stepLoading, setStepLoading] = useState(false);
   const [existingStepLog, setExistingStepLog] = useState<{ id: string; step_count: number } | null>(null);
