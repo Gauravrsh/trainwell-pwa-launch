@@ -9,6 +9,9 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sh
 import { Button } from '@/components/ui/button';
 import { ClientWorkoutLogModal } from '@/components/modals/ClientWorkoutLogModal';
 import { TrainerWorkoutLogModal } from '@/components/modals/TrainerWorkoutLogModal';
+import type { TrainerPlannedExercise, ClientLoggedExercise } from '@/components/modals/ClientWorkoutLogModal';
+import type { PlannedExercisePayload } from '@/components/modals/TrainerWorkoutLogModal';
+import { MetricType, DEFAULT_METRIC_TYPE, isActualLogged, isRecommended } from '@/types/exerciseMetrics';
 import { FoodLogModal } from '@/components/modals/FoodLogModal';
 import { StepLogModal } from '@/components/modals/StepLogModal';
 import { ClientFilter } from '@/components/calendar/ClientFilter';
@@ -32,12 +35,21 @@ interface Exercise {
   id: string;
   workout_id: string;
   exercise_name: string;
+  metric_type: string | null;
   recommended_sets: number | null;
   recommended_reps: number | null;
   recommended_weight: number | null;
+  recommended_duration_seconds: number | null;
+  recommended_distance_meters: number | null;
+  recommended_rounds: number | null;
+  recommended_emom_minutes: number | null;
   actual_sets: number | null;
   actual_reps: number | null;
   actual_weight: number | null;
+  actual_duration_seconds: number | null;
+  actual_distance_meters: number | null;
+  actual_rounds: number | null;
+  actual_emom_minutes: number | null;
 }
 
 interface Client {
@@ -65,9 +77,9 @@ const Calendar = () => {
   const [showFoodModal, setShowFoodModal] = useState(false);
   // Item 5: session-shared client selection across Calendar/Progress/Plans.
   const { selectedClientId, setSelectedClientId } = useSelectedClient();
-  const [existingExercises, setExistingExercises] = useState<{ name: string; sets: { weight: number; reps: number }[] }[]>([]);
+  const [existingExercises, setExistingExercises] = useState<PlannedExercisePayload[]>([]);
   const [clientHasLogged, setClientHasLogged] = useState(false);
-  const [clientTrainerExercises, setClientTrainerExercises] = useState<{ name: string; sets: { weight: number; reps: number }[] }[]>([]);
+  const [clientTrainerExercises, setClientTrainerExercises] = useState<TrainerPlannedExercise[]>([]);
   const [showPlanModal, setShowPlanModal] = useState(false);
   const [stepLoading, setStepLoading] = useState(false);
   const [existingStepLog, setExistingStepLog] = useState<{ id: string; step_count: number } | null>(null);
@@ -223,6 +235,60 @@ const Calendar = () => {
     return workoutList.find(w => isSameDay(new Date(w.date), date));
   };
 
+  // Build trainer-planned exercise payloads from raw `exercises` rows.
+  // For reps_weight / reps_only we group per exercise_name and collect per-set rows.
+  // For other metric types (time / distance_time / amrap / emom) one row = one exercise.
+  const parsePlannedExercises = (rows: Exercise[]): PlannedExercisePayload[] => {
+    const planned = rows.filter(isRecommended);
+    const repsBased: Map<string, { weight: number; reps: number }[]> = new Map();
+    const result: PlannedExercisePayload[] = [];
+
+    for (const ex of planned) {
+      const name = ex.exercise_name?.trim();
+      if (!name) continue;
+      const metricType = (ex.metric_type ?? DEFAULT_METRIC_TYPE) as MetricType;
+
+      if (metricType === 'reps_weight' || metricType === 'reps_only') {
+        const sets = repsBased.get(name) ?? [];
+        sets.push({
+          weight: ex.recommended_weight ?? 0,
+          reps: ex.recommended_reps ?? 0,
+        });
+        repsBased.set(name, sets);
+        // Remember the metric for this exercise group (first one wins)
+        if (!result.find(r => r.name === name)) {
+          result.push({ name, metricType, sets });
+        }
+      } else if (metricType === 'time') {
+        result.push({ name, metricType, durationSeconds: ex.recommended_duration_seconds ?? 0 });
+      } else if (metricType === 'distance_time') {
+        result.push({
+          name, metricType,
+          distanceMeters: ex.recommended_distance_meters ?? 0,
+          durationSeconds: ex.recommended_duration_seconds ?? 0,
+        });
+      } else if (metricType === 'amrap') {
+        result.push({
+          name, metricType,
+          emomMinutes: ex.recommended_emom_minutes ?? 0,
+          rounds: ex.recommended_rounds ?? 0,
+        });
+      } else if (metricType === 'emom') {
+        result.push({
+          name, metricType,
+          emomMinutes: ex.recommended_emom_minutes ?? 0,
+          emomReps: ex.recommended_reps ?? 0,
+        });
+      }
+    }
+    // Ensure reps-based entries reference the grouped sets array
+    return result.map(r =>
+      (r.metricType === 'reps_weight' || r.metricType === 'reps_only')
+        ? { ...r, sets: repsBased.get(r.name) ?? [] }
+        : r
+    );
+  };
+
   const getDayMarkForDate = (date: Date): DayMark | undefined => {
     return dayMarks.find(m => isSameDay(new Date(m.mark_date), date));
   };
@@ -275,27 +341,7 @@ const Calendar = () => {
           .eq('workout_id', workout.id);
         
         if (!error && exercises) {
-          const exerciseMap = new Map<string, { weight: number; reps: number }[]>();
-          exercises.forEach(ex => {
-            const name = ex.exercise_name.trim();
-            const isPlannedSet =
-              ex.recommended_sets !== null ||
-              ex.recommended_reps !== null ||
-              ex.recommended_weight !== null;
-
-            if (!name || !isPlannedSet) return;
-
-            const sets = exerciseMap.get(name) || [];
-            sets.push({
-              weight: ex.recommended_weight ?? 0,
-              reps: ex.recommended_reps ?? 0,
-            });
-            exerciseMap.set(name, sets);
-          });
-          
-          setClientTrainerExercises(
-            Array.from(exerciseMap.entries()).map(([name, sets]) => ({ name, sets }))
-          );
+          setClientTrainerExercises(parsePlannedExercises(exercises as unknown as Exercise[]));
         } else {
           setClientTrainerExercises([]);
         }
@@ -321,32 +367,9 @@ const Calendar = () => {
         .eq('workout_id', workout.id);
       
       if (!error && exercises) {
-        const hasActualValues = exercises.some(ex => 
-          ex.actual_sets !== null || ex.actual_reps !== null || ex.actual_weight !== null
-        );
+        const hasActualValues = (exercises as unknown as Exercise[]).some(isActualLogged);
         setClientHasLogged(hasActualValues);
-        
-        const exerciseMap = new Map<string, { weight: number; reps: number }[]>();
-        exercises.forEach(ex => {
-          const name = ex.exercise_name.trim();
-          const isPlannedSet =
-            ex.recommended_sets !== null ||
-            ex.recommended_reps !== null ||
-            ex.recommended_weight !== null;
-
-          if (!name || !isPlannedSet) return;
-
-          const sets = exerciseMap.get(name) || [];
-          sets.push({
-            weight: ex.recommended_weight ?? 0,
-            reps: ex.recommended_reps ?? 0,
-          });
-          exerciseMap.set(name, sets);
-        });
-        
-        setExistingExercises(
-          Array.from(exerciseMap.entries()).map(([name, sets]) => ({ name, sets }))
-        );
+        setExistingExercises(parsePlannedExercises(exercises as unknown as Exercise[]));
       }
     } else {
       setExistingExercises([]);
@@ -513,7 +536,7 @@ const Calendar = () => {
     }
   };
 
-  const handleTrainerWorkoutSave = async (exercises: { name: string; sets: { weight: number; reps: number }[] }[]) => {
+  const handleTrainerWorkoutSave = async (exercises: PlannedExercisePayload[]) => {
     if (!selectedClientId || !selectedDate) return;
 
     try {
@@ -548,15 +571,47 @@ const Calendar = () => {
         .map(ex => ({ ...ex, name: ex.name.trim() }))
         .filter(ex => ex.name.length > 0);
 
-      const exerciseInserts = normalizedExercises.flatMap(ex =>
-        ex.sets.map(set => ({
+      // Build metric-aware inserts. Reps-based metrics fan out per set;
+      // other metric types produce a single row per exercise.
+      const exerciseInserts = normalizedExercises.flatMap(ex => {
+        const baseRow = {
           workout_id: workoutId,
           exercise_name: ex.name,
-          recommended_sets: 1,
-          recommended_reps: set.reps,
-          recommended_weight: set.weight,
-        }))
-      );
+          metric_type: ex.metricType,
+        };
+        switch (ex.metricType) {
+          case 'reps_weight':
+          case 'reps_only':
+            return (ex.sets ?? []).map(set => ({
+              ...baseRow,
+              recommended_sets: 1,
+              recommended_reps: set.reps,
+              recommended_weight: ex.metricType === 'reps_weight' ? set.weight : null,
+            }));
+          case 'time':
+            return [{ ...baseRow, recommended_duration_seconds: ex.durationSeconds ?? 0 }];
+          case 'distance_time':
+            return [{
+              ...baseRow,
+              recommended_distance_meters: ex.distanceMeters ?? 0,
+              recommended_duration_seconds: ex.durationSeconds ?? null,
+            }];
+          case 'amrap':
+            return [{
+              ...baseRow,
+              recommended_emom_minutes: ex.emomMinutes ?? 0,
+              recommended_rounds: ex.rounds ?? null,
+            }];
+          case 'emom':
+            return [{
+              ...baseRow,
+              recommended_emom_minutes: ex.emomMinutes ?? 0,
+              recommended_reps: ex.emomReps ?? 0,
+            }];
+          default:
+            return [];
+        }
+      });
 
       const { error: exerciseError } = await supabase
         .from('exercises')
@@ -573,7 +628,7 @@ const Calendar = () => {
     }
   };
 
-  const handleWorkoutSave = async (exercises: { name: string; sets: number; reps: number; weight: number }[]) => {
+  const handleWorkoutSave = async (exercises: ClientLoggedExercise[]) => {
     if (!profile || !selectedDate) return;
 
     try {
@@ -612,6 +667,26 @@ const Calendar = () => {
         workoutId = newWorkout.id;
       }
 
+      // Flatten client payload into per-set entries for reps-based metrics
+      // (preserves matching to planned rows). Non-reps metrics produce one
+      // synthetic entry so we can insert a single actual row.
+      const flatActuals: { name: string; metricType: MetricType; sets: number; reps: number; weight: number; durationSeconds?: number; distanceMeters?: number; rounds?: number; emomMinutes?: number }[] = [];
+      cleanedExercises.forEach(ex => {
+        if (ex.metricType === 'reps_weight' || ex.metricType === 'reps_only') {
+          (ex.sets ?? []).forEach(s => flatActuals.push({
+            name: ex.name, metricType: ex.metricType, sets: 1, reps: s.reps, weight: s.weight,
+          }));
+        } else {
+          flatActuals.push({
+            name: ex.name, metricType: ex.metricType, sets: 0, reps: ex.emomReps ?? 0, weight: 0,
+            durationSeconds: ex.durationSeconds,
+            distanceMeters: ex.distanceMeters,
+            rounds: ex.rounds,
+            emomMinutes: ex.emomMinutes,
+          });
+        }
+      });
+
       const { error: cleanupError } = await supabase
         .from('exercises')
         .delete()
@@ -636,47 +711,46 @@ const Calendar = () => {
         plannedByName.set(name, list);
       });
 
-      const actualByName = new Map<string, { sets: number; reps: number; weight: number }[]>();
-      cleanedExercises.forEach(ex => {
-        const list = actualByName.get(ex.name) || [];
-        list.push({ sets: ex.sets, reps: ex.reps, weight: ex.weight });
-        actualByName.set(ex.name, list);
+      const actualByName = new Map<string, typeof flatActuals>();
+      flatActuals.forEach(a => {
+        const list = actualByName.get(a.name) || [];
+        list.push(a);
+        actualByName.set(a.name, list);
       });
 
-      const updates: { id: string; sets: number; reps: number; weight: number }[] = [];
-      const inserts: { workout_id: string; exercise_name: string; actual_sets: number; actual_reps: number; actual_weight: number }[] = [];
+      const updates: { id: string; actual: typeof flatActuals[number] }[] = [];
+      const inserts: Record<string, unknown>[] = [];
+
+      const buildActualRow = (name: string, a: typeof flatActuals[number]) => ({
+        workout_id: workoutId,
+        exercise_name: name,
+        metric_type: a.metricType,
+        actual_sets: a.metricType === 'reps_weight' || a.metricType === 'reps_only' ? a.sets : null,
+        actual_reps: a.metricType === 'reps_weight' || a.metricType === 'reps_only' || a.metricType === 'emom' ? a.reps : null,
+        actual_weight: a.metricType === 'reps_weight' ? a.weight : null,
+        actual_duration_seconds: a.durationSeconds ?? null,
+        actual_distance_meters: a.distanceMeters ?? null,
+        actual_rounds: a.rounds ?? null,
+        actual_emom_minutes: a.emomMinutes ?? null,
+      });
 
       for (const [name, planned] of plannedByName.entries()) {
         const actual = actualByName.get(name) || [];
 
         const count = Math.min(planned.length, actual.length);
         for (let i = 0; i < count; i++) {
-          updates.push({ id: planned[i].id, ...actual[i] });
+          updates.push({ id: planned[i].id, actual: actual[i] });
         }
 
         for (let i = count; i < actual.length; i++) {
-          inserts.push({
-            workout_id: workoutId,
-            exercise_name: name,
-            actual_sets: actual[i].sets,
-            actual_reps: actual[i].reps,
-            actual_weight: actual[i].weight,
-          });
+          inserts.push(buildActualRow(name, actual[i]));
         }
 
         actualByName.delete(name);
       }
 
       for (const [name, actual] of actualByName.entries()) {
-        actual.forEach(set => {
-          inserts.push({
-            workout_id: workoutId,
-            exercise_name: name,
-            actual_sets: set.sets,
-            actual_reps: set.reps,
-            actual_weight: set.weight,
-          });
-        });
+        actual.forEach(a => inserts.push(buildActualRow(name, a)));
       }
 
       if (updates.length > 0) {
@@ -685,9 +759,14 @@ const Calendar = () => {
             supabase
               .from('exercises')
               .update({
-                actual_sets: u.sets,
-                actual_reps: u.reps,
-                actual_weight: u.weight,
+                metric_type: u.actual.metricType,
+                actual_sets: u.actual.metricType === 'reps_weight' || u.actual.metricType === 'reps_only' ? u.actual.sets : null,
+                actual_reps: u.actual.metricType === 'reps_weight' || u.actual.metricType === 'reps_only' || u.actual.metricType === 'emom' ? u.actual.reps : null,
+                actual_weight: u.actual.metricType === 'reps_weight' ? u.actual.weight : null,
+                actual_duration_seconds: u.actual.durationSeconds ?? null,
+                actual_distance_meters: u.actual.distanceMeters ?? null,
+                actual_rounds: u.actual.rounds ?? null,
+                actual_emom_minutes: u.actual.emomMinutes ?? null,
               })
               .eq('id', u.id)
           )
@@ -699,7 +778,7 @@ const Calendar = () => {
       if (inserts.length > 0) {
         const { error: exerciseError } = await supabase
           .from('exercises')
-          .insert(inserts);
+          .insert(inserts as never);
         if (exerciseError) throw exerciseError;
       }
 
