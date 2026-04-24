@@ -26,9 +26,10 @@ const MIN_STEPS = 100;
 const MAX_STEPS = 100000;
 
 const NEG_UNIT = /\b(k?cal|calorie|kilocalorie|km|m|bpm|min|mins|minute|minutes|%)\b/i;
+const NEG_ACTIVITY = /\b(session|sessions|workout|workouts?)\b/i;
 const NEG_GOAL = /\b(goal|target|daily\s*goal|of)\b/i;
 const POS_STEP = /\b(steps?)\b/i;
-const CLOCK = /^(?:[01]?\d|2[0-3]):[0-5]\d$/;
+const CLOCK = /^(?:[01]?\d|2[0-3]):[0-5]\d(?::[0-5]\d)?$/;
 const DIGIT_WORD = /^[\d,\s]+$/;
 
 function stitchBrokenThousandsGroups(rawText: string): string {
@@ -45,6 +46,8 @@ interface Candidate {
   raw: string;
   score: number;
   source?: "bbox" | "text";
+  positiveSignals?: number;
+  negativeSignals?: number;
 }
 
 function scoreFromText(
@@ -52,37 +55,96 @@ function scoreFromText(
   idx: number,
   raw: string,
   value: number,
-): number {
+): Pick<Candidate, "score" | "positiveSignals" | "negativeSignals"> {
   let score = 0;
+  let positiveSignals = 0;
+  let negativeSignals = 0;
 
   // Decimal → distance, not steps.
-  if (/[.,]\d{1,2}\s*(km|m)?$/i.test(raw) && /\./.test(raw)) score -= 250;
+  if (/[.,]\d{1,2}\s*(km|m)?$/i.test(raw) && /\./.test(raw)) {
+    score -= 250;
+    negativeSignals += 1;
+  }
 
   // Context windows.
   const before = rawText.slice(Math.max(0, idx - 20), idx);
   const after = rawText.slice(idx + raw.length, idx + raw.length + 20);
+  const beforeExtended = rawText.slice(Math.max(0, idx - 40), idx);
+  const afterExtended = rawText.slice(idx + raw.length, idx + raw.length + 40);
   // Goal is only meaningful if it's the IMMEDIATELY preceding label.
   const immediateBefore = rawText.slice(Math.max(0, idx - 12), idx);
 
-  if (POS_STEP.test(after) || POS_STEP.test(before)) score += 100;
-  if (NEG_UNIT.test(after)) score -= 200;
-  if (NEG_GOAL.test(immediateBefore) || NEG_GOAL.test(after)) score -= 150;
+  if (POS_STEP.test(after) || POS_STEP.test(before) || POS_STEP.test(afterExtended) || POS_STEP.test(beforeExtended)) {
+    score += 100;
+    positiveSignals += 1;
+  }
+
+  if (/^\s*\/\s*\d[\d,\s]{0,12}\s*steps?\b/i.test(afterExtended)) {
+    score += 180;
+    positiveSignals += 2;
+  }
+
+  if (NEG_UNIT.test(afterExtended) || NEG_UNIT.test(beforeExtended)) {
+    score -= 200;
+    negativeSignals += 1;
+  }
+
+  if (NEG_ACTIVITY.test(afterExtended) || NEG_ACTIVITY.test(beforeExtended)) {
+    score -= 220;
+    negativeSignals += 1;
+  }
+
+  if (NEG_GOAL.test(immediateBefore) || NEG_GOAL.test(afterExtended)) {
+    score -= 150;
+    negativeSignals += 1;
+  }
 
   // "/15,000 steps" → goal.
-  if (/\/\s*$/.test(before)) score -= 150;
+  if (/\/\s*$/.test(before) || /\/\s*$/.test(rawText.slice(Math.max(0, idx - 6), idx))) {
+    score -= 200;
+    negativeSignals += 1;
+  }
 
   // Clock times in original text (e.g. " 8:47 ").
-  const surrounding = rawText.slice(Math.max(0, idx - 2), idx + raw.length + 3);
-  if (/\b\d{1,2}:\d{2}\b/.test(surrounding)) {
+  const surrounding = rawText.slice(Math.max(0, idx - 8), idx + raw.length + 8);
+  if (/\b\d{1,2}:\d{2}(?::\d{2})?\b/.test(surrounding)) {
     // Only penalise if THIS number is part of the clock match.
-    const clockMatch = surrounding.match(/\b(\d{1,2}:\d{2})\b/);
+    const clockMatch = surrounding.match(/\b(\d{1,2}:\d{2}(?::\d{2})?)\b/);
     if (clockMatch && clockMatch[1].includes(value.toString())) score -= 300;
+    negativeSignals += 1;
   }
 
   // Favour middle-of-range step counts slightly.
   if (value >= 1000 && value <= 30000) score += 10;
 
-  return score;
+  return { score, positiveSignals, negativeSignals };
+}
+
+function candidateRank(candidate: Candidate): number {
+  let rank = candidate.score;
+
+  if (candidate.source === "bbox") rank += 80;
+  rank += (candidate.positiveSignals ?? 0) * 25;
+  rank -= (candidate.negativeSignals ?? 0) * 20;
+
+  return rank;
+}
+
+function pickBestCandidate(...options: Array<Candidate | null>): Candidate | null {
+  const candidates = options.filter((candidate): candidate is Candidate => Boolean(candidate));
+  if (candidates.length === 0) return null;
+
+  candidates.sort((a, b) => candidateRank(b) - candidateRank(a) || b.score - a.score || a.value - b.value);
+
+  const [best, second] = candidates;
+  const bestRank = candidateRank(best);
+  const secondRank = second ? candidateRank(second) : Number.NEGATIVE_INFINITY;
+  const hasStrongPositiveSignal = (best.positiveSignals ?? 0) > 0;
+
+  if (bestRank < 60) return null;
+  if (second && bestRank - secondRank < 25 && !hasStrongPositiveSignal) return null;
+
+  return best;
 }
 
 /**
@@ -112,7 +174,7 @@ export function extractStepCount(rawText: string): number | null {
     if (normalized === currentYear) continue;
     if (normalized < MIN_STEPS || normalized > MAX_STEPS) continue;
 
-    const score = scoreFromText(text, idx, raw, normalized);
+    const { score, positiveSignals, negativeSignals } = scoreFromText(text, idx, raw, normalized);
 
     // Hard-reject clocks: if immediately preceded or followed by ":dd" pattern.
     const tail = text.slice(idx + raw.length, idx + raw.length + 3);
@@ -124,13 +186,12 @@ export function extractStepCount(rawText: string): number | null {
       continue;
     }
 
-    candidates.push({ value: normalized, raw, score });
+    candidates.push({ value: normalized, raw, score, positiveSignals, negativeSignals, source: "text" });
   }
 
   if (candidates.length === 0) return null;
 
-  candidates.sort((a, b) => b.score - a.score || b.value - a.value);
-  return candidates[0].value;
+  return pickBestCandidate(...candidates)?.value ?? null;
 }
 
 /**
@@ -204,9 +265,11 @@ function buildBboxCandidate(
 
   const height = bboxHeight(bbox);
   const centerY = bboxCenterY(bbox);
+  const beforeWords = words.slice(Math.max(0, startIndex - 4), startIndex).map((word) => word.text);
+  const afterWords = words.slice(endIndex + 1, endIndex + 5).map((word) => word.text);
   const neighbourText = [
-    ...words.slice(Math.max(0, startIndex - 3), startIndex).map((word) => word.text),
-    ...words.slice(endIndex + 1, endIndex + 4).map((word) => word.text),
+    ...beforeWords,
+    ...afterWords,
     ...words
       .filter(
         (word, index) =>
@@ -216,25 +279,60 @@ function buildBboxCandidate(
   ]
     .filter(Boolean)
     .join(" ");
+  const afterText = afterWords.filter(Boolean).join(" ");
 
   let score = height;
+  let positiveSignals = 0;
+  let negativeSignals = 0;
 
-  if (maxDigitHeight > 0 && height >= maxDigitHeight * 0.9) score += 200;
-  if (maxDigitHeight > 0 && height < maxDigitHeight * 0.6) score -= 150;
+  if (maxDigitHeight > 0 && height >= maxDigitHeight * 0.9) {
+    score += 200;
+    positiveSignals += 1;
+  }
+  if (maxDigitHeight > 0 && height < maxDigitHeight * 0.6) {
+    score -= 150;
+    negativeSignals += 1;
+  }
 
-  if (POS_STEP.test(neighbourText)) score += 100;
-  if (NEG_UNIT.test(neighbourText)) score -= 200;
-  if (NEG_GOAL.test(neighbourText)) score -= 150;
+  if (POS_STEP.test(neighbourText)) {
+    score += 100;
+    positiveSignals += 1;
+  }
+  if (NEG_UNIT.test(neighbourText)) {
+    score -= 200;
+    negativeSignals += 1;
+  }
+  if (NEG_ACTIVITY.test(neighbourText)) {
+    score -= 220;
+    negativeSignals += 1;
+  }
+  if (NEG_GOAL.test(neighbourText)) {
+    score -= 150;
+    negativeSignals += 1;
+  }
 
   const prev = words[startIndex - 1]?.text?.trim();
-  if (prev === "/") score -= 150;
-  if (prev && /\/$/.test(prev)) score -= 200;
-  if (prev && /^of$/i.test(prev)) score -= 200;
-
   const next = words[endIndex + 1]?.text?.trim() || "";
+  if ((next === "/" || /\/$/.test(next)) && /\d[\d,\s]{0,12}\s+steps?\b/i.test(afterText)) {
+    score += 180;
+    positiveSignals += 2;
+  }
+  if (prev === "/") {
+    score -= 150;
+    negativeSignals += 1;
+  }
+  if (prev && /\/$/.test(prev)) {
+    score -= 200;
+    negativeSignals += 1;
+  }
+  if (prev && /^of$/i.test(prev)) {
+    score -= 200;
+    negativeSignals += 1;
+  }
+
   if (/^(k?cal|calorie|kilocalorie)/i.test(next)) return null;
 
-  return { value: normalized, raw: trimmed, score, source: "bbox" };
+  return { value: normalized, raw: trimmed, score, source: "bbox", positiveSignals, negativeSignals };
 }
 
 function extractFromWords(words: WordLike[]): number | null {
@@ -280,11 +378,13 @@ function extractFromWords(words: WordLike[]): number | null {
   }
 
   if (candidates.length === 0) return null;
-  candidates.sort((a, b) => b.score - a.score || b.value - a.value);
   if (typeof console !== "undefined") {
-    console.info("[stepOcr] bbox candidates", candidates.slice(0, 5));
+    console.info("[stepOcr] bbox candidates", candidates.slice(0, 5).map((candidate) => ({
+      ...candidate,
+      rank: candidateRank(candidate),
+    })));
   }
-  return candidates[0].value;
+  return pickBestCandidate(...candidates)?.value ?? null;
 }
 
 /**
@@ -296,7 +396,7 @@ export async function scanStepCountFromImage(file: File): Promise<number | null>
   // NOTE: no char whitelist — we NEED context words (steps/kcal/goal/km).
   // Tesseract v5+ disables `blocks` (word bboxes) by default. Must use a
   // worker and pass an explicit output spec to get word-level data.
-  const worker = await createWorker("eng");
+  const worker = await createWorker("eng", 1, { cacheMethod: "refresh" });
   let data: { text?: string; blocks?: unknown };
   try {
     const result = await worker.recognize(
@@ -332,15 +432,16 @@ export async function scanStepCountFromImage(file: File): Promise<number | null>
     });
   }
 
-  const fromText = extractStepCount(data?.text ?? "");
-  const fromWords = words.length > 0 ? extractFromWords(words) : null;
-  if (fromWords != null && (fromText == null || fromWords >= fromText)) {
-    if (typeof console !== "undefined") console.info("[stepOcr] result via bbox:", fromWords);
-    return fromWords;
+  const fromTextValue = extractStepCount(data?.text ?? "");
+  const fromWordsValue = words.length > 0 ? extractFromWords(words) : null;
+  const finalValue = pickBestCandidate(
+    fromWordsValue != null ? { value: fromWordsValue, raw: String(fromWordsValue), score: 120, source: "bbox", positiveSignals: 1, negativeSignals: 0 } : null,
+    fromTextValue != null ? { value: fromTextValue, raw: String(fromTextValue), score: 80, source: "text", positiveSignals: 1, negativeSignals: 0 } : null,
+  )?.value ?? null;
+
+  if (typeof console !== "undefined") {
+    console.info("[stepOcr] result summary", { fromWordsValue, fromTextValue, finalValue });
   }
-  if (fromText != null) {
-    if (typeof console !== "undefined") console.info("[stepOcr] result via text fallback:", fromText);
-    return fromText;
-  }
-  return fromWords;
+
+  return finalValue;
 }
