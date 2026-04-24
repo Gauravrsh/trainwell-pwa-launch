@@ -2,6 +2,9 @@ import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { format, addDays, differenceInDays } from 'date-fns';
 import { Calendar as CalendarIcon, Dumbbell, Utensils, IndianRupee, User } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { useProfile } from '@/hooks/useProfile';
+import { AlertTriangle } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -55,6 +58,8 @@ export function CreatePlanModal({
   isSubmitting = false,
   preselectedClientId,
 }: CreatePlanModalProps) {
+  const navigate = useNavigate();
+  const { profile, isTrainer } = useProfile();
   const [clientId, setClientId] = useState(preselectedClientId || '');
   const [planName, setPlanName] = useState('');
   const [serviceType] = useState<ServiceType>('workout');
@@ -111,6 +116,11 @@ export function CreatePlanModal({
 
   const selectedClient = clients.find(c => c.id === clientId);
 
+  // Item 6 — non-blocking banner: if the trainer hasn't filled avatar OR bio,
+  // their clients have no idea who they are. Nudge but don't block.
+  const trainerProfileIncomplete =
+    isTrainer && profile && (!profile.avatar_url || !profile.bio);
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
@@ -122,6 +132,28 @@ export function CreatePlanModal({
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-5">
+          {trainerProfileIncomplete && (
+            <div className="flex items-start gap-2 p-3 rounded-xl bg-primary/10 border border-primary/30">
+              <AlertTriangle className="w-4 h-4 text-primary flex-shrink-0 mt-0.5" />
+              <div className="flex-1 text-xs">
+                <p className="text-foreground font-medium">Your client doesn't know who you are yet.</p>
+                <p className="text-muted-foreground mt-0.5">
+                  Add a photo and a line of bio so they trust who's coaching them.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => {
+                    onOpenChange(false);
+                    navigate('/profile');
+                  }}
+                  className="mt-1.5 text-primary font-medium hover:underline"
+                >
+                  Update Trainer Profile →
+                </button>
+              </div>
+            </div>
+          )}
+
           {/* Client Selection */}
           <div className="space-y-2">
             <Label>Client</Label>

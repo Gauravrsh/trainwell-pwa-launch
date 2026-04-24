@@ -517,8 +517,11 @@ export type Database = {
       }
       profiles: {
         Row: {
+          avatar_url: string | null
+          bio: string | null
           bmr: number | null
           bmr_updated_at: string | null
+          certifications: string[] | null
           city: string | null
           created_at: string | null
           date_of_birth: string | null
@@ -529,16 +532,21 @@ export type Database = {
           profile_complete: boolean | null
           referred_by_trainer_id: string | null
           role: Database["public"]["Enums"]["user_role"]
+          specializations: string[] | null
           trainer_id: string | null
           unique_id: string
           updated_at: string | null
           user_id: string
           weight_kg: number | null
           whatsapp_no: string | null
+          years_experience: number | null
         }
         Insert: {
+          avatar_url?: string | null
+          bio?: string | null
           bmr?: number | null
           bmr_updated_at?: string | null
+          certifications?: string[] | null
           city?: string | null
           created_at?: string | null
           date_of_birth?: string | null
@@ -549,16 +557,21 @@ export type Database = {
           profile_complete?: boolean | null
           referred_by_trainer_id?: string | null
           role?: Database["public"]["Enums"]["user_role"]
+          specializations?: string[] | null
           trainer_id?: string | null
           unique_id: string
           updated_at?: string | null
           user_id: string
           weight_kg?: number | null
           whatsapp_no?: string | null
+          years_experience?: number | null
         }
         Update: {
+          avatar_url?: string | null
+          bio?: string | null
           bmr?: number | null
           bmr_updated_at?: string | null
+          certifications?: string[] | null
           city?: string | null
           created_at?: string | null
           date_of_birth?: string | null
@@ -569,12 +582,14 @@ export type Database = {
           profile_complete?: boolean | null
           referred_by_trainer_id?: string | null
           role?: Database["public"]["Enums"]["user_role"]
+          specializations?: string[] | null
           trainer_id?: string | null
           unique_id?: string
           updated_at?: string | null
           user_id?: string
           weight_kg?: number | null
           whatsapp_no?: string | null
+          years_experience?: number | null
         }
         Relationships: [
           {
@@ -1084,6 +1099,21 @@ export type Database = {
           profile_complete: boolean
           unique_id: string
           weight_kg: number
+        }[]
+      }
+      get_my_trainer_profile: {
+        Args: never
+        Returns: {
+          avatar_url: string
+          bio: string
+          certifications: string[]
+          city: string
+          full_name: string
+          id: string
+          specializations: string[]
+          unique_id: string
+          whatsapp_no: string
+          years_experience: number
         }[]
       }
       get_trainer_clients: {

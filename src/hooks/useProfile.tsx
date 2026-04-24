@@ -19,6 +19,13 @@ interface Profile {
   updated_at: string;
   bmr: number | null;
   bmr_updated_at: string | null;
+  // Item 6 — Trainer Profile (optional, trainer-only meaningful)
+  whatsapp_no: string | null;
+  avatar_url: string | null;
+  years_experience: number | null;
+  bio: string | null;
+  certifications: string[] | null;
+  specializations: string[] | null;
 }
 
 interface PaymentInfo {
