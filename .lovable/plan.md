@@ -1,76 +1,141 @@
-# Phase B — Forensic Regression Audit
+## Debug result: this is the same stale app-shell regression previously named TW-024
 
-**Mode:** Read-only. No code edits. No migrations. No fixes.
-**Deliverable:** `/mnt/documents/vecto_audit_report_v1.md`
-**Scope:** Everything — trainer + client + public landing + payments + edge functions.
-**Severity bar:** Any functional break (dead button, lost data, wrong value saved, privilege leak, RLS bypass, edge-fn auth gap).
+You are right: the screenshot is not the latest calendar UI. It shows the old marker model:
+
+- green filled dot on completed day
+- dumbbell icon for pending workout
+- CL / HL circular chips overlapping the date
+- legend entries: Completed, Missed, Pending, Trainer Leave, Client Leave, Holiday
+
+The current source code and current published Calendar bundle do not render those items. The live Calendar route chunk currently has the boundary-only implementation:
+
+- date cells render only the date number
+- completed = green border only
+- client leave = red border only
+- trainer leave = amber border only
+- holiday = grey border only
+- legend uses square boundary swatches: Today, Logged, Holiday, Trainer Leave, Client Leave
+
+So the problem is not client ID 6486580 data. That client’s data is only triggering dates that expose the old UI. The rendering code being served to that device/session is old.
+
+## Which earlier bug number was this?
+
+This was the earlier cache/PWA regression we named **TW-024** in chat: stale Service Worker / stale installed-app shell serving old UI and old copy.
+
+Important bookkeeping failure: **TW-024 is not yet in `docs/issue-repository.md` / `docs/issue-repository-index.md`.** The repo currently ends at TW-022. So the regression had a name in the discussion, but the issue repository was not updated because the fix was not approved/implemented. That is exactly how regressions get to wear a fake moustache and re-enter the building.
+
+Closest existing indexed issue:
+
+- **TW-007**: calendar dates not color-coded. Related to Calendar, but not this specific stale old-UI regression.
+
+Definitive issue for this should be:
+
+- **TW-024: Stale PWA / Service Worker serves old calendar UI, old TnC, and removed dashboard buttons**
+
+## Why reinstall did not fix it
+
+Uninstalling the PWA/home-screen app does not reliably clear Chrome site storage, Service Worker registration, HTTP cache, Cache Storage, or already-controlled app tabs.
+
+Current code has these weaknesses:
+
+1. `usePushSubscription.tsx` registers `/sw.js` automatically when notification permission is already granted.
+2. `public/sw.js` has no version constant.
+3. `public/sw.js` has no `install -> skipWaiting()`.
+4. `public/sw.js` has no `activate -> clients.claim()`.
+5. `public/sw.js` does not delete old caches on activation.
+6. The app has no hard recovery route like `/reset-app` to unregister Service Workers and clear caches.
+7. The app has no build-stamp guard to detect “I am running an old bundle against a newer deployment.”
+
+Result: a stale controlled browser context can keep serving old chunks even after the visible app is uninstalled/reinstalled. The mirror is technically working; Chrome is holding yesterday’s mirror in front of today’s face.
+
+## What I will fix after approval
+
+### 1. Record TW-024 properly
+
+Update:
+
+- `docs/issue-repository-index.md`
+- `docs/issue-repository.md`
+
+Add TW-024 with:
+
+- symptom: old calendar dots/icons/chips/legend, old TnC, removed dummy buttons reappearing
+- affected user example: client ID 6486580 / Gaurav Sharma
+- root cause: stale PWA/Service Worker/browser storage lifecycle
+- prevention: versioned SW, cache purge, reset route, build-stamp guard, regression tests/search checks
+
+### 2. Replace the Service Worker lifecycle with a versioned recovery model
+
+Update `public/sw.js` to:
+
+- define a build/cache version
+- call `self.skipWaiting()` during install
+- call `clients.claim()` during activate
+- delete all old caches during activate
+- remain minimal for push notification support
+- keep navigation network-first
+- optionally respond to a message like `VECTO_CLEAR_CACHES` for emergency cleanup
+
+### 3. Add a hard reset route
+
+Add a protected/public-safe route such as:
+
+- `/reset-app`
+
+It will:
+
+- unregister every Service Worker for the origin
+- delete all Cache Storage entries
+- clear app-specific local/session storage keys where safe
+- show a clear “App reset complete. Reopen Vecto.” screen
+- provide a button to go to `/dashboard` or `/auth`
+
+This gives us a deterministic cleanup URL for affected users instead of telling them to uninstall five times like a ritual sacrifice.
+
+### 4. Add a build freshness guard
+
+Add a small client-side guard that:
+
+- fetches a lightweight build marker with `cache: 'no-store'`
+- compares it to the running app version
+- if mismatched, clears caches and reloads once
+
+Implementation will avoid editing generated backend files. It will live in normal app code, likely `src/main.tsx` or a small helper under `src/lib/`.
+
+### 5. Harden Service Worker registration
+
+Update `usePushSubscription.tsx` so Service Worker registration:
+
+- uses `updateViaCache: 'none'`
+- calls `registration.update()` after registration
+- does not use raw `console.error`; use `logError` per project rule
+- does not re-register blindly if the current context should not be controlled
+
+### 6. Add regression checks for the calendar UI
+
+Add tests or static guards so the old marker UI cannot silently return:
+
+- Calendar date cell must not render status dots/icons/chips inside the date cell
+- Current-section legend must not include `Completed`, `Missed`, or `Pending`
+- Calendar legend should use boundary swatches only
+
+## Files expected to change after approval
+
+- `public/sw.js`
+- `src/main.tsx` or new helper under `src/lib/`
+- `src/App.tsx`
+- new reset page/component, likely `src/pages/ResetApp.tsx`
+- `src/hooks/usePushSubscription.tsx`
+- `src/test/...` for regression coverage
+- `docs/issue-repository.md`
+- `docs/issue-repository-index.md`
+
+## Approval gate
+
+I will not touch files until you approve. Once approved, I will implement TW-024 as a cache/PWA lifecycle fix, not as a Calendar styling fix, because the Calendar styling is already correct in the current code.
 
 ---
-
-## B1. Historical regression sweep — TW-001 through TW-021
-
-Method: for each ticket in `docs/issue-repository-index.md`, `code--search_files` the referenced file(s) and confirm the documented fix is still present. Any ticket marked "Fixed" whose guard is no longer in code → logged as a regression finding.
-
-Output: per-TW pass/fail table in the report.
-
-## B2. Deep code read — every hot path
-
-Methodical read (files only, no edits):
-
-- **Auth & routing guards** — `App.tsx` (`ProtectedRoute`, `RoleSelectionRoute`, `ProfileSetupRoute`, `PublicLandingRoute`, `AuthRoute`), `useAuth.tsx`, `useProfile.tsx`, `RoleSelection.tsx`, `ProfileSetup.tsx`. Confirm TW-011, TW-013, TW-014, TW-015, TW-020 guards intact. Confirm no route leaks an unauth user into protected surface or strands an authed user on public one.
-- **Trainer lifecycle** — signup → role → profile setup → `start_trainer_free` trial → invite client → create plan → log workout (all metric types) → log meal → view progress → subscription renewal. Read end-to-end for orphan states.
-- **Client lifecycle** — invite link → auto-role-assign → profile setup → today's planned workout → log actuals (every `MetricType`) → log food with new unit dropdown → edit same-day diary → `/my-trainer` → progress → Steps OCR (new path).
-- **Calendar completion logic** — `parsePlannedExercises` + `isActualLogged` walked against every metric type in `Calendar.tsx`. AMRAP and EMOM highest risk.
-- **Food unit dropdown** — single-item meal persists `quantity_value`/`quantity_unit`; multi-item meal nulls them. `parseQuantity` behavior on AI output strings.
-- **Trainer Profile** — avatar signed URL lifecycle, `/my-trainer` RPC, TrainerProfileEditModal validation.
-- **Terms role-split** — trainer vs client accordion visibility, Plan Agreement.
-- **Subscription read-only enforcement** — every write path (workouts, food_logs, client_training_plans, plan_sessions, day_marks, step_logs) verified blocked when `has_active_platform_subscription` returns false. UI surfaces a clean error.
-- **Landing page ref warnings** — 3 live `Function components cannot be given refs` warnings (HowItWorks, HouseRules, ComparisonTable) from current console logs. Logged as runtime warnings.
-- **Steps OCR (TW-021)** — `stepOcr.ts` extractor, `StepLogModal.tsx` wiring, lazy-load behavior, confirm-before-save.
-
-## B3. DB + security sweep
-
-- `supabase--linter` — run once, include output verbatim.
-- Manual RLS review on all 20 public tables. Threat model: can a client read another client's data? can a trainer read a non-client's data? can an expired-subscription trainer write? can anon read anything sensitive?
-- Review every `SECURITY DEFINER` function: `apply_referral_reward`, `get_my_trainer_profile`, `get_client_profile_for_trainer`, `get_trainer_subscription_status`, `get_trainer_referral_stats`, `start_trainer_free`, `start_trainer_trial`, `lookup_trainer_by_unique_id`, `renew_trainer_subscription`, `create_trainer_subscription`, `can_trainer_add_client`, `calculate_referral_reward`, `has_active_platform_subscription`, `is_trainer_of_client`, `is_profile_owner`, `get_user_profile_id`, `get_trainer_profile_id`, `get_user_role`, `get_trainer_clients`, `bump_dictionary_usage`, `search_food_dictionary`, `update_trainer_activity`, `record_heartbeat`, `generate_unique_id`, `create_trainer_subscription_webhook`, `renew_trainer_subscription_webhook`. Check `auth.uid()` presence and ownership validation.
-- Edge function auth — `analyze-food`, `lookup-or-analyze-food`, `razorpay-webhook`, `nudge-trainers`, `nudge-clients`, `generate-expiry-notifications`, `record-food-edit`. Confirm JWT/MAINTENANCE_TOKEN/HMAC pattern.
-- Storage `avatars` bucket RLS — owner-write, authenticated-read via signed URLs.
-
-## B4. Live preview walk-through
-
-Browser tool on preview URL. Two sessions in sequence:
-
-- **Trainer session:** land → signup → profile → subscribe (test mode, no real payment) → copy invite link → create plan → log workout for each metric type (reps_weight, time, AMRAP, EMOM, distance_time) → log food with unit dropdown → log steps → edit trainer profile w/ avatar → check notifications → progress → plan agreement.
-- **Client session:** separate browser → open invite link → signup → auto-assign → confirm no role-selection shown → profile setup → see today's planned workout → log actuals per metric type → log food with unit → test Steps OCR with a screenshot → progress → `/my-trainer` → edit today's food diary.
-
-Every destructive action confirmed before executing on shared test data.
-
-## B5. Report deliverable
-
-Single markdown file at `/mnt/documents/vecto_audit_report_v1.md`:
-
-1. **Executive summary** — pass/fail count by severity.
-2. **Historical regression table** — TW-001…TW-021, status per ticket, evidence.
-3. **Findings log** — each with:
-   - Finding ID (AUDIT-###)
-   - Severity (Critical / High / Medium / Low)
-   - Category (Functional / Data integrity / Security / RLS / Edge fn / UX-blocking)
-   - File(s) + line numbers
-   - Reproduction steps (code path or click path)
-   - Why it matters in business terms
-   - Recommended fix (NOT applied)
-4. **Security sweep output** — linter results, RLS review notes, edge-fn auth audit.
-5. **Triage recommendation** — fix order, tied to trainer-wins-when-client-logs flywheel.
-
----
-
-## Acceptance
-
-- Report delivered at `/mnt/documents/vecto_audit_report_v1.md`.
-- Every TW ticket verified.
-- Every RLS policy reviewed.
-- Every edge function auth confirmed.
-- Live preview walk-through evidence for both roles.
-- **Zero code written, zero migrations run.**
-
-After you read the report, we triage together and you pick which fixes ship in what order.
+TW-ID: TW-024 (status: triage)
+Files touched: none
+Repo updated: no — plan mode/read-only; TW-024 will be written to the issue repository after approval
+Regression check: linked to previously discussed TW-024; existing indexed closest match TW-007 is not the root cause
