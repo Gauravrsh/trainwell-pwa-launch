@@ -1,10 +1,27 @@
-// Minimal service worker for Web Push + fresh-shell guard for installed PWAs
-// Network-first for HTML navigations ensures users always get latest index.html
-// (JS/CSS are content-hashed by Vite, so they cache safely.)
+self.addEventListener('install', (event) => {
+  event.waitUntil(self.skipWaiting());
+});
+
+self.addEventListener('activate', (event) => {
+  event.waitUntil(
+    caches.keys()
+      .then((cacheNames) => Promise.all(cacheNames.map((cacheName) => caches.delete(cacheName))))
+      .then(() => self.clients.claim())
+  );
+});
+
+self.addEventListener('message', (event) => {
+  if (event.data?.type === 'SKIP_WAITING') {
+    self.skipWaiting();
+  }
+});
+
+// Minimal service worker for Web Push + fresh-shell guard for installed PWAs.
+// Network-only for HTML navigations ensures stale app shells cannot resurrect old UI.
 self.addEventListener('fetch', (event) => {
   const req = event.request;
   if (req.mode === 'navigate') {
-    event.respondWith(fetch(req).catch(() => caches.match(req)));
+    event.respondWith(fetch(req, { cache: 'no-store' }));
   }
 });
 

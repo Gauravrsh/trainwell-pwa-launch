@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useProfile } from '@/hooks/useProfile';
+import { isServiceWorkerAllowed } from '@/lib/buildFreshness';
+import { logError } from '@/lib/errorUtils';
 
 // VAPID public key — must match the VAPID_PUBLIC_KEY secret stored in backend
 const VAPID_PUBLIC_KEY = 'BCD1FEQO1T8hO6dNEVpJBlA96gQ0yLTwFd0VFQHIpWSkNm_0FzDTFi8NkMf_c93AoIcGbMEIFShbGt-GEIQ8u4E';
@@ -22,7 +24,7 @@ export function usePushSubscription() {
 
   const subscribe = useCallback(async () => {
     if (!profile?.id) return false;
-    if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
+    if (!isServiceWorkerAllowed() || !('PushManager' in window)) {
       console.log('Push notifications not supported');
       return false;
     }
@@ -31,7 +33,8 @@ export function usePushSubscription() {
       const permission = await Notification.requestPermission();
       if (permission !== 'granted') return false;
 
-      const registration = await navigator.serviceWorker.register('/sw.js', { scope: '/' });
+      const registration = await navigator.serviceWorker.register('/sw.js', { scope: '/', updateViaCache: 'none' });
+      await registration.update();
       await navigator.serviceWorker.ready;
 
       let subscription = await registration.pushManager.getSubscription();
@@ -64,14 +67,14 @@ export function usePushSubscription() {
         );
 
       if (error) {
-        console.error('Failed to save push subscription:', error);
+        logError('usePushSubscription.save', error);
         return false;
       }
 
       console.log('Push subscription saved successfully');
       return true;
     } catch (err) {
-      console.error('Push subscription error:', err);
+      logError('usePushSubscription.subscribe', err);
       return false;
     }
   }, [profile?.id]);

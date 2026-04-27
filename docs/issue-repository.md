@@ -353,3 +353,26 @@
   - Manual input path unchanged; OCR still never writes to DB directly — user must confirm and Save ✅
   - No DB / RLS / edge function changes ✅
   - Apple Watch photo OCR now stitches fragmented thousands groups (e.g. `3,92` + `5` → `3,925`) before scoring, preventing false low values or fallback misses ✅
+
+---
+
+## TW-024: Stale PWA Cache Resurrects Old Calendar Dots/Icons and Removed UI
+- **Severity:** High
+- **Status:** 🔶 Awaiting verification
+- **Date Found:** 2026-04-27
+- **Reported by:** Trainer debugging client `6486580` and user `gaurav.sharma@fplabs.tech`.
+- **Symptom:** Calendar repeatedly showed old UI markers — green/red/grey dots, dumbbell icons on dates, and circular legend states — even though the current guideline is boundary-only date styling for Logged, TL, CL, HL, and Today. The same stale surface also explained removed dummy settings/notification UI and old Terms content returning after install/uninstall cycles.
+- **Root Cause:** The production Service Worker was minimal and did not version the app shell, call `skipWaiting()`, claim clients, purge old caches on activation, or force bypass Service Worker cache for fresh builds. On some mobile PWA/browser paths, uninstalling the app does not reliably clear Service Worker registrations or Cache Storage, so an old shell could continue serving obsolete bundles.
+- **Fix:**
+  1. Hardened `public/sw.js` with install/activate lifecycle handling: `skipWaiting()`, `clients.claim()`, and complete Cache Storage purge on activation.
+  2. Changed navigation handling to network-only/no-store so stale HTML shells cannot resurrect old date-cell UI.
+  3. Added build-stamp infrastructure: Vite emits `build-id.json`; runtime guard compares the active build to the latest server build and wipes caches + unregisters Service Workers on mismatch.
+  4. Hardened Service Worker registration with `updateViaCache: 'none'`, preview/iframe guards, and registration updates.
+  5. Added `/reset-app` recovery route to unregister Service Workers, clear Cache Storage, and clear local/session storage for affected devices.
+  6. Added regression tests that block calendar date-cell icons/dots and circular legends from returning.
+- **Files Changed:** `public/sw.js`, `vite.config.ts`, `src/main.tsx`, `src/lib/buildFreshness.ts`, `src/pages/ResetApp.tsx`, `src/App.tsx`, `src/hooks/usePushSubscription.tsx`, `src/vite-env.d.ts`, `src/test/calendar-boundary-ui.test.ts`, `docs/issue-repository.md`, `docs/issue-repository-index.md`
+- **Detected via:** User report + source audit of calendar renderer vs stale rendered screenshot.
+- **Prevention / Regression Guards:**
+  - `src/test/calendar-boundary-ui.test.ts` asserts date cells contain only numeric date content plus border classes — no `Dumbbell`, status icons, marker dots, absolute-position badges, or `rounded-full` chips.
+  - The legend is explicitly guarded as boundary swatches only and must not contain `Completed`, `Missed`, `Pending`, or circular indicators.
+  - Service Worker is disabled/unregistered in Lovable preview/iframe contexts to avoid editor cache pollution.
