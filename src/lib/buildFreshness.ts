@@ -1,5 +1,7 @@
 import { logError } from "@/lib/errorUtils";
 
+declare const __APP_BUILD_ID__: string;
+
 const BUILD_REFRESH_KEY = "vecto:build-refresh-attempted";
 const SERVICE_WORKER_URL = "/sw.js";
 const BUILD_ID_URL = "/build-id.json";
