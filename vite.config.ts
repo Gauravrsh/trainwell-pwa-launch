@@ -17,7 +17,20 @@ export default defineConfig(({ mode }) => ({
       overlay: false,
     },
   },
-  plugins: [react(), mode === "development" && componentTagger()].filter(Boolean),
+  plugins: [
+    react(),
+    mode === "development" && componentTagger(),
+    {
+      name: "vecto-build-id",
+      generateBundle() {
+        this.emitFile({
+          type: "asset",
+          fileName: "build-id.json",
+          source: JSON.stringify({ buildId }, null, 2),
+        });
+      },
+    },
+  ].filter(Boolean),
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),
