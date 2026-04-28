@@ -54,7 +54,7 @@ interface ExerciseBlock {
 interface ClientWorkoutLogModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onSave: (exercises: ClientLoggedExercise[], caloriesBurnt?: number) => void;
+  onSave: (exercises: ClientLoggedExercise[], caloriesBurnt?: number) => void | Promise<void>;
   date?: Date;
   trainerExercises?: TrainerPlannedExercise[];
   existingActuals?: ClientLoggedExercise[];
@@ -73,6 +73,7 @@ export const ClientWorkoutLogModal = ({
   const [exerciseBlocks, setExerciseBlocks] = useState<ExerciseBlock[]>([]);
   const [customExercises, setCustomExercises] = useState<string[]>([]);
   const [caloriesBurnt, setCaloriesBurnt] = useState<string>('');
+  const [isSaving, setIsSaving] = useState(false);
   const inputRefs = useRef<Record<string, HTMLInputElement | null>>({});
 
   const generateId = useCallback(() => Math.random().toString(36).substring(2, 9), []);
@@ -80,6 +81,7 @@ export const ClientWorkoutLogModal = ({
   useEffect(() => {
     if (!open) return;
     setCaloriesBurnt('');
+    setIsSaving(false);
     // Edit mode: hydrate from previously saved actuals so the user sees what they logged.
     if (existingActuals && existingActuals.length > 0) {
       const trainerNameSet = new Set(trainerExercises.map(t => t.name));
@@ -236,7 +238,12 @@ export const ClientWorkoutLogModal = ({
     }
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
+    // TW-029 — Guard against double-clicks. Without this an impatient user can
+    // fire the save handler 5–10× in a row, and because the server-side
+    // reconciliation insert-only-appends for client-added exercises (e.g.
+    // Swimming), every click adds another duplicate row.
+    if (isSaving) return;
     const valid: ClientLoggedExercise[] = exerciseBlocks
       .filter(isBlockValid)
       .map(b => {
@@ -260,7 +267,14 @@ export const ClientWorkoutLogModal = ({
 
     if (valid.length === 0) return;
     const calories = caloriesBurnt ? parseInt(caloriesBurnt, 10) : undefined;
-    onSave(valid, calories && !isNaN(calories) ? calories : undefined);
+    setIsSaving(true);
+    try {
+      await onSave(valid, calories && !isNaN(calories) ? calories : undefined);
+    } finally {
+      // The parent typically closes the modal on success which resets state;
+      // re-enable in case the modal stays open (e.g. on error).
+      setIsSaving(false);
+    }
   };
 
   const hasValidExercises = exerciseBlocks.some(isBlockValid);
@@ -676,9 +690,9 @@ export const ClientWorkoutLogModal = ({
         </div>
 
         <div className="dialog-footer p-6 pt-4 border-t border-border">
-          <Button onClick={handleSave} disabled={!hasValidExercises} className="w-full">
+          <Button onClick={handleSave} disabled={!hasValidExercises || isSaving} className="w-full">
             <Save className="w-4 h-4 mr-2" />
-            {mode === 'edit' ? 'Update Workout' : 'Log Exercise'}
+            {isSaving ? 'Saving…' : mode === 'edit' ? 'Update Workout' : 'Log Exercise'}
           </Button>
         </div>
       </DialogContent>
