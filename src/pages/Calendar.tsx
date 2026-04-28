@@ -397,12 +397,26 @@ const Calendar = () => {
           .eq('workout_id', workout.id);
         
         if (!error && exercises) {
-          setClientTrainerExercises(parsePlannedExercises(exercises as unknown as Exercise[]));
+          const rows = exercises as unknown as Exercise[];
+          setClientTrainerExercises(parsePlannedExercises(rows));
+          // If this workout is already completed, hydrate the modal with the
+          // saved actuals so the user sees what they previously logged.
+          if (workout.status === 'completed') {
+            setClientExistingActuals(parseLoggedActuals(rows));
+            setWorkoutModalMode('edit');
+          } else {
+            setClientExistingActuals([]);
+            setWorkoutModalMode('log');
+          }
         } else {
           setClientTrainerExercises([]);
+          setClientExistingActuals([]);
+          setWorkoutModalMode('log');
         }
       } else {
         setClientTrainerExercises([]);
+        setClientExistingActuals([]);
+        setWorkoutModalMode('log');
       }
       
       // Fetch step log for the selected date
