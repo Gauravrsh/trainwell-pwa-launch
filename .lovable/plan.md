@@ -1,77 +1,112 @@
-# TW-025 — Completed workout re-prompts client to log again
+## Bug
 
-## RCA (Root Cause Analysis) — verified against DB
+When `gaurav.rsh@gmail.com` (already signed in) launches the PWA at `/`, the **public Landing page** flashes intermittently as if it were a splash screen, before the app finally lands on `/dashboard`.
 
-User: gaurav.rsh@gmail.com — workout for 2026-04-28 (id `ffb7b51a…`) is already `status='completed'` (updated 08:26 UTC, after the original 04:44 log). DB confirms: 8 exercise rows, all with `recommended_sets=1`; 7 of them have `actual_reps=10, actual_sets=1` (logged), one ("Shoulder flies") has `actual_reps=NULL` (the user simply didn't fill that row when first logging).
+This is **not** a stale-cache issue. The freshness guard from last night is working correctly. This is a logic bug in the boot sequence.
 
-Despite the workout being `completed`, the app let the user reopen the same logging flow and shows "Workout logged successfully!" again. Three concrete bugs combine to produce this:
+---
 
-1. **No status gate on the "Log Workout" CTA.** In `src/pages/Calendar.tsx` (~line 1414–1428), the client action sheet renders the "Log Workout" tile whenever `canEdit` is true. There is **no check on `workout.status === 'completed'`** — only the bottom "Quick status update" buttons are gated by `pending`. So a completed workout still exposes the full re-log path.
+## Root Cause Analysis (TW-026)
 
-2. **Modal always re-seeds from trainer plan, ignoring prior actuals.** `ClientWorkoutLogModal` (`useEffect` at line 76–101) re-builds `exerciseBlocks` from `trainerExercises` every time `open` flips to `true`. `clientTrainerExercises` is fetched in `handleDateClick` directly from the `exercises` table — it pulls planned rows but **never reads `actual_*` fields**, so previously-entered weights/reps are not shown back. To the user it looks like "nothing was saved" even though the workout is `completed`.
+Three things conspire in `src/App.tsx`:
 
-3. **`handleWorkoutSave` blindly upserts again.** It re-sets `status='completed'`, deletes any non-planned actual rows (`recommended_sets IS NULL`), and re-applies actuals onto planned rows. There's no idempotency check, no "already logged — confirm overwrite" prompt, and no audit trail. Hence the duplicate "Workout logged successfully!" toast.
-
-Net effect: the completed state is invisible in the modal → user thinks they need to log again → save path runs as if it were the first log → false confirmation toast. The bug is purely client-side; DB integrity is intact (re-save is effectively a no-op for the matched rows in this case, but it is destructive for any non-planned actuals the client may have added — those get deleted by the cleanup step on line 694–698).
-
-## Fix
-
-### A. Gate the action sheet by workout status
-In `src/pages/Calendar.tsx` client action sheet:
-- If `workout?.status === 'completed'` → replace the "Log Workout" tile with a **"View / Edit Workout"** tile (same icon, different label, success-tinted border).
-- Keep "Log Food" and "Log Steps" tiles as-is.
-- The existing "Assigned Workout — completed" status pill already conveys state; reinforce by hiding the "Quick status update" Done/Missed buttons (already hidden — they only show for `pending`, good).
-
-### B. Hydrate the modal from saved actuals when re-opening a completed workout
-- New prop on `ClientWorkoutLogModal`: `existingActuals?: ClientLoggedExercise[]` and `mode?: 'log' | 'edit'`.
-- In `handleDateClick` (client branch), when `workout` exists and is `completed`, fetch `exercises` and reconstruct `existingActuals` by reading `actual_sets / actual_reps / actual_weight / actual_duration_seconds / actual_distance_meters / actual_rounds / actual_emom_minutes` together with `metric_type`. Pass them to the modal.
-- In the modal's `useEffect`, if `existingActuals?.length`, seed `exerciseBlocks` from those (with `isFromTrainer` preserved by name match against `trainerExercises`); else fall back to the current trainer-plan seeding.
-- Title + CTA copy switch by `mode`: "Log Workout" / "Save Workout" vs "Edit Workout" / "Update Workout".
-
-### C. Make `handleWorkoutSave` idempotent and honest
-- If `existingWorkout?.status === 'completed'` and the user is re-saving, show toast **"Workout updated"** (not "logged successfully").
-- Remove the destructive cleanup on line 694–698 when in edit mode (don't wipe extra actuals the user added previously without an explicit "Remove" click).
-- No DB schema change needed.
-
-### D. Regression coverage
-Add `src/test/client-workout-relog.test.ts`:
-1. Completed workout → action sheet shows "View / Edit Workout", not "Log Workout".
-2. Opening edit mode hydrates blocks with previously-saved `actual_*` values, not zeros.
-3. Saving in edit mode triggers the "updated" toast, not "logged successfully".
-4. Pending workout still opens in fresh "Log Workout" mode with trainer recommendations.
-5. Workout with no trainer plan still allows free-form log (current behavior).
-
-Manually verify in preview after deploy:
-- Today's tile (already completed) → reopen → modal shows actuals → Save → toast says "updated".
-- Tomorrow's tile (pending) → original log flow unchanged.
-- Trainer view unchanged (TrainerWorkoutLogModal not touched).
-
-## Issue repository
-
-Append to `docs/issue-repository.md`:
-
+### 1. `PublicLandingRoute` ignores the auth `loading` flag
+```ts
+const PublicLandingRoute = () => {
+  const { user } = useAuth();           // <- does NOT read `loading`
+  if (user) return <Navigate to="/dashboard" replace />;
+  return <Landing />;                   // <- rendered while user is still null
+};
 ```
-### TW-025 — Completed client workout re-prompts logging
-Status: Fixed
-Severity: High (data UX, false confirmation, destructive re-save risk)
-Reported: 2026-04-28 by gaurav.rsh@gmail.com
-RCA: Action sheet did not gate "Log Workout" by status; modal re-seeded only
-from trainer plan and ignored saved actuals; save path was non-idempotent and
-destructively wiped non-planned actuals on every save.
-Fix: Status-aware CTA ("View/Edit"), modal hydrates from actuals, save toast
-distinguishes log vs update, cleanup gated to log mode only.
-Files: src/pages/Calendar.tsx, src/components/modals/ClientWorkoutLogModal.tsx,
-       src/test/client-workout-relog.test.ts
-Regression check: vitest suite + manual verify on completed + pending tiles.
+On a cold boot, `useAuth` starts with `user = null, loading = true`. Supabase restores the session asynchronously via `getSession()` / `onAuthStateChange`. Until that resolves (typically 200-800 ms on mobile), `user` is `null`, so `PublicLandingRoute` happily renders `<Landing />`.
+
+### 2. `AppContent` whitelists `/` as a "public route"
+```ts
+const isPublicRoute = location.pathname === "/" || ...
+const ready = isPublicRoute || (!authLoading && !profileLoading);
+```
+For path `/`, `ready` is `true` immediately, so `showSplash` is set to `false` on the very first effect tick. The splash is hidden before auth has resolved, exposing whatever `PublicLandingRoute` renders — which, per #1, is `<Landing />`.
+
+### 3. Landing page is eager-imported (line 22), so it paints in one frame
+There is no Suspense fallback to mask the gap. The full landing hero renders, then ~300-700 ms later the auth listener fires, `user` becomes non-null, and React redirects to `/dashboard`. The user perceives this as "Landing page flashing as a splash screen."
+
+### Why killing + relaunching "fixed" it last time
+A fresh process sometimes has the Supabase session warm in IndexedDB and resolves `getSession()` before the first paint, hiding the race. It's timing-dependent — exactly the symptom Gaurav described ("intermittent").
+
+### Why this is independent from the calendar/SW bug fixed last night
+That fix was about stale **app shells**. This bug exists even on a brand-new build because the race is between Supabase auth bootstrap and the first React paint of `/`. No amount of cache-busting changes it.
+
+---
+
+## Fix Plan
+
+### Change 1 — `PublicLandingRoute` waits for auth to resolve
+```ts
+const PublicLandingRoute = () => {
+  const { user, loading } = useAuth();
+  if (loading) return null;             // splash stays up
+  if (user) return <Navigate to="/dashboard" replace />;
+  return <Landing />;
+};
 ```
 
-Append the one-line entry to `docs/issue-repository-index.md` under TW-024b.
+### Change 2 — `AppContent` no longer treats `/` as splash-skippable
+Remove `location.pathname === "/"` from the `isPublicRoute` whitelist. `/auth`, `/reset-password`, `/terms`, `/pitch` stay public (they have no auth-gated redirect on top of them). `/` must wait for `authLoading` to settle so we know whether to show Landing or redirect.
 
-## Files touched
+```ts
+const isPublicRoute =
+  location.pathname.startsWith("/auth") ||
+  location.pathname.startsWith("/reset-password") ||
+  location.pathname === "/terms" ||
+  location.pathname === "/pitch";
+```
 
-- `src/pages/Calendar.tsx` — gate CTA, fetch actuals on click, pass to modal, idempotent save toast, cleanup guard.
-- `src/components/modals/ClientWorkoutLogModal.tsx` — `existingActuals` + `mode` props, hydration logic, copy switch.
-- `src/test/client-workout-relog.test.ts` — new regression suite.
-- `docs/issue-repository.md`, `docs/issue-repository-index.md` — TW-025 entry.
+The 1200 ms `SPLASH_MAX_MS` cap remains as a safety net so a wedged auth call can never strand a first-time visitor on the splash forever — they'll fall through to Landing as today.
 
-No DB migration. No edge function changes. No SW changes.
+### Change 3 — defensive: `AuthRoute` already reads `user` only, but should also wait
+```ts
+const AuthRoute = ({ children }) => {
+  const { user, loading } = useAuth();
+  if (loading) return null;
+  if (user) return <Navigate to="/dashboard" replace />;
+  return <>{children}</>;
+};
+```
+Prevents the symmetric flash on `/auth` (signed-in user briefly sees the login form).
+
+---
+
+## Regression Surface — what else could this affect?
+
+| Surface | Risk | Mitigation |
+|---|---|---|
+| First-time visitor (no session) | Splash held ~200-400 ms longer before Landing paints | Acceptable; matches dashboard boot behavior. 1200 ms hard cap unchanged. |
+| Signed-in trainer cold boot | Now correctly redirects to `/dashboard` without Landing flash | **This is the fix** |
+| Signed-out user on `/auth` | Splash holds until auth resolves, then Auth renders | Fine; Auth is eager-imported, paints in one frame |
+| `/terms`, `/pitch`, `/reset-password` | Unchanged | Still in `isPublicRoute` whitelist |
+| Invited client (`?trainer=...`) flow | `InviteContextCapture` runs on every route change, not gated by auth — unchanged | No impact |
+| PWA resume from background | Auth is already warm; `loading` resolves in <50 ms; user perceives instant route | No impact |
+| Sign-out from inside app | `SIGNED_OUT` listener replaces history with `/`; `PublicLandingRoute` now sees `loading=false, user=null` → renders Landing correctly | Behavior preserved |
+| Build freshness reload (`window.location.replace`) | After reload, normal boot path applies; fix benefits this path too | No impact |
+
+### Regression test to add
+`src/test/public-landing-auth-gate.test.ts`:
+- `PublicLandingRoute` returns `null` while `loading=true`
+- `PublicLandingRoute` redirects to `/dashboard` when `loading=false, user!=null`
+- `PublicLandingRoute` renders Landing when `loading=false, user==null`
+- `AuthRoute` returns `null` while `loading=true`
+- `AppContent.isPublicRoute` is `false` for `/` (regression guard)
+
+---
+
+## Files to change
+1. `src/App.tsx` — `PublicLandingRoute`, `AuthRoute`, `isPublicRoute` whitelist
+2. `src/test/public-landing-auth-gate.test.ts` — new regression test
+3. `docs/issue-repository.md` — add **TW-026** entry with this RCA
+4. `docs/issue-repository-index.md` — index TW-026
+
+No DB / edge function / SW changes. No risk to last night's freshness guard or the TW-025 workout-relog fix.
+
+---
+
+**Approve to implement?**
