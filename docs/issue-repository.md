@@ -358,7 +358,7 @@
 
 ## TW-024: Stale PWA Cache Resurrects Old Calendar Dots/Icons and Removed UI
 - **Severity:** High
-- **Status:** 🔶 Awaiting verification
+- **Status:** ✅ Fixed (with follow-up TW-024b for auto-recovery)
 - **Date Found:** 2026-04-27
 - **Reported by:** Trainer debugging client `6486580` and user `gaurav.sharma@fplabs.tech`.
 - **Symptom:** Calendar repeatedly showed old UI markers — green/red/grey dots, dumbbell icons on dates, and circular legend states — even though the current guideline is boundary-only date styling for Logged, TL, CL, HL, and Today. The same stale surface also explained removed dummy settings/notification UI and old Terms content returning after install/uninstall cycles.
@@ -376,3 +376,27 @@
   - `src/test/calendar-boundary-ui.test.ts` asserts date cells contain only numeric date content plus border classes — no `Dumbbell`, status icons, marker dots, absolute-position badges, or `rounded-full` chips.
   - The legend is explicitly guarded as boundary swatches only and must not contain `Completed`, `Missed`, `Pending`, or circular indicators.
   - Service Worker is disabled/unregistered in Lovable preview/iframe contexts to avoid editor cache pollution.
+
+---
+
+## TW-024b: Stale Cache Fix Required Manual Kill-Relaunch to Self-Heal
+- **Severity:** High
+- **Status:** ✅ Fixed
+- **Date Found:** 2026-04-28
+- **Reported by:** Trainer `gaurav.rsh@gmail.com` — calendar reverted to old dots/icons after foreground/refresh; only an OS-level kill + relaunch surfaced the new build.
+- **Symptom:** After TW-024 shipped, regular reloads, background→foreground transitions, and pull-to-refresh in the installed PWA continued to show the old shell. Only fully killing the PWA process and relaunching picked up the new Service Worker and fresh UI.
+- **Root Cause:**
+  1. A new Service Worker installs into the `waiting` state and cannot activate while the old SW still controls open clients. The app had no `updatefound` listener on the registration, so the new worker was never told to `SKIP_WAITING` after the user's first visit. It only activated when every client was closed — i.e. an OS kill.
+  2. There was no `navigator.serviceWorker.controllerchange` listener, so even if the new SW did take control, the page kept rendering the already-loaded stale bundle until a manual reload.
+  3. The build-freshness guard ran exactly once, ~3s after boot. In an installed PWA the document is rarely re-mounted, so foregrounding the app after a deploy never re-checked `build-id.json` and never triggered the cache wipe.
+- **Fix:**
+  1. `registerAppServiceWorker` now attaches `updatefound` → `statechange` and posts `SKIP_WAITING` to any newly installed worker as soon as a controller already exists.
+  2. Added a one-shot `controllerchange` listener that calls `window.location.reload()` the moment a new SW takes control, so the user sees the new build without manual action.
+  3. `installBuildFreshnessGuard` now also runs `runFreshnessCheck()` on `visibilitychange` (visible) and `window` `focus`, with an in-flight guard to prevent overlap. Foregrounding the PWA now reliably picks up new builds.
+  4. The freshness check itself now calls `registration.update()` and posts `SKIP_WAITING` to any waiting worker before clearing caches and reloading, so the SW lifecycle drives the controller swap rather than fighting it.
+- **Files Changed:** `src/lib/buildFreshness.ts`, `docs/issue-repository.md`, `docs/issue-repository-index.md`
+- **Detected via:** User reproduction + RCA of SW lifecycle (`installing` → `installed/waiting` → `activated`) against the previous registration code.
+- **Prevention / Regression Guards:**
+  - Self-healing is now automatic on the next foreground or focus event after a deploy — no kill-relaunch required.
+  - `controllerchange` reload is guarded against double-fire.
+  - Freshness check is idempotent via `freshnessCheckInFlight` and `BUILD_REFRESH_KEY` session marker.
