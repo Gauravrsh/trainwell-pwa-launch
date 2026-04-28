@@ -762,18 +762,22 @@ const Calendar = () => {
         }
       });
 
-      // Only wipe previous non-planned actuals on a fresh log. In edit mode
-      // we want re-saves to be additive, not destructive — otherwise an
-      // accidental re-open would silently delete extra exercises the user
-      // had added in the original log.
-      if (!isEditingCompleted) {
-        const { error: cleanupError } = await supabase
-          .from('exercises')
-          .delete()
-          .eq('workout_id', workoutId)
-          .is('recommended_sets', null);
-        if (cleanupError) throw cleanupError;
-      }
+      // TW-029 — Always wipe previous non-planned (client-added) actuals
+      // before re-inserting. Without this, re-saving an already-completed
+      // workout (e.g. impatient double-tap on "Update Workout") was
+      // appending another copy of every client-added exercise like
+      // Swimming on each click — Gaurav's workout had 7 duplicate
+      // "Swimming - Freestyle" rows from this exact loop. The new
+      // payload from the modal is the source of truth for what the
+      // client logged outside of the trainer's plan; previous client
+      // additions for this workout are reconstructed from that payload,
+      // so deleting+re-inserting is idempotent and safe.
+      const { error: cleanupError } = await supabase
+        .from('exercises')
+        .delete()
+        .eq('workout_id', workoutId)
+        .is('recommended_sets', null);
+      if (cleanupError) throw cleanupError;
 
       const { data: plannedRows, error: plannedError } = await supabase
         .from('exercises')

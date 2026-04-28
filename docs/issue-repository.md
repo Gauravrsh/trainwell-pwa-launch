@@ -606,3 +606,30 @@ Window: Apr 26, 27, 28. Apr 26 missed → excluded from avg.
 
 - `progress-math.test.ts` pins: window length for N=1/3/7/30/90; the broken 1114 average is explicitly forbidden; updating today's BMR does not rewrite a row dated Apr 1; missed-day chart rows emit `null`.
 - Manual: re-ran Gaurav's exact 4-day calculation against the live DB before and after — matched the new card value (369) in the new "last 3 days" window.
+
+---
+
+## TW-029 — Re-saving a completed workout duplicated client-added exercises (e.g. Swimming logged 7×) + slow save with no double-click guard
+
+**Severity:** High
+**Status:** Fixed
+**Reported:** Gaurav noticed "Edit Workout" sheet showed multiple identical "Swimming - Freestyle" cards (#6 through #10, plus a second #10) and that the "Update Workout" button felt much slower than usual.
+
+### Root cause
+Two compounding bugs in `src/pages/Calendar.tsx → handleWorkoutSave`:
+
+1. **Additive re-save in edit mode.** The cleanup that deletes previously-saved client-added (non-planned) exercise rows was guarded by `if (!isEditingCompleted)`. The intent was "don't destroy extra exercises on accidental re-open," but the consequence was that every subsequent save in edit mode skipped cleanup and *appended* a new copy of every client-added exercise carried in the payload. The DB confirmed the symptom for workout `ffb7b51a-…` (2026-04-28, Gaurav): 7 rows of `Swimming - Freestyle`, all `recommended_sets = NULL`, created at 17:14:13, 17:14:19, 17:15:09, 17:15:11, 17:15:11, 17:16:14, 17:16:27.
+
+2. **No double-click guard on Save.** Both `ClientWorkoutLogModal` and `TrainerWorkoutLogModal` accepted unlimited rapid clicks on "Update Workout" / "Save Workout" while the network request was in flight. Combined with bug #1, every impatient extra tap = another duplicate row.
+
+### Fix
+- `Calendar.tsx`: Always run the `delete().is('recommended_sets', null)` cleanup before re-inserting client-added rows (removed the `if (!isEditingCompleted)` guard). Trainer-planned rows (`recommended_sets IS NOT NULL`) are still preserved and updated in place.
+- `ClientWorkoutLogModal.tsx` and `TrainerWorkoutLogModal.tsx`: Added an `isSaving` flag. `handleSave` is now async, awaits the parent `onSave`, disables the button and shows "Saving…" while in flight, and ignores re-entries.
+- One-off data cleanup migration: deleted 6 duplicate `Swimming - Freestyle` rows for Gaurav's workout, keeping the earliest by `created_at`.
+
+### Regression guards
+- `workout-relog-idempotency.test.ts` (4 tests): saving the same payload 7× in a row yields exactly 1 swimming row (was 7 in the bug); removing a client-added exercise from the payload removes it from the DB; trainer-planned rows are never touched by the cleanup.
+- Manual: confirmed via SQL that Gaurav's workout now has 1 `Swimming - Freestyle` row instead of 7, and 7 distinct exercises instead of 15. The 3 `Hypertension` rows are legitimate trainer-planned entries (all `recommended_sets = 1`) and are out of scope for this bug.
+
+### Notes for future debugging
+- The "additive in edit mode" pattern was originally added to protect against accidentally wiping extra exercises a client had added on first log. The real protection is the modal's own hydration: the modal re-loads previous actuals into the edit form, so any re-save's payload already contains every previously-logged client-added exercise. Deleting + re-inserting is therefore safe and idempotent.
