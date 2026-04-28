@@ -24,10 +24,13 @@ export const ActionChart = ({ data }: ActionChartProps) => {
     return data.map((day) => ({
       ...day,
       displayDate: format(parseISO(day.date), 'MMM d'),
-      // For stacked bar, we show intake and expenditure separately
+      // TW-028: On missed days, do NOT plot synthetic BMR-only expenditure or
+      // a fake "deficit". Leave bars/line empty so the chart matches the
+      // "Days Missed" card. Intake bar remains 0 so the red "Missed" cell still
+      // shows on the X-axis.
       intakeValue: day.intake ?? 0,
-      expenditureValue: day.totalExpenditure,
-      deficitValue: day.netDeficit,
+      expenditureValue: day.isMissed ? null : day.totalExpenditure,
+      deficitValue: day.isMissed ? null : day.netDeficit,
     }));
   }, [data]);
 
