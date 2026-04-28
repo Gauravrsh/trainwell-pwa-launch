@@ -1,6 +1,8 @@
 // Master Exercise Vault for Vecto
 // Organized by Category > Sub-Category > Exercises
 
+import type { MetricType } from "@/types/exerciseMetrics";
+
 export interface ExerciseCategory {
   category: string;
   subcategories: {
@@ -86,6 +88,7 @@ export const exerciseDatabase: ExerciseCategory[] = [
           "Cuban Press (Dumbbell)",
           "Bradford Press (Barbell)",
           "Snatch Grip High Pull",
+          "Prone IYTW (Weighted)",
         ],
       },
       {
