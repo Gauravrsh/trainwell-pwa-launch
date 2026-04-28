@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { format } from 'date-fns';
-import { gymExercises } from '@/data/gymExercises';
+import { gymExercises, getDefaultMetricForExercise } from '@/data/gymExercises';
 import { MetricType, METRIC_TYPE_OPTIONS, DEFAULT_METRIC_TYPE, summarizeRecommendation } from '@/types/exerciseMetrics';
 
 // What the trainer prescribed for one exercise.
@@ -167,8 +167,15 @@ export const ClientWorkoutLogModal = ({
     setTimeout(() => { inputRefs.current[newId]?.focus(); }, 50);
   };
 
-  const selectExercise = (blockId: string, name: string) =>
-    patchBlock(blockId, { exerciseName: name, searchTerm: '', showDropdown: false });
+  const selectExercise = (blockId: string, name: string) => {
+    // Only re-seed metric for fresh blocks (no trainer-prescribed recommendation).
+    // If the block was hydrated from a trainer plan, keep the trainer's metric choice.
+    setExerciseBlocks(prev => prev.map(b => {
+      if (b.id !== blockId) return b;
+      const nextMetric = b.isFromTrainer ? b.metricType : getDefaultMetricForExercise(name);
+      return { ...b, exerciseName: name, searchTerm: '', showDropdown: false, metricType: nextMetric };
+    }));
+  };
 
   const addCustomExercise = (blockId: string, searchTerm: string) => {
     if (!searchTerm.trim()) return;
