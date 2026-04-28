@@ -26,7 +26,9 @@ export const OutcomeChart = ({ data }: OutcomeChartProps) => {
       ...day,
       displayDate: format(parseISO(day.date), 'MMM d'),
       weightValue: day.weight,
-      deficitValue: day.netDeficit,
+      // TW-028: missed days have no real deficit — leave a gap in the line so
+      // it agrees with the "Days Missed" card on the same page.
+      deficitValue: day.isMissed ? null : day.netDeficit,
     }));
   }, [data]);
 
