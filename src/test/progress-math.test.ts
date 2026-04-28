@@ -86,8 +86,9 @@ describe('TW-028 — Avg Daily Deficit excludes missed days', () => {
     expect(avgDailyDeficit(fourDays)).not.toBe(1114);
   });
 
-  it('averages only over logged days → 368 (not 1114)', () => {
-    expect(avgDailyDeficit(fourDays)).toBe(368);
+  it('averages only over logged days → 369 (not 1114)', () => {
+    // (168 + 569) / 2 = 368.5 → Math.round → 369
+    expect(avgDailyDeficit(fourDays)).toBe(369);
   });
 
   it('returns null when no day was logged (so UI can render "—")', () => {
