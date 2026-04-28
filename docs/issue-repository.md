@@ -490,3 +490,56 @@ The TW-024/TW-024b SW + freshness work was unrelated; this race exists on a bran
 ### Prevention / Regression Guards
 - Any route component that gates UI on `useAuth().user` must also consider `useAuth().loading` — codified in the new test file's third assertion.
 - `isPublicRoute` whitelist is the single source of truth for "splash may be skipped"; adding `/` back triggers a test failure.
+
+---
+
+## TW-027 — Exercise Vault Expansion (Cardio category + IYTW family + per-exercise default metric)
+
+**Severity:** Enhancement (not a bug)
+**Status:** Shipped
+**Files touched:**
+- `src/data/gymExercises.ts`
+- `src/components/modals/TrainerWorkoutLogModal.tsx`
+- `src/components/modals/ClientWorkoutLogModal.tsx`
+- `src/test/exercise-vault.test.ts` (new)
+
+### What changed
+
+1. **+8 new entries** mapped into existing categories:
+   - Strength > Shoulders: `Prone IYTW (Weighted)`
+   - Strength > Back: `Prone Hyperextension (Bodyweight)`, `Weighted Prone Hyperextension` (clarified — user originally wrote "Prone hypertension" which was a typo)
+   - Machine > Upper Body: `Banded IYTW (Standing, Cable/Band)`
+   - Functional > Bodyweight Dynamics: `Prone IYTW (Bodyweight)`, `Standing IYTW (Bodyweight)`
+   - Mobility > Spine, Torso & Lower Body: `Mountain Pose / Tadasana Hold`, `Adductor Stretch (Seated Butterfly)`
+
+2. **New top-level category `Cardio & Endurance`** with subcategory `Cardio Machines & Sports` (25 entries). Top common cardio modalities including all 4 swimming strokes, open water, treadmill walk/run/incline, outdoor + stationary + spin + assault bike, rowing erg, SkiErg, stair climber, elliptical, arc trainer, jump rope (steady + double unders), hill sprints, track sprints, stadium stairs, hiking, boxing bag round.
+
+3. **Per-exercise default metric** (new): introduced `EXERCISE_DEFAULT_METRIC` map and `getDefaultMetricForExercise(name)` helper. When the trainer (or client) picks an exercise from autocomplete, the metric dropdown now pre-selects the right tracking shape:
+   - Mountain Pose / Adductor Stretch → `time`
+   - Outdoor/Treadmill Running, Cycling, Swimming, Sprints, Rowing, SkiErg → `distance_time`
+   - Spin Intervals, Stair Climber, Elliptical, Arc, Jump Rope steady, Boxing Bag, Stadium Stairs → `time`
+   - IYTW family + bodyweight Hyperextension + Jump Rope Double Unders → `reps_only`
+   - Anything else (200+ legacy entries + custom user-typed) → `reps_weight` (unchanged behavior).
+
+4. **Modal wiring:** `selectExercise()` in both `TrainerWorkoutLogModal` and `ClientWorkoutLogModal` now seeds `metricType` via the helper. The Client modal preserves the trainer-prescribed metric on `isFromTrainer` blocks (no override of trainer intent).
+
+### Why
+
+Mountain Pose and stretches were being defaulted to `Sets × Reps × Weight` and trainers had to manually flip the metric every time. Swimming / running had no home in the vault at all and were being typed as custom entries. Both friction points compound during the daily logging ritual that this product is built around.
+
+### Regression check
+
+- `src/test/exercise-vault.test.ts`:
+  - All 8 new entries present.
+  - "Cardio & Endurance" category exists with exactly 25 entries.
+  - Default metric correct for each new entry.
+  - Legacy entries (Squats, Bench Press, etc.) still resolve to `reps_weight`.
+  - Custom/empty names resolve to `reps_weight` — no breakage for user-typed exercises.
+  - Every key in `EXERCISE_DEFAULT_METRIC` matches an actual vault string (typo guard).
+
+### Manual smoke
+
+- Trainer Workout Log modal: search "swim" → pick Freestyle → metric pre-selects "Distance + time".
+- Search "mountain" → pick Tadasana → metric pre-selects "Time hold".
+- Search "squat" → metric stays on "Sets × Reps × Weight" (legacy preserved).
+- Client modal: trainer-prescribed exercises keep their trainer-set metric even if the client re-picks the same name.

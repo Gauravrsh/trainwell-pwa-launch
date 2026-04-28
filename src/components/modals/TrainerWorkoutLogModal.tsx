@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { gymExercises } from '@/data/gymExercises';
+import { gymExercises, getDefaultMetricForExercise } from '@/data/gymExercises';
 import { format, isBefore, startOfDay } from 'date-fns';
 import { useSubscriptionAccess } from '@/hooks/useSubscriptionAccess';
 import { SubscriptionEnforcementBanner } from '@/components/subscription/SubscriptionEnforcementBanner';
@@ -136,7 +136,12 @@ export const TrainerWorkoutLogModal = ({
     setExerciseBlocks(prev => prev.filter(b => b.id !== blockId));
 
   const selectExercise = (blockId: string, name: string) =>
-    patchBlock(blockId, { exerciseName: name, searchTerm: '', showDropdown: false });
+    patchBlock(blockId, {
+      exerciseName: name,
+      searchTerm: '',
+      showDropdown: false,
+      metricType: getDefaultMetricForExercise(name),
+    });
 
   const addCustomExercise = (blockId: string, searchTerm: string) => {
     if (!searchTerm.trim()) return;

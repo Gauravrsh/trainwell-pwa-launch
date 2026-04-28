@@ -1,112 +1,125 @@
-## Bug
+## Goal
 
-When `gaurav.rsh@gmail.com` (already signed in) launches the PWA at `/`, the **public Landing page** flashes intermittently as if it were a splash screen, before the app finally lands on `/dashboard`.
+1. Add the 5 exercises you requested (with IYTW expanded into 4 separate variants, "hypertension" corrected to "Hyperextension").
+2. Add a brand-new **Cardio & Endurance** category with 25 of the most common cardio exercises/sports (Swimming lives here).
+3. Upgrade the static exercise vault so each exercise carries a **default metric type**, and the workout modals auto-seed that metric instead of always defaulting to `Sets × Reps × Weight`.
 
-This is **not** a stale-cache issue. The freshness guard from last night is working correctly. This is a logic bug in the boot sequence.
-
----
-
-## Root Cause Analysis (TW-026)
-
-Three things conspire in `src/App.tsx`:
-
-### 1. `PublicLandingRoute` ignores the auth `loading` flag
-```ts
-const PublicLandingRoute = () => {
-  const { user } = useAuth();           // <- does NOT read `loading`
-  if (user) return <Navigate to="/dashboard" replace />;
-  return <Landing />;                   // <- rendered while user is still null
-};
-```
-On a cold boot, `useAuth` starts with `user = null, loading = true`. Supabase restores the session asynchronously via `getSession()` / `onAuthStateChange`. Until that resolves (typically 200-800 ms on mobile), `user` is `null`, so `PublicLandingRoute` happily renders `<Landing />`.
-
-### 2. `AppContent` whitelists `/` as a "public route"
-```ts
-const isPublicRoute = location.pathname === "/" || ...
-const ready = isPublicRoute || (!authLoading && !profileLoading);
-```
-For path `/`, `ready` is `true` immediately, so `showSplash` is set to `false` on the very first effect tick. The splash is hidden before auth has resolved, exposing whatever `PublicLandingRoute` renders — which, per #1, is `<Landing />`.
-
-### 3. Landing page is eager-imported (line 22), so it paints in one frame
-There is no Suspense fallback to mask the gap. The full landing hero renders, then ~300-700 ms later the auth listener fires, `user` becomes non-null, and React redirects to `/dashboard`. The user perceives this as "Landing page flashing as a splash screen."
-
-### Why killing + relaunching "fixed" it last time
-A fresh process sometimes has the Supabase session warm in IndexedDB and resolves `getSession()` before the first paint, hiding the race. It's timing-dependent — exactly the symptom Gaurav described ("intermittent").
-
-### Why this is independent from the calendar/SW bug fixed last night
-That fix was about stale **app shells**. This bug exists even on a brand-new build because the race is between Supabase auth bootstrap and the first React paint of `/`. No amount of cache-busting changes it.
+No DB schema change needed — `metric_type` is already a per-row column on `exercises`. This is a frontend-only data + small UX change.
 
 ---
 
-## Fix Plan
+## 1. New exercises being added
 
-### Change 1 — `PublicLandingRoute` waits for auth to resolve
-```ts
-const PublicLandingRoute = () => {
-  const { user, loading } = useAuth();
-  if (loading) return null;             // splash stays up
-  if (user) return <Navigate to="/dashboard" replace />;
-  return <Landing />;
-};
-```
+### Strength & Weight Training > Shoulders
+- Prone IYTW (Weighted) — *default metric: reps_only*
 
-### Change 2 — `AppContent` no longer treats `/` as splash-skippable
-Remove `location.pathname === "/"` from the `isPublicRoute` whitelist. `/auth`, `/reset-password`, `/terms`, `/pitch` stay public (they have no auth-gated redirect on top of them). `/` must wait for `authLoading` to settle so we know whether to show Landing or redirect.
+### Strength & Weight Training > Back
+- Prone Hyperextension (Bodyweight) — *reps_only*
+- Weighted Prone Hyperextension — *reps_weight*
 
-```ts
-const isPublicRoute =
-  location.pathname.startsWith("/auth") ||
-  location.pathname.startsWith("/reset-password") ||
-  location.pathname === "/terms" ||
-  location.pathname === "/pitch";
-```
+### Machine-Based Training > Upper Body (Push/Pull/Shoulder)
+- Banded IYTW (Standing, Cable/Band) — *reps_only*
 
-The 1200 ms `SPLASH_MAX_MS` cap remains as a safety net so a wedged auth call can never strand a first-time visitor on the splash forever — they'll fall through to Landing as today.
+### Functional & Dynamics > Bodyweight Dynamics
+- Standing IYTW (Bodyweight) — *reps_only*
+- Prone IYTW (Bodyweight) — *reps_only*
 
-### Change 3 — defensive: `AuthRoute` already reads `user` only, but should also wait
-```ts
-const AuthRoute = ({ children }) => {
-  const { user, loading } = useAuth();
-  if (loading) return null;
-  if (user) return <Navigate to="/dashboard" replace />;
-  return <>{children}</>;
-};
-```
-Prevents the symmetric flash on `/auth` (signed-in user briefly sees the login form).
+### Mobility & Flexibility > Spine, Torso & Lower Body
+- Mountain Pose / Tadasana Hold — *time*
+- Adductor Stretch (Seated Butterfly) — *time*
 
----
+### NEW Category: Cardio & Endurance > Cardio Machines & Sports (25 entries)
 
-## Regression Surface — what else could this affect?
+Default metric for each is shown in brackets.
 
-| Surface | Risk | Mitigation |
-|---|---|---|
-| First-time visitor (no session) | Splash held ~200-400 ms longer before Landing paints | Acceptable; matches dashboard boot behavior. 1200 ms hard cap unchanged. |
-| Signed-in trainer cold boot | Now correctly redirects to `/dashboard` without Landing flash | **This is the fix** |
-| Signed-out user on `/auth` | Splash holds until auth resolves, then Auth renders | Fine; Auth is eager-imported, paints in one frame |
-| `/terms`, `/pitch`, `/reset-password` | Unchanged | Still in `isPublicRoute` whitelist |
-| Invited client (`?trainer=...`) flow | `InviteContextCapture` runs on every route change, not gated by auth — unchanged | No impact |
-| PWA resume from background | Auth is already warm; `loading` resolves in <50 ms; user perceives instant route | No impact |
-| Sign-out from inside app | `SIGNED_OUT` listener replaces history with `/`; `PublicLandingRoute` now sees `loading=false, user=null` → renders Landing correctly | Behavior preserved |
-| Build freshness reload (`window.location.replace`) | After reload, normal boot path applies; fix benefits this path too | No impact |
-
-### Regression test to add
-`src/test/public-landing-auth-gate.test.ts`:
-- `PublicLandingRoute` returns `null` while `loading=true`
-- `PublicLandingRoute` redirects to `/dashboard` when `loading=false, user!=null`
-- `PublicLandingRoute` renders Landing when `loading=false, user==null`
-- `AuthRoute` returns `null` while `loading=true`
-- `AppContent.isPublicRoute` is `false` for `/` (regression guard)
+1. Outdoor Running (distance_time)
+2. Treadmill Running (distance_time)
+3. Treadmill Walking (distance_time)
+4. Treadmill Incline Walk (distance_time)
+5. Outdoor Cycling (distance_time)
+6. Stationary Bike (distance_time)
+7. Spin Bike Intervals (time)
+8. Assault Bike (Air Bike) (distance_time)
+9. Indoor Rowing (Erg) (distance_time)
+10. SkiErg (distance_time)
+11. Stair Climber (Stepmill) (time)
+12. Elliptical Trainer (time)
+13. Arc Trainer (time)
+14. Jump Rope — Steady Pace (time)
+15. Jump Rope — Double Unders (reps_only)
+16. Swimming — Freestyle (distance_time)
+17. Swimming — Breaststroke (distance_time)
+18. Swimming — Backstroke (distance_time)
+19. Swimming — Butterfly (distance_time)
+20. Open Water Swim (distance_time)
+21. Hill Sprints (distance_time)
+22. Track Sprints (100m / 200m / 400m) (distance_time)
+23. Stadium Stair Run (time)
+24. Hiking / Trekking (distance_time)
+25. Boxing — Bag Round (3 min) (time)
 
 ---
 
-## Files to change
-1. `src/App.tsx` — `PublicLandingRoute`, `AuthRoute`, `isPublicRoute` whitelist
-2. `src/test/public-landing-auth-gate.test.ts` — new regression test
-3. `docs/issue-repository.md` — add **TW-026** entry with this RCA
-4. `docs/issue-repository-index.md` — index TW-026
+## 2. Code changes
 
-No DB / edge function / SW changes. No risk to last night's freshness guard or the TW-025 workout-relog fix.
+### `src/data/gymExercises.ts`
+
+Switch the `exercises: string[]` shape to also support an object form so each entry can carry a default metric, while staying backward-compatible with the current flat `gymExercises: string[]` export.
+
+```text
+ExerciseEntry = string | { name: string; defaultMetric: MetricType }
+
+ExerciseCategory.subcategories[i].exercises: ExerciseEntry[]
+```
+
+- Existing entries stay as plain strings (implicitly default to `reps_weight`, matching today's behavior).
+- New entries that need a non-default metric are written as objects.
+- Add helpers:
+  - `gymExercises: string[]` — unchanged contract (auto-derived from names) so the modals keep working.
+  - `getDefaultMetricForExercise(name: string): MetricType` — returns the declared default, falls back to `reps_weight`.
+
+Add the 8 new strength/mobility/functional entries under their respective subcategories above.
+
+Add the new top-level **Cardio & Endurance** category with one subcategory **Cardio Machines & Sports** containing the 25 entries above.
+
+### `src/components/modals/TrainerWorkoutLogModal.tsx` and `src/components/modals/ClientWorkoutLogModal.tsx`
+
+When a new exercise block is created OR when the trainer picks an exercise from the autocomplete, seed `metricType` from `getDefaultMetricForExercise(exerciseName)` instead of always using `DEFAULT_METRIC_TYPE`. Trainer can still override via the existing metric dropdown.
+
+### `src/data/gymExercises.ts` legacy `muscleGroups` export
+
+Append `"Cardio Machines & Sports"` to the legacy union so anything keying off it doesn't break.
 
 ---
 
-**Approve to implement?**
+## 3. Regression check
+
+- Add a small Vitest in `src/test/exercise-vault.test.ts` covering:
+  - All 8 specifically-requested entries are searchable via `gymExercises`.
+  - `getDefaultMetricForExercise('Mountain Pose / Tadasana Hold')` returns `'time'`.
+  - `getDefaultMetricForExercise('Outdoor Running')` returns `'distance_time'`.
+  - `getDefaultMetricForExercise('Barbell Back Squats (High Bar)')` falls back to `'reps_weight'` (legacy entries unaffected).
+  - `exerciseCategories` includes `'Cardio & Endurance'`.
+
+Manual smoke after deploy:
+- Trainer Workout Log modal → search "swimming" → pick Freestyle → metric pre-selects "Distance + time".
+- Search "mountain" → pick Tadasana → metric pre-selects "Time hold".
+- Search "squat" → existing behavior preserved (Reps × Weight default).
+
+---
+
+## 4. Issue tracking
+
+Not a bug — feature/data addition. Will be tracked as a normal change in `docs/issue-repository.md` under a new entry **TW-027 — Exercise Vault Expansion (Cardio category + IYTW + per-exercise default metrics)** with the list of additions and the modal seeding change documented for future reference.
+
+---
+
+## Files touched (preview)
+
+- `src/data/gymExercises.ts` — data + helper + new category
+- `src/components/modals/TrainerWorkoutLogModal.tsx` — seed metric from helper
+- `src/components/modals/ClientWorkoutLogModal.tsx` — seed metric from helper
+- `src/test/exercise-vault.test.ts` — new
+- `docs/issue-repository.md` + `docs/issue-repository-index.md` — TW-027 entry
+
+Approve and I'll implement.

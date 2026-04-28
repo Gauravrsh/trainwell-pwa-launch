@@ -1,6 +1,8 @@
 // Master Exercise Vault for Vecto
 // Organized by Category > Sub-Category > Exercises
 
+import type { MetricType } from "@/types/exerciseMetrics";
+
 export interface ExerciseCategory {
   category: string;
   subcategories: {
@@ -61,6 +63,8 @@ export const exerciseDatabase: ExerciseCategory[] = [
           "Rack Pulls (Above Knee)",
           "Weighted Inverted Rows",
           "Reverse Dumbbell Flyes",
+          "Prone Hyperextension (Bodyweight)",
+          "Weighted Prone Hyperextension",
         ],
       },
       {
@@ -86,6 +90,7 @@ export const exerciseDatabase: ExerciseCategory[] = [
           "Cuban Press (Dumbbell)",
           "Bradford Press (Barbell)",
           "Snatch Grip High Pull",
+          "Prone IYTW (Weighted)",
         ],
       },
       {
@@ -191,6 +196,7 @@ export const exerciseDatabase: ExerciseCategory[] = [
           "Hammer Strength Iso-Lateral Row",
           "Hammer Strength Iso-Lateral Chest Press",
           "Cable Woodchoppers",
+          "Banded IYTW (Standing, Cable/Band)",
         ],
       },
       {
@@ -271,6 +277,8 @@ export const exerciseDatabase: ExerciseCategory[] = [
           "Pistol Squats (Assisted/Unassisted)",
           "Plank-to-Pushup (Commandos)",
           "Star Jumps",
+          "Prone IYTW (Bodyweight)",
+          "Standing IYTW (Bodyweight)",
         ],
       },
     ],
@@ -331,6 +339,8 @@ export const exerciseDatabase: ExerciseCategory[] = [
           "Scorpion Stretch (Lying)",
           "Iron Cross (Lying Spine Mobility)",
           "Adductor Rock-backs",
+          "Mountain Pose / Tadasana Hold",
+          "Adductor Stretch (Seated Butterfly)",
         ],
       },
     ],
@@ -365,6 +375,41 @@ export const exerciseDatabase: ExerciseCategory[] = [
       },
     ],
   },
+  {
+    category: "Cardio & Endurance",
+    subcategories: [
+      {
+        name: "Cardio Machines & Sports",
+        exercises: [
+          "Outdoor Running",
+          "Treadmill Running",
+          "Treadmill Walking",
+          "Treadmill Incline Walk",
+          "Outdoor Cycling",
+          "Stationary Bike",
+          "Spin Bike Intervals",
+          "Assault Bike (Air Bike)",
+          "Indoor Rowing (Erg)",
+          "SkiErg",
+          "Stair Climber (Stepmill)",
+          "Elliptical Trainer",
+          "Arc Trainer",
+          "Jump Rope - Steady Pace",
+          "Jump Rope - Double Unders",
+          "Swimming - Freestyle",
+          "Swimming - Breaststroke",
+          "Swimming - Backstroke",
+          "Swimming - Butterfly",
+          "Open Water Swim",
+          "Hill Sprints",
+          "Track Sprints (100m / 200m / 400m)",
+          "Stadium Stair Run",
+          "Hiking / Trekking",
+          "Boxing - Bag Round (3 min)",
+        ],
+      },
+    ],
+  },
 ];
 
 // Flat list of all exercise names for autocomplete/search
@@ -394,6 +439,61 @@ export function getExercisesByCategory(
   return cat.subcategories.flatMap((s) => s.exercises);
 }
 
+// ---------------------------------------------------------------------------
+// Per-exercise default metric type.
+// Anything NOT listed here implicitly defaults to 'reps_weight' (legacy behavior),
+// so existing 200+ entries continue to behave exactly as before.
+// Keys MUST match the exercise name strings above exactly.
+// ---------------------------------------------------------------------------
+export const EXERCISE_DEFAULT_METRIC: Record<string, MetricType> = {
+  // IYTW family — bodyweight scapular work, sets x reps, no load.
+  "Prone IYTW (Bodyweight)": "reps_only",
+  "Standing IYTW (Bodyweight)": "reps_only",
+  "Banded IYTW (Standing, Cable/Band)": "reps_only",
+  // Hyperextension
+  "Prone Hyperextension (Bodyweight)": "reps_only",
+  // (Weighted variants stay on reps_weight via fallback.)
+
+  // Mobility holds — time under tension.
+  "Mountain Pose / Tadasana Hold": "time",
+  "Adductor Stretch (Seated Butterfly)": "time",
+
+  // Cardio & Endurance category.
+  "Outdoor Running": "distance_time",
+  "Treadmill Running": "distance_time",
+  "Treadmill Walking": "distance_time",
+  "Treadmill Incline Walk": "distance_time",
+  "Outdoor Cycling": "distance_time",
+  "Stationary Bike": "distance_time",
+  "Spin Bike Intervals": "time",
+  "Assault Bike (Air Bike)": "distance_time",
+  "Indoor Rowing (Erg)": "distance_time",
+  "SkiErg": "distance_time",
+  "Stair Climber (Stepmill)": "time",
+  "Elliptical Trainer": "time",
+  "Arc Trainer": "time",
+  "Jump Rope - Steady Pace": "time",
+  "Jump Rope - Double Unders": "reps_only",
+  "Swimming - Freestyle": "distance_time",
+  "Swimming - Breaststroke": "distance_time",
+  "Swimming - Backstroke": "distance_time",
+  "Swimming - Butterfly": "distance_time",
+  "Open Water Swim": "distance_time",
+  "Hill Sprints": "distance_time",
+  "Track Sprints (100m / 200m / 400m)": "distance_time",
+  "Stadium Stair Run": "time",
+  "Hiking / Trekking": "distance_time",
+  "Boxing - Bag Round (3 min)": "time",
+};
+
+// Returns the recommended default metric for an exercise name.
+// Falls back to 'reps_weight' to preserve existing UX for unlisted entries
+// (custom user-added exercises and the 200+ legacy strength entries).
+export function getDefaultMetricForExercise(name: string): MetricType {
+  if (!name) return "reps_weight";
+  return EXERCISE_DEFAULT_METRIC[name] ?? "reps_weight";
+}
+
 // Legacy exports for backward compatibility
 export const muscleGroups = [
   "Chest",
@@ -409,6 +509,7 @@ export const muscleGroups = [
   "Full Body High Intensity",
   "Spine, Torso & Lower Body",
   "Core, Abs & Pilates",
+  "Cardio Machines & Sports",
 ] as const;
 
 export type MuscleGroup = (typeof muscleGroups)[number];
