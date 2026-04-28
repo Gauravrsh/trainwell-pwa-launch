@@ -448,3 +448,45 @@
 - CTA label is derived from `workout?.status`, not just `canEdit`.
 - Modal hydration prefers `existingActuals` over `trainerExercises` whenever present.
 - Save path branches on `existingWorkout?.status === 'completed'` for both copy and cleanup.
+
+---
+
+## TW-026 — Landing page flashes as a splash on cold boot for signed-in users
+
+**Severity:** High
+**Status:** Fixed
+**Reported by:** Gaurav (gaurav.rsh@gmail.com), via repeated PWA cold-boot
+**Files touched**
+- `src/App.tsx`
+- `src/test/public-landing-auth-gate.test.ts` (new)
+- `docs/issue-repository.md`, `docs/issue-repository-index.md`
+
+### Symptom
+On a cold launch of the PWA at `/`, an already-authenticated trainer briefly sees the **public marketing Landing page** (hero, pricing, footer) before the app redirects them to `/dashboard`. The flash is intermittent — sometimes 0 ms, sometimes ~700 ms — making it look like Landing is being used as a "splash screen".
+
+### Root cause (race condition)
+Three independent pieces in `src/App.tsx` combined to expose a Supabase auth-bootstrap race:
+
+1. **`PublicLandingRoute`** read only `user` from `useAuth`, never `loading`. On cold boot `useAuth` starts as `{ user: null, loading: true }` and only flips to the real session once `supabase.auth.getSession()` resolves (200–800 ms on mobile). Until then, the component happily rendered `<Landing />`.
+2. **`AppContent.isPublicRoute`** whitelisted `location.pathname === "/"`, so the `showSplash` gate dropped to `false` on the very first render — even though auth was still loading.
+3. **Landing is eager-imported** (no Suspense fallback), so the full hero painted in one frame. When auth finally resolved, React redirected to `/dashboard`, which the user perceived as "Landing flashed and disappeared."
+
+The TW-024/TW-024b SW + freshness work was unrelated; this race exists on a brand-new build with empty caches. Killing + relaunching the PWA hid the bug because Supabase's session was warm in IndexedDB and `getSession()` returned synchronously enough to lose the race.
+
+### Fix
+1. `PublicLandingRoute` now consumes `loading` and returns `null` while loading — the splash continues to cover the screen until auth has resolved.
+2. `AuthRoute` got the same treatment so `/auth` cannot briefly flash the login form to a signed-in user (symmetric defect).
+3. Removed `"/" `from `isPublicRoute`. `/` now waits for `authLoading` like every other route. The 1200 ms `SPLASH_MAX_MS` cap in `AppContent` remains the safety net so a wedged auth call can never strand a first-time visitor on the splash.
+
+### Regression check
+- New vitest suite `public-landing-auth-gate.test.ts` asserts: `PublicLandingRoute` and `AuthRoute` early-return on `loading`; `isPublicRoute` no longer matches `/`; `SPLASH_MAX_MS` safety cap is preserved.
+- Manual matrix:
+  1. Signed-in trainer cold boot → splash → straight to `/dashboard` (no Landing flash).
+  2. Signed-out visitor cold boot → splash for ≤1.2 s → Landing renders correctly.
+  3. Signed-in user navigating to `/auth` directly → splash → redirect to `/dashboard` (no login form flash).
+  4. Sign-out from inside app → history replaced with `/` → Landing renders cleanly (verified `SIGNED_OUT` listener still works).
+  5. `/terms`, `/pitch`, `/reset-password` cold boot → unchanged, paint immediately.
+
+### Prevention / Regression Guards
+- Any route component that gates UI on `useAuth().user` must also consider `useAuth().loading` — codified in the new test file's third assertion.
+- `isPublicRoute` whitelist is the single source of truth for "splash may be skipped"; adding `/` back triggers a test failure.

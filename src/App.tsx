@@ -185,7 +185,13 @@ const ProfileSetupRoute = () => {
 };
 
 const AuthRoute = ({ children }: { children: React.ReactNode }) => {
-  const { user } = useAuth();
+  const { user, loading } = useAuth();
+
+  // TW-026: wait for Supabase to restore the session before deciding.
+  // Otherwise an already-signed-in user briefly sees the login form on cold boot.
+  if (loading) {
+    return null;
+  }
 
   if (user) {
     return <Navigate to="/dashboard" replace />;
@@ -195,7 +201,16 @@ const AuthRoute = ({ children }: { children: React.ReactNode }) => {
 };
 
 const PublicLandingRoute = () => {
-  const { user } = useAuth();
+  const { user, loading } = useAuth();
+
+  // TW-026: must wait for auth to resolve. If we render <Landing /> while
+  // `loading` is still true and the user actually has a session in storage,
+  // the marketing page flashes for ~300-700ms before the redirect to
+  // /dashboard fires. The splash gate in AppContent already holds the
+  // splash for `/` until auth settles, so returning null here is safe.
+  if (loading) {
+    return null;
+  }
 
   if (user) {
     return <Navigate to="/dashboard" replace />;
@@ -341,10 +356,13 @@ const AppContent = () => {
   useKeyboardInset();
 
   // Public auth routes never block on profile fetch.
+  // TW-026: `/` is intentionally NOT in this list. The root route renders
+  // either <Landing /> or a redirect to /dashboard depending on auth state,
+  // so the splash MUST hold until `authLoading` resolves. The 1200ms
+  // SPLASH_MAX_MS cap below guarantees we never strand a visitor.
   const isPublicRoute =
     location.pathname.startsWith("/auth") ||
     location.pathname.startsWith("/reset-password") ||
-    location.pathname === "/" ||
     location.pathname === "/terms" ||
     location.pathname === "/pitch";
 
