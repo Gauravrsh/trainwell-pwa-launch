@@ -1486,14 +1486,24 @@ const Calendar = () => {
                       <motion.button
                         whileTap={{ scale: 0.95 }}
                         onClick={() => setShowWorkoutModal(true)}
-                        className="flex flex-col items-center gap-2 p-4 rounded-2xl bg-card border-2 border-border hover:border-primary/50 transition-colors"
+                        className={`flex flex-col items-center gap-2 p-4 rounded-2xl bg-card border-2 transition-colors ${
+                          workout?.status === 'completed'
+                            ? 'border-success/60 hover:border-success'
+                            : 'border-border hover:border-primary/50'
+                        }`}
                       >
-                        <div className="w-12 h-12 rounded-full bg-primary/20 flex items-center justify-center">
-                          <Dumbbell className="w-6 h-6 text-primary" />
+                        <div className={`w-12 h-12 rounded-full flex items-center justify-center ${
+                          workout?.status === 'completed' ? 'bg-success/20' : 'bg-primary/20'
+                        }`}>
+                          <Dumbbell className={`w-6 h-6 ${workout?.status === 'completed' ? 'text-success' : 'text-primary'}`} />
                         </div>
                         <div className="text-center">
-                          <p className="font-semibold text-foreground text-sm">Log Workout</p>
-                          <p className="text-xs text-muted-foreground">Track exercises</p>
+                          <p className="font-semibold text-foreground text-sm">
+                            {workout?.status === 'completed' ? 'View / Edit Workout' : 'Log Workout'}
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            {workout?.status === 'completed' ? 'Already logged' : 'Track exercises'}
+                          </p>
                         </div>
                       </motion.button>
 
