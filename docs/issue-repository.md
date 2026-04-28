@@ -543,3 +543,66 @@ Mountain Pose and stretches were being defaulted to `Sets × Reps × Weight` and
 - Search "mountain" → pick Tadasana → metric pre-selects "Time hold".
 - Search "squat" → metric stays on "Sets × Reps × Weight" (legacy preserved).
 - Client modal: trainer-prescribed exercises keep their trainer-set metric even if the client re-picks the same name.
+
+---
+
+## TW-028 — Progress page math is wrong + BMR mutates history
+
+**Severity:** High • **Status:** Fixed • **Reported by:** Founder UAT (Gaurav.rsh client)
+
+### Symptom
+
+Progress page for client `Gaurav Sharma` (profile `a1bb2e3b…`, BMR 1859), filter "View last **3** days":
+
+| Card | Shown | Expected |
+|---|---|---|
+| Avg Daily Deficit | **+1114** | depends on whether missed days count |
+| Days Logged | 2 | 2 ✅ |
+| Days Missed | 2 | 2 ✅ |
+
+The deficit number disagreed visually with the bar chart — chart only shows "real" expenditure on Apr 27 & 28, but the card averaged in two missed days as if they were 1859 kcal fasts. Filter said "3" but the window covered 4 days.
+
+### Root cause (3 distinct bugs, same surface)
+
+1. **Off-by-one window** in `useProgressData.tsx`:
+   ```ts
+   const startDate = subDays(endDate, dateRange);          // BAD
+   eachDayOfInterval({ start, end });                      // → N+1 days
+   ```
+   "3" produced Apr 25 → Apr 28 (4 days). Same bug for every range (7→8, 30→31).
+
+2. **Missed days inflated the average.** A day with no food/workout/steps was still computed as `netDeficit = bmr + 0 − 0 = 1859`, then rolled into the "Avg Daily Deficit" card. The card label promised "average daily deficit" but secretly meant "average over the entire window, treating un-tracked days as a perfect fast."
+   - Worked example: (1859 + 1859 + 168 + 569) / 4 = **1114** ← the screenshot value, mathematically reproducible from raw DB rows.
+
+3. **BMR mutated history.** `profiles.bmr` is a single mutable column; the hook applied today's value to **every** day in the chart range. Updating BMR retroactively rewrote past days' "Total Expenditure" and "Net Deficit". Violates the "stays from that point onwards" rule.
+
+### Fix
+
+- **DB (migration):** New `bmr_logs` table (`client_id`, `bmr`, `effective_date`, `UNIQUE(client_id, effective_date)`). Strict RLS: clients view/insert own; trainers view/insert clients' (subscription-gated); UPDATE and DELETE blocked → BMR history is immutable. Existing `profiles.bmr` rows backfilled into `bmr_logs` using `bmr_updated_at::date` so live users see correct historical charts immediately.
+- **`BMRLogModal`:** writes to `bmr_logs` first via upsert on `(client_id, effective_date=today)`, then mirrors to `profiles.bmr` for the Profile card and "outdated" banner. Re-saving on the same day overwrites today's row only; past days are frozen.
+- **`useProgressData.tsx`:** off-by-one fix (`subDays(endDate, dateRange - 1)`); fetches `bmr_logs` inside the window plus the latest row strictly before the window; walks days ascending and uses the BMR effective on each day.
+- **`Progress.tsx`:** `avgDeficit` averages only `!isMissed` days. Renders `—` when there are no logged days (avoids the "0 deficit = perfect maintenance" misread).
+- **`ActionChart.tsx` / `OutcomeChart.tsx`:** missed days emit `null` for `expenditureValue` and `deficitValue` — chart no longer paints synthetic BMR-only bars or a phantom deficit line on missed days.
+
+### Worked example after fix (same client, "last 3 days")
+
+Window: Apr 26, 27, 28. Apr 26 missed → excluded from avg.
+- Avg Daily Deficit = round((168 + 569) / 2) = **+369**.
+- Days Logged 2 / Days Missed 1.
+- Action chart: no green expenditure bar on Apr 26; deficit line has a gap there.
+- BMR: if user changes BMR today, Apr 26/27 still use whatever BMR was effective then (frozen).
+
+### Files
+
+- New migration `bmr_logs` (table + RLS + backfill).
+- `src/components/modals/BMRLogModal.tsx` — historical-log write path.
+- `src/hooks/useProgressData.tsx` — date fix + per-day BMR resolver.
+- `src/pages/Progress.tsx` — exclude missed days from avg.
+- `src/components/progress/ActionChart.tsx` — null missed-day series.
+- `src/components/progress/OutcomeChart.tsx` — null missed-day deficit.
+- `src/test/progress-math.test.ts` — 15 new assertions (off-by-one, avg semantics, historical BMR resolver, chart-blanking).
+
+### Regression guards
+
+- `progress-math.test.ts` pins: window length for N=1/3/7/30/90; the broken 1114 average is explicitly forbidden; updating today's BMR does not rewrite a row dated Apr 1; missed-day chart rows emit `null`.
+- Manual: re-ran Gaurav's exact 4-day calculation against the live DB before and after — matched the new card value (369) in the new "last 3 days" window.

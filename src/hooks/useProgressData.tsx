@@ -47,12 +47,14 @@ export const useProgressData = (
 
     try {
       const endDate = new Date();
-      const startDate = subDays(endDate, dateRange);
+      // TW-028: "View last N days" must produce exactly N days, including today.
+      // Previously subDays(endDate, dateRange) produced N+1 days (off-by-one).
+      const startDate = subDays(endDate, Math.max(0, dateRange - 1));
       const startDateStr = format(startDate, 'yyyy-MM-dd');
       const endDateStr = format(endDate, 'yyyy-MM-dd');
 
       // Fetch all data in parallel
-      const [profileRes, foodLogsRes, workoutsRes, weightLogsRes, stepLogsRes] = await Promise.all([
+      const [profileRes, foodLogsRes, workoutsRes, weightLogsRes, stepLogsRes, bmrLogsRes, bmrPriorRes] = await Promise.all([
         supabase
           .from('profiles')
           .select('bmr, weight_kg')
@@ -83,6 +85,22 @@ export const useProgressData = (
           .eq('client_id', targetClientId)
           .gte('logged_date', startDateStr)
           .lte('logged_date', endDateStr),
+        // TW-028: BMR rows whose effective_date falls inside the window.
+        supabase
+          .from('bmr_logs')
+          .select('bmr, effective_date')
+          .eq('client_id', targetClientId)
+          .gte('effective_date', startDateStr)
+          .lte('effective_date', endDateStr)
+          .order('effective_date', { ascending: true }),
+        // TW-028: latest BMR effective strictly BEFORE the window — needed to seed day 1.
+        supabase
+          .from('bmr_logs')
+          .select('bmr, effective_date')
+          .eq('client_id', targetClientId)
+          .lt('effective_date', startDateStr)
+          .order('effective_date', { ascending: false })
+          .limit(1),
       ]);
 
       if (profileRes.error) throw profileRes.error;
@@ -90,10 +108,21 @@ export const useProgressData = (
       if (workoutsRes.error) throw workoutsRes.error;
       if (weightLogsRes.error) throw weightLogsRes.error;
       if (stepLogsRes.error) throw stepLogsRes.error;
+      if (bmrLogsRes.error) throw bmrLogsRes.error;
+      if (bmrPriorRes.error) throw bmrPriorRes.error;
 
-      // Use actual BMR if logged; otherwise 0 so charts reflect each client's real, distinct data
-      // (No silent fallback — a missing BMR is surfaced via the existing "BMR may be outdated" banner)
-      const bmr = profileRes.data?.bmr ?? 0;
+      // TW-028: Build a per-day historical BMR resolver.
+      // - Seed with the latest BMR row strictly before the window (or 0 if none).
+      // - As we walk days ascending, advance the "current BMR" pointer whenever
+      //   an effective_date matches that day.
+      // This guarantees that updating today's BMR never rewrites past days.
+      const bmrChanges = (bmrLogsRes.data ?? []).map((r) => ({
+        date: r.effective_date as string,
+        bmr: Number(r.bmr) || 0,
+      }));
+      const seedBmr = Number(bmrPriorRes.data?.[0]?.bmr ?? 0);
+      const bmrChangeMap: Record<string, number> = {};
+      bmrChanges.forEach((c) => { bmrChangeMap[c.date] = c.bmr; });
 
       // Group food logs by date
       const foodByDate: Record<string, number> = {};
@@ -126,8 +155,14 @@ export const useProgressData = (
 
       // Generate daily progress data
       const days = eachDayOfInterval({ start: startDate, end: endDate });
+      let currentBmr = seedBmr;
       const progressData: DailyProgress[] = days.map((day) => {
         const dateStr = format(day, 'yyyy-MM-dd');
+        // Advance to a new BMR if one became effective on this day.
+        if (bmrChangeMap[dateStr] !== undefined) {
+          currentBmr = bmrChangeMap[dateStr];
+        }
+        const bmr = currentBmr;
         const intake = foodByDate[dateStr] ?? null;
         const burnt = workoutsByDate[dateStr] ?? null;
         const weight = weightByDate[dateStr] ?? null;

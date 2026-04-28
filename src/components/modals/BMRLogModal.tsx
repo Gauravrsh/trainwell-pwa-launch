@@ -43,6 +43,20 @@ export const BMRLogModal = ({ open, onOpenChange, onSuccess }: BMRLogModalProps)
 
     setSaving(true);
     try {
+      // TW-028: write to historical bmr_logs FIRST so the value is frozen for "today"
+      // and never gets retroactively rewritten on past days. Re-saving on the same
+      // day overwrites today's row only (UNIQUE (client_id, effective_date)).
+      const today = new Date().toISOString().slice(0, 10); // YYYY-MM-DD (local-day proxy)
+      const { error: logError_ } = await supabase
+        .from('bmr_logs')
+        .upsert(
+          { client_id: profile.id, bmr, effective_date: today },
+          { onConflict: 'client_id,effective_date' }
+        );
+      if (logError_) throw logError_;
+
+      // Keep profiles.bmr/bmr_updated_at as the convenient "current BMR" projection
+      // used by the Profile card and the "BMR may be outdated" banner.
       const { error } = await supabase
         .from('profiles')
         .update({ bmr, bmr_updated_at: new Date().toISOString() })

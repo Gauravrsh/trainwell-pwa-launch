@@ -29,6 +29,30 @@ export type Database = {
         }
         Relationships: []
       }
+      bmr_logs: {
+        Row: {
+          bmr: number
+          client_id: string
+          created_at: string
+          effective_date: string
+          id: string
+        }
+        Insert: {
+          bmr: number
+          client_id: string
+          created_at?: string
+          effective_date?: string
+          id?: string
+        }
+        Update: {
+          bmr?: number
+          client_id?: string
+          created_at?: string
+          effective_date?: string
+          id?: string
+        }
+        Relationships: []
+      }
       client_training_plans: {
         Row: {
           amount_due: number | null
