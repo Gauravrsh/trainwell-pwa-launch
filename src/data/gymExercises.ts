@@ -196,6 +196,7 @@ export const exerciseDatabase: ExerciseCategory[] = [
           "Hammer Strength Iso-Lateral Row",
           "Hammer Strength Iso-Lateral Chest Press",
           "Cable Woodchoppers",
+          "Banded IYTW (Standing, Cable/Band)",
         ],
       },
       {
