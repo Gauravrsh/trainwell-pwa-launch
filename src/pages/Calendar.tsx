@@ -80,6 +80,8 @@ const Calendar = () => {
   const [existingExercises, setExistingExercises] = useState<PlannedExercisePayload[]>([]);
   const [clientHasLogged, setClientHasLogged] = useState(false);
   const [clientTrainerExercises, setClientTrainerExercises] = useState<TrainerPlannedExercise[]>([]);
+  const [clientExistingActuals, setClientExistingActuals] = useState<ClientLoggedExercise[]>([]);
+  const [workoutModalMode, setWorkoutModalMode] = useState<'log' | 'edit'>('log');
   const [showPlanModal, setShowPlanModal] = useState(false);
   const [stepLoading, setStepLoading] = useState(false);
   const [existingStepLog, setExistingStepLog] = useState<{ id: string; step_count: number } | null>(null);
@@ -293,6 +295,60 @@ const Calendar = () => {
     return dayMarks.find(m => isSameDay(new Date(m.mark_date), date));
   };
 
+  // Reconstruct previously-saved actuals so the edit modal shows what the
+  // client logged (instead of zeros). Mirrors parsePlannedExercises but for
+  // actual_* columns. Reps-based metrics are grouped per exercise name.
+  const parseLoggedActuals = (rows: Exercise[]): ClientLoggedExercise[] => {
+    const logged = rows.filter(isActualLogged);
+    const repsBased: Map<string, { weight: number; reps: number }[]> = new Map();
+    const order: string[] = [];
+    const result: ClientLoggedExercise[] = [];
+
+    for (const ex of logged) {
+      const name = ex.exercise_name?.trim();
+      if (!name) continue;
+      const metricType = (ex.metric_type ?? DEFAULT_METRIC_TYPE) as MetricType;
+
+      if (metricType === 'reps_weight' || metricType === 'reps_only') {
+        const sets = repsBased.get(name) ?? [];
+        sets.push({
+          weight: ex.actual_weight ?? 0,
+          reps: ex.actual_reps ?? 0,
+        });
+        repsBased.set(name, sets);
+        if (!order.includes(name)) {
+          order.push(name);
+          result.push({ name, metricType, sets });
+        }
+      } else if (metricType === 'time') {
+        result.push({ name, metricType, durationSeconds: ex.actual_duration_seconds ?? 0 });
+      } else if (metricType === 'distance_time') {
+        result.push({
+          name, metricType,
+          distanceMeters: ex.actual_distance_meters ?? 0,
+          durationSeconds: ex.actual_duration_seconds ?? 0,
+        });
+      } else if (metricType === 'amrap') {
+        result.push({
+          name, metricType,
+          emomMinutes: ex.actual_emom_minutes ?? 0,
+          rounds: ex.actual_rounds ?? 0,
+        });
+      } else if (metricType === 'emom') {
+        result.push({
+          name, metricType,
+          emomMinutes: ex.actual_emom_minutes ?? 0,
+          emomReps: ex.actual_reps ?? 0,
+        });
+      }
+    }
+    return result.map(r =>
+      (r.metricType === 'reps_weight' || r.metricType === 'reps_only')
+        ? { ...r, sets: repsBased.get(r.name) ?? [] }
+        : r
+    );
+  };
+
   // Boundary-only styles for logged status (kept name for backward compat)
   const getStatusBorder = (status?: string): string | null => {
     if (status === 'completed') return 'border-success';
@@ -341,12 +397,26 @@ const Calendar = () => {
           .eq('workout_id', workout.id);
         
         if (!error && exercises) {
-          setClientTrainerExercises(parsePlannedExercises(exercises as unknown as Exercise[]));
+          const rows = exercises as unknown as Exercise[];
+          setClientTrainerExercises(parsePlannedExercises(rows));
+          // If this workout is already completed, hydrate the modal with the
+          // saved actuals so the user sees what they previously logged.
+          if (workout.status === 'completed') {
+            setClientExistingActuals(parseLoggedActuals(rows));
+            setWorkoutModalMode('edit');
+          } else {
+            setClientExistingActuals([]);
+            setWorkoutModalMode('log');
+          }
         } else {
           setClientTrainerExercises([]);
+          setClientExistingActuals([]);
+          setWorkoutModalMode('log');
         }
       } else {
         setClientTrainerExercises([]);
+        setClientExistingActuals([]);
+        setWorkoutModalMode('log');
       }
       
       // Fetch step log for the selected date
@@ -649,6 +719,7 @@ const Calendar = () => {
 
       let workoutId: string;
       const existingWorkout = getWorkoutForDate(selectedDate);
+      const isEditingCompleted = existingWorkout?.status === 'completed';
 
       if (existingWorkout) {
         workoutId = existingWorkout.id;
@@ -691,12 +762,18 @@ const Calendar = () => {
         }
       });
 
-      const { error: cleanupError } = await supabase
-        .from('exercises')
-        .delete()
-        .eq('workout_id', workoutId)
-        .is('recommended_sets', null);
-      if (cleanupError) throw cleanupError;
+      // Only wipe previous non-planned actuals on a fresh log. In edit mode
+      // we want re-saves to be additive, not destructive — otherwise an
+      // accidental re-open would silently delete extra exercises the user
+      // had added in the original log.
+      if (!isEditingCompleted) {
+        const { error: cleanupError } = await supabase
+          .from('exercises')
+          .delete()
+          .eq('workout_id', workoutId)
+          .is('recommended_sets', null);
+        if (cleanupError) throw cleanupError;
+      }
 
       const { data: plannedRows, error: plannedError } = await supabase
         .from('exercises')
@@ -786,7 +863,7 @@ const Calendar = () => {
         if (exerciseError) throw exerciseError;
       }
 
-      toast.success('Workout logged successfully!');
+      toast.success(isEditingCompleted ? 'Workout updated' : 'Workout logged successfully!');
       queryClient.invalidateQueries({ queryKey: ['workouts'] });
       setShowWorkoutModal(false);
       setShowClientActionSheet(false);
@@ -1416,14 +1493,24 @@ const Calendar = () => {
                       <motion.button
                         whileTap={{ scale: 0.95 }}
                         onClick={() => setShowWorkoutModal(true)}
-                        className="flex flex-col items-center gap-2 p-4 rounded-2xl bg-card border-2 border-border hover:border-primary/50 transition-colors"
+                        className={`flex flex-col items-center gap-2 p-4 rounded-2xl bg-card border-2 transition-colors ${
+                          workout?.status === 'completed'
+                            ? 'border-success/60 hover:border-success'
+                            : 'border-border hover:border-primary/50'
+                        }`}
                       >
-                        <div className="w-12 h-12 rounded-full bg-primary/20 flex items-center justify-center">
-                          <Dumbbell className="w-6 h-6 text-primary" />
+                        <div className={`w-12 h-12 rounded-full flex items-center justify-center ${
+                          workout?.status === 'completed' ? 'bg-success/20' : 'bg-primary/20'
+                        }`}>
+                          <Dumbbell className={`w-6 h-6 ${workout?.status === 'completed' ? 'text-success' : 'text-primary'}`} />
                         </div>
                         <div className="text-center">
-                          <p className="font-semibold text-foreground text-sm">Log Workout</p>
-                          <p className="text-xs text-muted-foreground">Track exercises</p>
+                          <p className="font-semibold text-foreground text-sm">
+                            {workout?.status === 'completed' ? 'View / Edit Workout' : 'Log Workout'}
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            {workout?.status === 'completed' ? 'Already logged' : 'Track exercises'}
+                          </p>
                         </div>
                       </motion.button>
 
@@ -1548,6 +1635,8 @@ const Calendar = () => {
         onSave={handleWorkoutSave}
         date={selectedDate || undefined}
         trainerExercises={clientTrainerExercises}
+        existingActuals={clientExistingActuals}
+        mode={workoutModalMode}
       />
 
       {/* Trainer Workout Log Modal */}

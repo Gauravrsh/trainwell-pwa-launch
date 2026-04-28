@@ -400,3 +400,51 @@
   - Self-healing is now automatic on the next foreground or focus event after a deploy — no kill-relaunch required.
   - `controllerchange` reload is guarded against double-fire.
   - Freshness check is idempotent via `freshnessCheckInFlight` and `BUILD_REFRESH_KEY` session marker.
+
+---
+
+### TW-025 — Completed client workout re-prompts logging
+
+- **Status:** Fixed
+- **Severity:** High (UX integrity, false confirmation toast, destructive re-save risk)
+- **Reported:** 2026-04-28 by gaurav.rsh@gmail.com
+- **Surface area:** Client → Calendar → today's tile → action sheet → "Log Workout"
+
+**Reproduction**
+1. Trainer logs a workout for the client (planned exercises only).
+2. Client opens today's tile, taps "Log Workout", saves once → workout `status='completed'`.
+3. Client reopens the same tile and taps "Log Workout" again.
+4. Modal shows the trainer's recommended exercises with empty actuals (as if nothing was saved).
+5. Saving again fires "Workout logged successfully!" — a duplicate, misleading confirmation.
+
+**Root cause (verified against DB for workout `ffb7b51a…`, `status='completed'`)**
+1. **No status gate on the CTA.** `Calendar.tsx` rendered the "Log Workout" tile whenever `canEdit` was true; only the secondary Done/Missed buttons were gated by `pending`. So a `completed` workout still exposed the full re-log entry point.
+2. **Modal ignored saved actuals.** `ClientWorkoutLogModal` re-seeded `exerciseBlocks` from `trainerExercises` on every open; `clientTrainerExercises` was fetched from `recommended_*` columns only. Previously-saved `actual_*` values never made it back into the UI, so the modal looked "blank".
+3. **Save path was non-idempotent and destructive.** `handleWorkoutSave` re-set `status='completed'`, deleted any non-planned actual rows (`recommended_sets IS NULL`), and reapplied actuals over planned rows — with the same "logged successfully" toast every time. Any extra exercises the user had added in the original log would be silently wiped.
+
+**Fix**
+- `Calendar.tsx`: status-aware CTA. Completed → "View / Edit Workout" tile (success-tinted). Pending/missing → original "Log Workout" copy.
+- `Calendar.tsx`: when the date click resolves to a `completed` workout, fetch and pass `existingActuals` (parsed from `actual_*` columns) and set `mode='edit'`.
+- `ClientWorkoutLogModal.tsx`: new optional props `existingActuals` and `mode`. In edit mode the modal hydrates blocks from saved actuals (preserving `isFromTrainer` by name match) and switches title to "Edit Workout" and CTA to "Update Workout".
+- `Calendar.handleWorkoutSave`: detects `existingWorkout.status === 'completed'` → toast becomes "Workout updated"; the destructive cleanup of non-planned actuals is skipped in edit mode.
+
+**Files touched**
+- `src/pages/Calendar.tsx`
+- `src/components/modals/ClientWorkoutLogModal.tsx`
+- `src/test/client-workout-relog.test.ts` (new)
+- `docs/issue-repository.md`, `docs/issue-repository-index.md`
+
+**Regression check**
+- New vitest suite `client-workout-relog.test.ts` covers CTA label, modal mode, save toast, and cleanup gating across `pending`/`completed`/missing statuses.
+- Manual matrix to verify after deploy:
+  1. Completed today → tile says "View / Edit Workout"; modal opens with prior reps/weights; saving toasts "Workout updated".
+  2. Pending today → tile says "Log Workout"; modal opens with trainer recommendations + empty actuals; saving toasts "Workout logged successfully!".
+  3. No trainer plan + no log → "Log Workout" tile, free-form modal, original behavior.
+  4. Trainer view unchanged (separate `TrainerWorkoutLogModal`).
+
+**Detected via:** User reproduction + DB inspection of `workouts`/`exercises` rows for the affected client.
+
+**Prevention / Regression Guards**
+- CTA label is derived from `workout?.status`, not just `canEdit`.
+- Modal hydration prefers `existingActuals` over `trainerExercises` whenever present.
+- Save path branches on `existingWorkout?.status === 'completed'` for both copy and cleanup.

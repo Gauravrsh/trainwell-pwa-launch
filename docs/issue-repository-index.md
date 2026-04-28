@@ -26,3 +26,4 @@ TW-021 | Medium | Fixed | Steps OCR assist \u2014 user scans fitness-tracker scr
 TW-022 | High | Fixed | Steps OCR picks goal/kcal/distance instead of actual steps (regression on TW-021) | stepOcr.ts
 TW-024 | High | Fixed | Stale PWA service worker/cache resurrects old calendar dots/icons and old UI | sw.js / buildFreshness.ts / ResetApp.tsx
 TW-024b | High | Fixed | TW-024 fix required manual kill-relaunch; SW updatefound + controllerchange + visibility recheck added | buildFreshness.ts
+TW-025 | High | Fixed | Completed client workout re-prompted "Log Workout"; modal showed zeros; save toast falsely confirmed re-log | Calendar.tsx / ClientWorkoutLogModal.tsx / client-workout-relog.test.ts
