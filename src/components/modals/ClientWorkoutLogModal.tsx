@@ -280,7 +280,7 @@ export const ClientWorkoutLogModal = ({
         <DialogHeader className="p-6 pb-4 border-b border-border flex-shrink-0">
           <DialogTitle className="flex items-center gap-2">
             <Dumbbell className="w-5 h-5 text-primary" />
-            Log Workout
+            {mode === 'edit' ? 'Edit Workout' : 'Log Workout'}
           </DialogTitle>
           {date && (
             <p className="text-sm text-muted-foreground">
@@ -671,7 +671,7 @@ export const ClientWorkoutLogModal = ({
         <div className="dialog-footer p-6 pt-4 border-t border-border">
           <Button onClick={handleSave} disabled={!hasValidExercises} className="w-full">
             <Save className="w-4 h-4 mr-2" />
-            Log Exercise
+            {mode === 'edit' ? 'Update Workout' : 'Log Exercise'}
           </Button>
         </div>
       </DialogContent>
