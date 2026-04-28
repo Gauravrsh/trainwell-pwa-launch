@@ -80,6 +80,8 @@ const Calendar = () => {
   const [existingExercises, setExistingExercises] = useState<PlannedExercisePayload[]>([]);
   const [clientHasLogged, setClientHasLogged] = useState(false);
   const [clientTrainerExercises, setClientTrainerExercises] = useState<TrainerPlannedExercise[]>([]);
+  const [clientExistingActuals, setClientExistingActuals] = useState<ClientLoggedExercise[]>([]);
+  const [workoutModalMode, setWorkoutModalMode] = useState<'log' | 'edit'>('log');
   const [showPlanModal, setShowPlanModal] = useState(false);
   const [stepLoading, setStepLoading] = useState(false);
   const [existingStepLog, setExistingStepLog] = useState<{ id: string; step_count: number } | null>(null);
