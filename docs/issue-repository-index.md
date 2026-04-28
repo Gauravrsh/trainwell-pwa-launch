@@ -24,4 +24,5 @@ TW-019 | Medium | Fixed | Stale "14 bonus days" copy in Refer page after pricing
 TW-020 | High | Fixed | Invited client briefly lands on Role Selection instead of going straight to Profile Setup | App.tsx / RoleSelection.tsx
 TW-021 | Medium | Fixed | Steps OCR assist \u2014 user scans fitness-tracker screenshot, Tesseract pre-fills step count, confirm-before-save | StepLogModal.tsx / stepOcr.ts
 TW-022 | High | Fixed | Steps OCR picks goal/kcal/distance instead of actual steps (regression on TW-021) | stepOcr.ts
-TW-024 | High | Awaiting-verification | Stale PWA service worker/cache resurrects old calendar dots/icons and old UI | sw.js / buildFreshness.ts / ResetApp.tsx
+TW-024 | High | Fixed | Stale PWA service worker/cache resurrects old calendar dots/icons and old UI | sw.js / buildFreshness.ts / ResetApp.tsx
+TW-024b | High | Fixed | TW-024 fix required manual kill-relaunch; SW updatefound + controllerchange + visibility recheck added | buildFreshness.ts
