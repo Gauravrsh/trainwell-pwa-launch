@@ -1628,6 +1628,8 @@ const Calendar = () => {
         onSave={handleWorkoutSave}
         date={selectedDate || undefined}
         trainerExercises={clientTrainerExercises}
+        existingActuals={clientExistingActuals}
+        mode={workoutModalMode}
       />
 
       {/* Trainer Workout Log Modal */}
