@@ -207,7 +207,9 @@ export const TrainerWorkoutLogModal = ({
     }
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
+    // TW-029 — Guard against double-clicks (see ClientWorkoutLogModal).
+    if (isSaving) return;
     const valid: PlannedExercisePayload[] = exerciseBlocks
       .filter(isBlockValid)
       .map(b => {
@@ -230,7 +232,12 @@ export const TrainerWorkoutLogModal = ({
       });
 
     if (valid.length === 0) return;
-    onSave(valid);
+    setIsSaving(true);
+    try {
+      await onSave(valid);
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const hasValidExercises = exerciseBlocks.some(isBlockValid);
@@ -573,8 +580,8 @@ export const TrainerWorkoutLogModal = ({
 
         {!isReadOnly && (
           <div className="dialog-footer p-6 pt-4 border-t border-border">
-            <Button onClick={handleSave} disabled={!hasValidExercises} className="w-full">
-              Save Workout
+            <Button onClick={handleSave} disabled={!hasValidExercises || isSaving} className="w-full">
+              {isSaving ? 'Saving…' : 'Save Workout'}
             </Button>
           </div>
         )}
