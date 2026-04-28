@@ -375,6 +375,41 @@ export const exerciseDatabase: ExerciseCategory[] = [
       },
     ],
   },
+  {
+    category: "Cardio & Endurance",
+    subcategories: [
+      {
+        name: "Cardio Machines & Sports",
+        exercises: [
+          "Outdoor Running",
+          "Treadmill Running",
+          "Treadmill Walking",
+          "Treadmill Incline Walk",
+          "Outdoor Cycling",
+          "Stationary Bike",
+          "Spin Bike Intervals",
+          "Assault Bike (Air Bike)",
+          "Indoor Rowing (Erg)",
+          "SkiErg",
+          "Stair Climber (Stepmill)",
+          "Elliptical Trainer",
+          "Arc Trainer",
+          "Jump Rope - Steady Pace",
+          "Jump Rope - Double Unders",
+          "Swimming - Freestyle",
+          "Swimming - Breaststroke",
+          "Swimming - Backstroke",
+          "Swimming - Butterfly",
+          "Open Water Swim",
+          "Hill Sprints",
+          "Track Sprints (100m / 200m / 400m)",
+          "Stadium Stair Run",
+          "Hiking / Trekking",
+          "Boxing - Bag Round (3 min)",
+        ],
+      },
+    ],
+  },
 ];
 
 // Flat list of all exercise names for autocomplete/search
