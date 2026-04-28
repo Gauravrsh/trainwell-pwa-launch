@@ -339,6 +339,8 @@ export const exerciseDatabase: ExerciseCategory[] = [
           "Scorpion Stretch (Lying)",
           "Iron Cross (Lying Spine Mobility)",
           "Adductor Rock-backs",
+          "Mountain Pose / Tadasana Hold",
+          "Adductor Stretch (Seated Butterfly)",
         ],
       },
     ],
