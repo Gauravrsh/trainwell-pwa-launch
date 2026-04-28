@@ -43,7 +43,7 @@ interface ExerciseBlock {
 interface TrainerWorkoutLogModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onSave: (exercises: PlannedExercisePayload[]) => void;
+  onSave: (exercises: PlannedExercisePayload[]) => void | Promise<void>;
   date?: Date;
   existingExercises?: PlannedExercisePayload[];
   clientHasLogged?: boolean;
@@ -61,6 +61,7 @@ export const TrainerWorkoutLogModal = ({
 }: TrainerWorkoutLogModalProps) => {
   const [exerciseBlocks, setExerciseBlocks] = useState<ExerciseBlock[]>([]);
   const [customExercises, setCustomExercises] = useState<string[]>([]);
+  const [isSaving, setIsSaving] = useState(false);
   const inputRefs = useRef<Record<string, HTMLInputElement | null>>({});
 
   const { isReadOnly: subscriptionReadOnly, reason: subscriptionReason } = useSubscriptionAccess();
@@ -73,6 +74,7 @@ export const TrainerWorkoutLogModal = ({
 
   useEffect(() => {
     if (!open) return;
+    setIsSaving(false);
     if (existingExercises.length > 0) {
       setExerciseBlocks(
         existingExercises.map((ex, index) => ({
