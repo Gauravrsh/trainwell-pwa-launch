@@ -277,6 +277,8 @@ export const exerciseDatabase: ExerciseCategory[] = [
           "Pistol Squats (Assisted/Unassisted)",
           "Plank-to-Pushup (Commandos)",
           "Star Jumps",
+          "Prone IYTW (Bodyweight)",
+          "Standing IYTW (Bodyweight)",
         ],
       },
     ],
