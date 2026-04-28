@@ -57,6 +57,8 @@ interface ClientWorkoutLogModalProps {
   onSave: (exercises: ClientLoggedExercise[], caloriesBurnt?: number) => void;
   date?: Date;
   trainerExercises?: TrainerPlannedExercise[];
+  existingActuals?: ClientLoggedExercise[];
+  mode?: 'log' | 'edit';
 }
 
 export const ClientWorkoutLogModal = ({
@@ -65,6 +67,8 @@ export const ClientWorkoutLogModal = ({
   onSave,
   date,
   trainerExercises = [],
+  existingActuals,
+  mode = 'log',
 }: ClientWorkoutLogModalProps) => {
   const [exerciseBlocks, setExerciseBlocks] = useState<ExerciseBlock[]>([]);
   const [customExercises, setCustomExercises] = useState<string[]>([]);
@@ -76,7 +80,35 @@ export const ClientWorkoutLogModal = ({
   useEffect(() => {
     if (!open) return;
     setCaloriesBurnt('');
-    if (trainerExercises.length > 0) {
+    // Edit mode: hydrate from previously saved actuals so the user sees what they logged.
+    if (existingActuals && existingActuals.length > 0) {
+      const trainerNameSet = new Set(trainerExercises.map(t => t.name));
+      const trainerByName = new Map(trainerExercises.map(t => [t.name, t]));
+      setExerciseBlocks(
+        existingActuals.map((ex, index) => {
+          const fromTrainer = trainerNameSet.has(ex.name);
+          const rec = trainerByName.get(ex.name) ?? null;
+          return {
+            id: `existing-${index}-${generateId()}`,
+            exerciseName: ex.name,
+            searchTerm: '',
+            showDropdown: false,
+            metricType: ex.metricType ?? DEFAULT_METRIC_TYPE,
+            recommended: rec,
+            sets: (ex.sets && ex.sets.length > 0)
+              ? ex.sets.map(s => ({ weight: s.weight, reps: s.reps }))
+              : [{ weight: 0, reps: 0 }],
+            durationSeconds: ex.durationSeconds ?? 0,
+            distanceMeters: ex.distanceMeters ?? 0,
+            rounds: ex.rounds ?? 0,
+            emomMinutes: ex.emomMinutes ?? 0,
+            emomReps: ex.emomReps ?? 0,
+            isExpanded: true,
+            isFromTrainer: fromTrainer,
+          };
+        })
+      );
+    } else if (trainerExercises.length > 0) {
       setExerciseBlocks(
         trainerExercises.map((ex, index) => ({
           id: `exercise-${index}-${generateId()}`,
@@ -98,7 +130,7 @@ export const ClientWorkoutLogModal = ({
     } else {
       setExerciseBlocks([]);
     }
-  }, [open, trainerExercises, generateId]);
+  }, [open, trainerExercises, existingActuals, generateId]);
 
   const allExercises = useMemo(() => [...customExercises, ...gymExercises], [customExercises]);
   const getFilteredExercises = useCallback((searchTerm: string) => {
