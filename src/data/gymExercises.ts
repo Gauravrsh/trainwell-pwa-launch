@@ -63,6 +63,8 @@ export const exerciseDatabase: ExerciseCategory[] = [
           "Rack Pulls (Above Knee)",
           "Weighted Inverted Rows",
           "Reverse Dumbbell Flyes",
+          "Prone Hyperextension (Bodyweight)",
+          "Weighted Prone Hyperextension",
         ],
       },
       {
