@@ -719,6 +719,7 @@ const Calendar = () => {
 
       let workoutId: string;
       const existingWorkout = getWorkoutForDate(selectedDate);
+      const isEditingCompleted = existingWorkout?.status === 'completed';
 
       if (existingWorkout) {
         workoutId = existingWorkout.id;
@@ -761,12 +762,18 @@ const Calendar = () => {
         }
       });
 
-      const { error: cleanupError } = await supabase
-        .from('exercises')
-        .delete()
-        .eq('workout_id', workoutId)
-        .is('recommended_sets', null);
-      if (cleanupError) throw cleanupError;
+      // Only wipe previous non-planned actuals on a fresh log. In edit mode
+      // we want re-saves to be additive, not destructive — otherwise an
+      // accidental re-open would silently delete extra exercises the user
+      // had added in the original log.
+      if (!isEditingCompleted) {
+        const { error: cleanupError } = await supabase
+          .from('exercises')
+          .delete()
+          .eq('workout_id', workoutId)
+          .is('recommended_sets', null);
+        if (cleanupError) throw cleanupError;
+      }
 
       const { data: plannedRows, error: plannedError } = await supabase
         .from('exercises')
@@ -856,7 +863,7 @@ const Calendar = () => {
         if (exerciseError) throw exerciseError;
       }
 
-      toast.success('Workout logged successfully!');
+      toast.success(isEditingCompleted ? 'Workout updated' : 'Workout logged successfully!');
       queryClient.invalidateQueries({ queryKey: ['workouts'] });
       setShowWorkoutModal(false);
       setShowClientActionSheet(false);
