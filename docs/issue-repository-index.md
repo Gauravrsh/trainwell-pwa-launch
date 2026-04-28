@@ -27,3 +27,4 @@ TW-022 | High | Fixed | Steps OCR picks goal/kcal/distance instead of actual ste
 TW-024 | High | Fixed | Stale PWA service worker/cache resurrects old calendar dots/icons and old UI | sw.js / buildFreshness.ts / ResetApp.tsx
 TW-024b | High | Fixed | TW-024 fix required manual kill-relaunch; SW updatefound + controllerchange + visibility recheck added | buildFreshness.ts
 TW-025 | High | Fixed | Completed client workout re-prompted "Log Workout"; modal showed zeros; save toast falsely confirmed re-log | Calendar.tsx / ClientWorkoutLogModal.tsx / client-workout-relog.test.ts
+TW-026 | High | Fixed | Public Landing page flashes as a splash screen on cold boot for already-signed-in users (auth-bootstrap race) | App.tsx / public-landing-auth-gate.test.ts
