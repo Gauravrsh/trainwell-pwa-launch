@@ -23,13 +23,17 @@ export default function Progress() {
   const bmrUpdatedAt = profile?.bmr_updated_at ? new Date(profile.bmr_updated_at) : null;
   const isBmrStale = bmrUpdatedAt ? differenceInDays(new Date(), bmrUpdatedAt) > 90 : !profile?.bmr;
 
-  // Calculate summary stats
+  // Calculate summary stats.
+  // TW-028: "Avg Daily Deficit" must average ONLY over days where the client
+  // actually logged something. Including missed days inflated the deficit
+  // (BMR was treated as a real fast against zero intake).
+  const loggedDaysData = data.filter(d => !d.isMissed);
   const stats = {
-    avgDeficit: data.length > 0
-      ? Math.round(data.reduce((sum, d) => sum + d.netDeficit, 0) / data.length)
-      : 0,
+    avgDeficit: loggedDaysData.length > 0
+      ? Math.round(loggedDaysData.reduce((sum, d) => sum + d.netDeficit, 0) / loggedDaysData.length)
+      : null,
     missedDays: data.filter(d => d.isMissed).length,
-    loggedDays: data.filter(d => !d.isMissed).length,
+    loggedDays: loggedDaysData.length,
     weightChange: (() => {
       const weights = data.filter(d => d.weight !== null).map(d => d.weight as number);
       if (weights.length < 2) return null;
@@ -97,7 +101,9 @@ export default function Progress() {
         <Card>
           <CardContent className="p-4 text-center">
             <p className="text-2xl font-bold text-foreground">
-              {stats.avgDeficit >= 0 ? '+' : ''}{stats.avgDeficit}
+              {stats.avgDeficit === null
+                ? '—'
+                : `${stats.avgDeficit >= 0 ? '+' : ''}${stats.avgDeficit}`}
             </p>
             <p className="text-xs text-muted-foreground">Avg Daily Deficit</p>
           </CardContent>
