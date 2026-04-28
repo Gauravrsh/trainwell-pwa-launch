@@ -295,6 +295,60 @@ const Calendar = () => {
     return dayMarks.find(m => isSameDay(new Date(m.mark_date), date));
   };
 
+  // Reconstruct previously-saved actuals so the edit modal shows what the
+  // client logged (instead of zeros). Mirrors parsePlannedExercises but for
+  // actual_* columns. Reps-based metrics are grouped per exercise name.
+  const parseLoggedActuals = (rows: Exercise[]): ClientLoggedExercise[] => {
+    const logged = rows.filter(isActualLogged);
+    const repsBased: Map<string, { weight: number; reps: number }[]> = new Map();
+    const order: string[] = [];
+    const result: ClientLoggedExercise[] = [];
+
+    for (const ex of logged) {
+      const name = ex.exercise_name?.trim();
+      if (!name) continue;
+      const metricType = (ex.metric_type ?? DEFAULT_METRIC_TYPE) as MetricType;
+
+      if (metricType === 'reps_weight' || metricType === 'reps_only') {
+        const sets = repsBased.get(name) ?? [];
+        sets.push({
+          weight: ex.actual_weight ?? 0,
+          reps: ex.actual_reps ?? 0,
+        });
+        repsBased.set(name, sets);
+        if (!order.includes(name)) {
+          order.push(name);
+          result.push({ name, metricType, sets });
+        }
+      } else if (metricType === 'time') {
+        result.push({ name, metricType, durationSeconds: ex.actual_duration_seconds ?? 0 });
+      } else if (metricType === 'distance_time') {
+        result.push({
+          name, metricType,
+          distanceMeters: ex.actual_distance_meters ?? 0,
+          durationSeconds: ex.actual_duration_seconds ?? 0,
+        });
+      } else if (metricType === 'amrap') {
+        result.push({
+          name, metricType,
+          emomMinutes: ex.actual_emom_minutes ?? 0,
+          rounds: ex.actual_rounds ?? 0,
+        });
+      } else if (metricType === 'emom') {
+        result.push({
+          name, metricType,
+          emomMinutes: ex.actual_emom_minutes ?? 0,
+          emomReps: ex.actual_reps ?? 0,
+        });
+      }
+    }
+    return result.map(r =>
+      (r.metricType === 'reps_weight' || r.metricType === 'reps_only')
+        ? { ...r, sets: repsBased.get(r.name) ?? [] }
+        : r
+    );
+  };
+
   // Boundary-only styles for logged status (kept name for backward compat)
   const getStatusBorder = (status?: string): string | null => {
     if (status === 'completed') return 'border-success';
