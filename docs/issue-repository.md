@@ -633,3 +633,42 @@ Two compounding bugs in `src/pages/Calendar.tsx → handleWorkoutSave`:
 
 ### Notes for future debugging
 - The "additive in edit mode" pattern was originally added to protect against accidentally wiping extra exercises a client had added on first log. The real protection is the modal's own hydration: the modal re-loads previous actuals into the edit form, so any re-save's payload already contains every previously-logged client-added exercise. Deleting + re-inserting is therefore safe and idempotent.
+
+---
+
+## TW-030 — Calendar old dot/icon UI resurfaced again on Gaurav's mobile
+
+**Severity:** High  
+**Status:** Fixed  
+**Reported:** 2026-04-29 by `gaurav.rsh@gmail.com` screenshot showing old `Completed / Missed / Pending` dot calendar.
+
+### Symptom
+
+Gaurav's calendar showed the obsolete UI again: circular status dots, red/green/grey badge markers inside date cells, and the old legend labels `Completed`, `Missed`, `Pending`. This contradicted the current source and intended boundary-only calendar style.
+
+### Verification
+
+- Live DB check confirmed `gaurav.rsh@gmail.com` maps to client `a1bb2e3b-e10b-4cea-b7b9-24c8a0bc5e5f` / unique id `6486580`.
+- April data is valid and explains the marked dates: Apr 6/28/29 completed workouts, Apr 7/18 pending workouts, Apr 13 CL, Apr 14 HL.
+- No duplicate workout rows exist for the same client/date.
+- Published bundle inspection showed the current calendar chunk contains the boundary-only legend (`Today`, `Logged`, `Holiday`, `Trainer Leave`, `Client Leave`) and not the old `Completed/Pending` legend.
+
+### Root cause
+
+This was a stale installed-PWA/app-shell recurrence, not data corruption and not a calendar business-logic bug. TW-024/TW-024b hardened runtime cache recovery, but that recovery still depended on the new JavaScript bundle executing. A device already controlled by an older shell can keep rendering the old calendar before the newer runtime guard gets a chance to clean up. The existing regression test was also too narrow: it guarded the date-cell region but did not fail on old legend words or circular marker styles returning elsewhere in the calendar render.
+
+### Fix
+
+- `index.html`: added a pre-React HTML freshness sentinel. It fetches `/build-id.json` with `no-store`, compares against the locally-seen build id, clears Cache Storage, unregisters Service Workers, and reloads once with a `vecto_fresh` cache-busting query parameter when a new build is detected. It does not clear auth/session storage.
+- `public/sw.js`: changed the push-only Service Worker to network-first/no-store for app-shell-critical resources: navigations, `/build-id.json`, `/manifest.json`, `/sw.js`, and `/assets/*`.
+- `public/manifest.json`: changed `start_url` from `/` to `/dashboard` so installed PWAs open directly on the authenticated calendar route instead of taking the public-root redirect path.
+- `index.html` and `manifest.json`: bumped manifest/icon query strings to `20260429a` to force install metadata refresh.
+- `Calendar.tsx`: removed the remaining circular section marker (`rounded-full`) in the calendar section header so the entire calendar render stays boundary/square-marker-only.
+- `calendar-boundary-ui.test.ts`: expanded guard to block old `Completed/Missed/Pending` text, circular markers, date-cell overlays, and old status icons across the calendar render area.
+- `pwa-freshness.test.ts`: added guards for `/dashboard` PWA start route, pre-React freshness sentinel, network-first SW shell resources, and preview/iframe SW unregister protection.
+
+### Regression guards
+
+- Focused tests cover calendar boundary UI, app-shell freshness, completed-workout relog behaviour, and workout re-save idempotency.
+- The calendar render now fails tests if old dot/icon UI or `Completed/Missed/Pending` legend text returns anywhere in the calendar section.
+- The cache guard now runs before React and before lazy calendar chunks, so old bundles no longer get to be the judge, jury, and executioner.

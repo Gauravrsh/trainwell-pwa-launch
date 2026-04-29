@@ -1129,7 +1129,7 @@ const Calendar = () => {
             >
               {/* Section Header */}
               <div className="flex items-center gap-2 mb-3">
-                <div className={`h-1.5 w-1.5 rounded-full ${
+                <div className={`h-1.5 w-1.5 rounded-sm ${
                   isCurrentSection ? 'bg-primary' : 
                   isPastSection ? 'bg-muted-foreground' : 'bg-border'
                 }`} />

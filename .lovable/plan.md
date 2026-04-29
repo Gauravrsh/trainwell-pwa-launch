@@ -1,146 +1,147 @@
-## TW-028 — Progress page math is wrong (Avg Deficit) and BMR mutates history
+## TW-030 — Calendar UI regressed to old dots/icons again for Gaurav
 
-### What I verified against live DB for Gaurav Sharma (`a1bb2e3b…`, BMR 1859)
+### What I verified
 
-Screenshot shows "View last **3** days" with these numbers:
+The screenshot is the old calendar surface again:
+- circular green/red/grey markers
+- status legend says `Completed / Missed / Pending`
+- small icons/dots inside date cells
 
-| Card | Screenshot | Math from DB | Match? |
-|---|---|---|---|
-| Avg Daily Deficit | **+1114** | (1859 + 1859 + 168 + 569) / 4 = **1114** | Yes — but the inputs are wrong |
-| Days Logged | **2** | Apr 27 + Apr 28 had logs | Correct |
-| Days Missed | **2** | Apr 25 + Apr 26 nothing logged | Correct |
-| Weight Change | — | Only one weight log | Correct (needs ≥2) |
+That is not the current intended UI. The current source code in `src/pages/Calendar.tsx` already renders boundary-only date cells:
+- date number only
+- border-only state
+- legend: `Today / Logged / Holiday / Trainer Leave / Client Leave`
 
-The **calculation code itself is internally consistent**, but it produces a misleading number for two distinct reasons. The graphs and the cards then disagree because the graphs implicitly highlight the missed days as "Missed" while the card silently rolls them in.
+I also checked Gaurav’s live rows:
+- `gaurav.rsh@gmail.com` maps to client `a1bb2e3b-e10b-4cea-b7b9-24c8a0bc5e5f`, unique id `6486580`.
+- April workout rows explain several borders/statuses: Apr 6 completed, Apr 7 pending, Apr 18 pending, Apr 28 completed, Apr 29 completed.
+- Day marks explain Apr 13 CL and Apr 14 HL.
+- There are no duplicate workouts for the same client/date.
 
----
+So this is not a data corruption issue. The data is doing what the calendar tells it to do. The UI being shown is stale/wrong.
 
-### Bug 1 — Off-by-one date window
+### Root cause
 
-`useProgressData.tsx`:
-```ts
-const endDate = new Date();                  // Apr 28
-const startDate = subDays(endDate, dateRange); // Apr 25 when dateRange=3
-const days = eachDayOfInterval({ start, end });// 4 days, not 3
+This is a deployment/cache-surface regression, not a calendar-calculation regression.
+
+The published bundle currently includes the new boundary-only calendar chunk, but affected mobile clients can still display an older app shell/bundle. We already fixed part of this under TW-024/TW-024b, but the fix is still too soft because it relies on runtime JS executing before it can self-heal. If an old shell/bundle is already controlling the page, the new `buildFreshness` code may never run on that device.
+
+That is why the same calendar issue can “come back” even when the repository code is correct. Excellent theatre by the browser cache. Terrible product behaviour.
+
+There is also a second weakness: the regression test only blocks icon/dot markup inside the current date-cell block. It does not hard-fail if old calendar legend words (`Completed`, `Pending`) or old circular marker classes are reintroduced elsewhere in the calendar page. The guard was too narrow.
+
+## Fix plan
+
+### 1. Open a new issue entry before changing code
+
+Add `TW-030` to:
+- `docs/issue-repository-index.md`
+- `docs/issue-repository.md`
+
+It will explicitly link back to TW-024/TW-024b and record that this is the third recurrence of the same stale calendar UI symptom.
+
+### 2. Make `/` the authenticated start route for installed users
+
+Change `public/manifest.json`:
+
+```json
+"start_url": "/dashboard"
 ```
 
-User typed "3"; UI generates 4 days. Same off-by-one applies to every date range (7 → 8, 30 → 31, etc.). **Fix:** `subDays(endDate, dateRange - 1)`.
+Why: installed PWAs currently start at `/`. That creates an avoidable redirect path (`/` -> auth check -> `/dashboard`) and gives older cached shells more room to win. For this product, authenticated users live on the calendar. The app icon should open the app at the protected calendar route directly.
 
-### Bug 2 — Missed days are counted in the average
+### 3. Add a pre-React “stale build sentinel” in `index.html`
 
-On Apr 25 & 26 the user logged nothing. Today's code still calculates:
-```ts
-totalExpenditure = bmr + (burnt||0) + stepCalories  // = 1859
-netDeficit = totalExpenditure - (intake||0)         // = 1859
-```
-…and then averages this **1859 fake deficit** into "Avg Daily Deficit". A day with no intake logged is not a real 1859 deficit; the user just didn't track. The card label "Avg Daily Deficit" implies "average over the days where deficit could be measured."
+Add a tiny inline script before the main module that:
+- fetches `/build-id.json` with `cache: no-store`
+- compares it with the last build id stored locally
+- if changed, clears Cache Storage
+- unregisters Service Workers
+- reloads once with a cache-busting query parameter
 
-**Fix:** Average only over `!isMissed` days. With the same data:
-- Apr 27: deficit 168, Apr 28: deficit 569 → real avg = **368**, not 1114.
+This runs before React, before lazy calendar chunks, and before the normal app bundle. That is the important difference from TW-024b: the recovery guard moves into the HTML shell itself, so it does not depend on the stale JavaScript bundle being cooperative.
 
-Also: Action chart bars and Outcome chart "Net Deficit" line should treat missed days as null (gap in the line, no expenditure bar) instead of plotting BMR-only synthetic expenditure. This stops the chart from showing tall green bars on missed days that don't match the "Days Missed" count.
+The script will be conservative:
+- only runs when `build-id.json` is reachable
+- uses a once-only session guard to avoid reload loops
+- does not clear `localStorage` auth/session data
+- uses `logError` only in app code; for inline HTML script, errors are swallowed to avoid breaking boot
 
-### Bug 3 — BMR mutates retroactively
+### 4. Harden Service Worker fetch handling
 
-`profiles.bmr` is a single mutable scalar. `useProgressData` reads today's value of `profiles.bmr` and applies it to **every** day in the chart range. If the trainer/client updates BMR today, yesterday's "Total Expenditure" silently changes too — historical truth gets rewritten.
+Update `public/sw.js` so more app-shell-critical resources are network-first/no-store:
+- navigation documents
+- `/build-id.json`
+- `/manifest.json`
+- `/sw.js`
+- JavaScript and CSS bundles under `/assets/`
 
-User requirement: "for BMR make sure the number on each successive value entered stays from that point onwards… BMR should not change/get updated retrospectively."
+Also add defensive fallback behaviour: if network navigation fails, fall back to plain `fetch(req)` rather than serving a cached obsolete response.
 
-**Fix:** introduce a historical BMR log and use the BMR that was in force on each given date.
+This service worker is supposed to be push-only/minimal, not offline-first. It should not preserve old UI. It has one job: deliver push notifications without pretending to be a time machine.
 
----
+### 5. Version the PWA manifest/icon query strings again
 
-## Implementation plan
+Bump static asset query strings in:
+- `index.html`
+- `public/manifest.json`
 
-### A. Database — historical BMR log
+This forces Android Chrome/PWA install metadata to re-fetch the manifest/icon resources. It is not the main fix, but it helps flush the installable app surface.
 
-New table `bmr_logs`:
-```sql
-create table public.bmr_logs (
-  id uuid primary key default gen_random_uuid(),
-  client_id uuid not null,         -- profiles.id (no FK; same convention as other *_logs)
-  bmr integer not null check (bmr between 500 and 10000),
-  effective_date date not null default current_date,
-  created_at timestamptz not null default now(),
-  unique (client_id, effective_date)            -- one BMR value per client per date
-);
-create index bmr_logs_client_date_idx on public.bmr_logs (client_id, effective_date desc);
-alter table public.bmr_logs enable row level security;
-```
+### 6. Strengthen regression tests
 
-RLS policies (mirror `weight_logs` & `step_logs`):
-- `select`: `client_id = get_user_profile_id(auth.uid())` OR `is_trainer_of_client(auth.uid(), client_id)`.
-- `insert`: same conditions, plus trainer needs `has_active_platform_subscription(...)` (per existing pattern).
-- `update`/`delete`: **disallow.** BMR history is immutable; correcting a wrong entry means inserting a new one for tomorrow. (Codifies the user's "stays from that point onwards" rule.)
-- Anon: deny.
+Expand `src/test/calendar-boundary-ui.test.ts` to fail if `Calendar.tsx` reintroduces:
+- old legend labels: `Completed`, `Missed`, `Pending`
+- old circular legend markers: `rounded-full` inside the calendar render/legend area
+- date-cell overlay positioning classes used for dots/badges (`absolute`, `bottom-`, `top-`, etc.)
+- old status icons in the date-grid region
 
-Backfill: insert one row per existing profile that has a BMR set, using `bmr_updated_at::date` as `effective_date`.
+Add a new test file for cache/update hardening, for example `src/test/pwa-freshness.test.ts`, asserting:
+- `manifest.json` starts at `/dashboard`
+- `index.html` includes the pre-React build freshness sentinel
+- `sw.js` handles `build-id.json`, `manifest.json`, `sw.js`, and `/assets/` with network/no-store behaviour
+- preview-host/iframe SW disable guard remains intact in `buildFreshness.ts`
 
-`profiles.bmr` & `profiles.bmr_updated_at` stay as the convenient "current BMR" projection (used by Profile card, badges, "BMR may be outdated" banner). Both are kept in sync via the BMR write path so existing UI does not break.
+### 7. Keep Gaurav’s data untouched
 
-### B. BMR write path
+No cleanup migration is needed for Gaurav for this specific bug. His April rows match the screenshot states:
+- Apr 13 CL and Apr 14 HL are real `day_marks`
+- Apr 7 and Apr 18 are real pending workouts
+- Apr 6/28/29 completed workouts are real
 
-Update `BMRLogModal.handleSave`:
-1. `INSERT INTO bmr_logs (client_id, bmr, effective_date=current_date)` with `ON CONFLICT (client_id, effective_date) DO UPDATE SET bmr = EXCLUDED.bmr` — so re-saving on the same day corrects today's value but past days stay frozen.
-2. Continue to update `profiles.bmr` and `profiles.bmr_updated_at` (so the Profile card and stale banner keep working without further changes).
+The bug is the marker style resurrecting, not those dates existing.
 
-### C. Progress hook — read historical BMR per day
+### 8. Regression run before deployment
 
-`src/hooks/useProgressData.tsx`:
-1. Fix the off-by-one: `subDays(endDate, dateRange - 1)`.
-2. Fetch `bmr_logs` for this client where `effective_date <= endDate`, ordered ascending. Also fetch the latest `bmr_logs` row strictly before `startDate` (to know the BMR in force on day 1 of the window).
-3. Build a per-day BMR resolver: walk the day list ascending, advancing the "current BMR" pointer whenever `effective_date` matches today. Each day uses the BMR active **on that day**, not today's profile BMR. If no BMR was ever logged before a given day, BMR for that day is `0` (matches existing "no silent fallback" comment).
-4. Recompute `totalExpenditure` & `netDeficit` per day using that historical BMR.
-5. Keep `isMissed` definition the same.
+Run the focused tests before shipping:
+- `calendar-boundary-ui.test.ts`
+- new `pwa-freshness.test.ts`
+- `client-workout-relog.test.ts`
+- `workout-relog-idempotency.test.ts`
 
-### D. Progress page — correct the Avg Deficit math
+Then run the broader app test suite through the standard harness.
 
-`src/pages/Progress.tsx`:
-```ts
-const loggedDays = data.filter(d => !d.isMissed);
-const avgDeficit = loggedDays.length > 0
-  ? Math.round(loggedDays.reduce((s, d) => s + d.netDeficit, 0) / loggedDays.length)
-  : 0;
-```
-The card already says "Avg Daily Deficit"; we now keep that promise. If `loggedDays.length === 0`, render `—` instead of `+0` so users do not misread "0 deficit" as "perfect maintenance".
+### Files to change
 
-### E. Charts — do not paint missed days as expenditure
+- `index.html`
+- `public/manifest.json`
+- `public/sw.js`
+- `src/test/calendar-boundary-ui.test.ts`
+- `src/test/pwa-freshness.test.ts` new
+- `docs/issue-repository-index.md`
+- `docs/issue-repository.md`
+- likely memory update for PWA cache strategy after implementation
 
-`ActionChart.tsx` and `OutcomeChart.tsx`:
-- For days where `isMissed` is true, set `intake`, `burnt`, `totalExpenditure`, `deficitValue` to `null` so Recharts leaves a gap (line) and skips the bar (bar). Tooltip on a missed day shows the existing "Missed" label only — no synthetic numbers.
-- This makes the cards and the charts tell the same story.
+## Expected result
 
-### F. Regression tests
+After deployment, even if a mobile device has an old installed PWA shell:
+1. it opens directly to `/dashboard`,
+2. the HTML-level build sentinel runs before React,
+3. stale caches/service workers are cleared,
+4. the app reloads once into the newest bundle,
+5. the calendar shows boundary-only styling and cannot silently fall back to the old `Completed / Missed / Pending` dot UI again.
 
-New `src/test/progress-math.test.ts`:
-1. `useProgressData` produces exactly N days for `dateRange = N` (off-by-one guard for 1, 3, 7, 30).
-2. `Progress.avgDeficit` excludes missed days. With Gaurav's exact 4 days, asserts `avgDeficit === 368` (not 1114) and `loggedDays === 2`, `missedDays === 2`.
-3. Historical BMR: given two `bmr_logs` rows (1700 effective Apr 1, 1900 effective Apr 20) and a 30-day window ending Apr 28, day 14 uses 1700 and day 25 uses 1900. Updating today's BMR to 2000 does NOT change day 14's value.
-4. Missed days emit `null` totals to charts — protects against future authors re-adding synthetic BMR-only bars.
-
-### G. Documentation & memory
-
-- Add **TW-028** entry to `docs/issue-repository.md` and `docs/issue-repository-index.md` with the RCA above and exact-numbers worked example for Gaurav.
-- New memory: `mem://features/progress/calculation-rules` — codifies "Avg deficit excludes missed days; BMR is historical via `bmr_logs`; date window is inclusive of today." Linked from the index.
-
----
-
-## Files to be touched
-
-- New migration: `bmr_logs` table + RLS + backfill.
-- `src/components/modals/BMRLogModal.tsx` — also insert into `bmr_logs`.
-- `src/hooks/useProgressData.tsx` — date-range fix + historical BMR resolver.
-- `src/pages/Progress.tsx` — exclude missed days from avg; render `—` when no logged days.
-- `src/components/progress/ActionChart.tsx` — null-out missed days.
-- `src/components/progress/OutcomeChart.tsx` — null-out missed days.
-- `src/test/progress-math.test.ts` — new.
-- `docs/issue-repository.md`, `docs/issue-repository-index.md` — TW-028 entry.
-- `mem://features/progress/calculation-rules` — new memory + index update.
-
-### Worked example after fix (Gaurav, last 3 days)
-
-Window becomes Apr 26, 27, 28 (3 days, off-by-one fixed). Apr 26 missed → excluded from avg. `avgDeficit = (168 + 569) / 2 = 369`. Days Logged = 2, Days Missed = 1, charts show no bars/line on Apr 26.
-
----
-
-Approve to implement.
+TW-ID: TW-030
+Files touched: planned only
+Repo updated: no — read-only plan mode
+Regression check: planned before deployment
