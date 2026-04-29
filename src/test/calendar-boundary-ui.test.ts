@@ -11,6 +11,10 @@ const legendBlock = calendarSource.slice(
   calendarSource.indexOf("{/* Status Legend (boundary swatches only) */}"),
   calendarSource.indexOf("</motion.div>", calendarSource.indexOf("{/* Status Legend (boundary swatches only) */}"))
 );
+const calendarRenderBlock = calendarSource.slice(
+  calendarSource.indexOf("{/* Calendar Sections */}"),
+  calendarSource.indexOf("{/* Trainer Action Sheet */}")
+);
 
 describe("Calendar boundary-only UI", () => {
   it("renders date cells as numbers with border-state classes, not dots or icons", () => {
@@ -18,7 +22,7 @@ describe("Calendar boundary-only UI", () => {
     expect(dateCellBlock).toContain("getStatusBorder");
     expect(dateCellBlock).toContain("border-2");
     expect(dateCellBlock).not.toMatch(/<(?:Dumbbell|Check|Clock|X|AlertCircle|CalendarOff|UserX|Palmtree)\b/);
-    expect(dateCellBlock).not.toMatch(/rounded-full|bottom-|top-|left-|right-|w-\d(?:\.\d)?\s+h-\d(?:\.\d)?/);
+    expect(dateCellBlock).not.toMatch(/absolute|rounded-full|bottom-|top-|left-|right-|w-\d(?:\.\d)?\s+h-\d(?:\.\d)?/);
   });
 
   it("keeps the calendar legend as boundary swatches only", () => {
@@ -29,5 +33,11 @@ describe("Calendar boundary-only UI", () => {
     expect(legendBlock).toContain("Client Leave");
     expect(legendBlock).not.toMatch(/Completed|Missed|Pending/);
     expect(legendBlock).not.toMatch(/rounded-full/);
+  });
+
+  it("blocks the old Completed/Missed/Pending dot calendar from returning anywhere in the calendar render", () => {
+    expect(calendarRenderBlock).not.toMatch(/Completed|Missed|Pending/);
+    expect(calendarRenderBlock).not.toMatch(/rounded-full/);
+    expect(calendarRenderBlock).not.toMatch(/<(?:Check|Clock|X|AlertCircle)\b/);
   });
 });
