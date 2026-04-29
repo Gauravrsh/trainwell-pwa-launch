@@ -84,7 +84,9 @@ function scoreFromText(
     positiveSignals += 2;
   }
 
-  if (NEG_UNIT.test(afterExtended) || NEG_UNIT.test(beforeExtended)) {
+  const immediateUnitBefore = rawText.slice(Math.max(0, idx - 16), idx);
+  const immediateUnitAfter = rawText.slice(idx + raw.length, idx + raw.length + 16);
+  if (NEG_UNIT.test(immediateUnitAfter) || NEG_UNIT.test(immediateUnitBefore)) {
     score -= 200;
     negativeSignals += 1;
   }
