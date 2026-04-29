@@ -13,15 +13,56 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     
     <!-- PWA manifest -->
-    <link rel="manifest" href="/manifest.json?v=20260417a" />
+    <link rel="manifest" href="/manifest.json?v=20260429a" />
     
     <!-- Apple Touch Icons -->
-    <link rel="apple-touch-icon" sizes="180x180" href="/icons/apple-touch-icon-180.png?v=20260417a" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/icons/apple-touch-icon-180.png?v=20260429a" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-title" content="Vecto" />
     
     <!-- Favicon -->
-    <link rel="icon" type="image/png" href="/favicon.png?v=20260417a" />
+    <link rel="icon" type="image/png" href="/favicon.png?v=20260429a" />
+
+    <script>
+      window.__vectoFreshnessReady = (async function () {
+        const refreshKey = "vecto:html-build-refresh-attempted";
+        const storedBuildKey = "vecto:html-build-id";
+        try {
+          const response = await fetch("/build-id.json?t=" + Date.now(), {
+            cache: "no-store",
+            headers: { "cache-control": "no-cache" }
+          });
+          if (!response.ok) return;
+
+          const payload = await response.json();
+          const latestBuildId = payload && payload.buildId;
+          if (!latestBuildId) return;
+
+          const previousBuildId = localStorage.getItem(storedBuildKey);
+          localStorage.setItem(storedBuildKey, latestBuildId);
+
+          if (!previousBuildId || previousBuildId === latestBuildId) return;
+          if (sessionStorage.getItem(refreshKey) === latestBuildId) return;
+          sessionStorage.setItem(refreshKey, latestBuildId);
+
+          if ("caches" in window) {
+            const cacheNames = await caches.keys();
+            await Promise.all(cacheNames.map((cacheName) => caches.delete(cacheName)));
+          }
+
+          if ("serviceWorker" in navigator) {
+            const registrations = await navigator.serviceWorker.getRegistrations();
+            await Promise.all(registrations.map((registration) => registration.unregister()));
+          }
+
+          const url = new URL(window.location.href);
+          url.searchParams.set("vecto_fresh", String(Date.now()));
+          window.location.replace(url.toString());
+        } catch (_) {
+          // Never block app boot if the freshness probe itself fails.
+        }
+      })();
+    </script>
 
     <!-- Open Graph -->
     <meta property="og:title" content="Vecto — Performance with Direction" />
