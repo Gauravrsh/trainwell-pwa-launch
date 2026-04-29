@@ -16,12 +16,23 @@ self.addEventListener('message', (event) => {
   }
 });
 
+const isFreshShellRequest = (req) => {
+  const url = new URL(req.url);
+  return req.mode === 'navigate'
+    || url.pathname === '/build-id.json'
+    || url.pathname === '/manifest.json'
+    || url.pathname === '/sw.js'
+    || url.pathname.startsWith('/assets/');
+};
+
+const networkOnly = async (req) => fetch(req, { cache: 'no-store' }).catch(() => fetch(req));
+
 // Minimal service worker for Web Push + fresh-shell guard for installed PWAs.
-// Network-only for HTML navigations ensures stale app shells cannot resurrect old UI.
+// Network-only for app-shell resources ensures stale bundles cannot resurrect old UI.
 self.addEventListener('fetch', (event) => {
   const req = event.request;
-  if (req.mode === 'navigate') {
-    event.respondWith(fetch(req, { cache: 'no-store' }));
+  if (isFreshShellRequest(req)) {
+    event.respondWith(networkOnly(req));
   }
 });
 
