@@ -1,43 +1,54 @@
-## One-off Data Patch — BMR Backfill for Gaurav Sharma
+## Weight Carry-Forward Logic — Implementation Plan
 
-### Confirmed inputs (already verified via DB read)
-- **Profile ID:** `a1bb2e3b-e10b-4cea-b7b9-24c8a0bc5e5f`
-- **Email:** gaurav.rsh@gmail.com
-- **Current `profiles.bmr`:** **1859**
-- **Existing `bmr_logs`:** 1 row (`1859` on `2026-04-28`) — left untouched
+### Goal
+Treat the **latest logged weight as the user's weight for every consecutive day until a fresh weight is logged**, across all weight displays and the Weight Change stat. No fabrication for days before the first-ever weight log. BMR is never recomputed from this.
 
-### Why a migration (not the insert tool)
-The `bmr_logs` INSERT policy requires `client_id = get_user_profile_id(auth.uid())` — only the user themselves can insert their own row. A migration runs as table owner and bypasses RLS, which is the only way to insert this row on Gaurav's behalf without him being logged in.
+### Confirmed scope (per your answers)
+1. **Seed before window:** YES — fetch the latest weight log strictly before the window start and carry it into day 1.
+2. **Days before any weight ever existed:** stay `null` (no fabricated history, gap on chart).
+3. **Weight Change stat:** use carried-forward values (true change across the window).
+4. **No BMR recomputation.** Weight carry-forward applies only to the Outcome chart (Chart 2) + Weight Change stat. No other math touched.
 
-### Exact action — single migration, single SQL statement
-Create file: `supabase/migrations/<timestamp>_backfill_bmr_gaurav_jan1.sql`
+---
 
-```sql
--- One-off data patch: backfill BMR for user Gaurav (gaurav.rsh@gmail.com)
--- Inserts a single bmr_logs row dated 2026-01-01 with current BMR value (1859)
--- so progress calculations from Jan 1 onward use this BMR.
--- Scoped strictly to one profile_id. No schema changes. No other users affected.
+### Files to change
 
-INSERT INTO public.bmr_logs (client_id, bmr, effective_date)
-VALUES ('a1bb2e3b-e10b-4cea-b7b9-24c8a0bc5e5f', 1859, '2026-01-01');
-```
+**1. `src/hooks/useProgressData.tsx`** (single source of truth)
+- Add a 7th parallel query: latest `weight_logs` row strictly **before** `startDateStr` (limit 1, descending). Mirrors the existing `bmrPriorRes` pattern exactly.
+- Replace the current "weight = `weightByDate[dateStr] ?? null`" mapping with a carry-forward walk:
+  - Initialize `currentWeight = seedWeightFromPrior ?? null`.
+  - For each day ascending: if `weightByDate[dateStr]` exists → update `currentWeight` to that value. Then assign `weight = currentWeight` (which stays `null` until the first-ever log appears).
+- The `DailyProgress.weight` field now means "effective weight on that day" instead of "logged that day". This is the only behavioural change in the hook.
 
-### What I will NOT do
-- No code changes (no .ts/.tsx files touched)
-- No RLS / policy / schema / function changes
-- No other users' data touched
-- No tests added
-- No issue repository entry (per your instruction — not a bug)
-- No memory updates
+**2. `src/components/progress/OutcomeChart.tsx`**
+- No code change needed — it already reads `day.weight` and `connectNulls`. With carry-forward in the hook, the line will now render a flat segment between logs (correct visual for "weight held steady until next log") instead of interpolating a slope between two distant points.
+- Tooltip text "No weight logged" still triggers correctly for pre-first-log days (where `weight` remains `null`).
 
-### Post-execution verification
-Re-query `bmr_logs` for `client_id = 'a1bb2e3b-…'` and show you the resulting 2 rows:
-- `2026-01-01 → 1859` (new)
-- `2026-04-28 → 1859` (existing)
+**3. `src/pages/Progress.tsx`** (Weight Change stat)
+- Currently computes weight delta from first vs last **logged** entry in the window. Switch to: first non-null vs last non-null of the now-carried-forward `data[].weight` array.
+- If everything is still `null` (no log ever) → render `—` as today.
 
-Effective historical BMR = flat 1859 from Jan 1 → today, matching Option 2 intent.
+**4. `src/test/progress-math.test.ts`**
+- Add a new `describe` block: **"Weight carry-forward"** with these cases:
+  - Log on day 1 (72), log on day 6 (71): days 1–5 = 72, days 6+ = 71.
+  - Seed from before window: latest prior log = 70 → day 1 of window = 70 until next log inside window.
+  - No prior log + first in-window log on day 10: days 1–9 = `null`, days 10+ = that value.
+  - Weight Change stat uses carried-forward first vs last (not raw logged first vs last).
+  - No log ever → weight array all `null`, Weight Change = `—`.
+
+---
+
+### What I will NOT touch
+- BMR logic, deficit math, Action chart, Steps chart, Calendar — untouched.
+- No DB schema changes, no migrations, no RLS changes.
+- No data backfill for any user.
+- `weight_logs` table and `WeightLogModal` flow — unchanged. Users still log discrete weight events; carry-forward is purely a read-side derivation.
 
 ### Risk
-Near-zero. Single INSERT of one row, hard-coded UUID, no joins, no cascades, no triggers on `bmr_logs`.
+Low. Single hook change + one stat recalculation + tests. The chart component is unchanged. If carry-forward ever feels wrong, reverting the hook restores prior behaviour.
+
+### Verification after build
+- Run the test suite (`vitest run`) — all existing TW-028 tests must still pass + new weight tests pass.
+- Spot-check Gaurav's profile: Outcome chart should now show a flat-then-step weight line instead of dotted gaps, and the Weight Change number should reflect carried-forward delta.
 
 Approve to proceed.
