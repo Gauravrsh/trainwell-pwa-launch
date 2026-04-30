@@ -153,3 +153,85 @@ describe('TW-028 — Charts blank out missed days', () => {
     expect(row.deficitValue).toBe(168);
   });
 });
+
+// ---------- Weight carry-forward helpers (mirror useProgressData.tsx) ----------
+function resolveWeightPerDay(
+  days: string[],
+  seedWeight: number | null,
+  logs: Array<{ date: string; weight: number }>,
+): Array<number | null> {
+  const map: Record<string, number> = {};
+  logs.forEach((l) => { map[l.date] = l.weight; });
+  let current: number | null = seedWeight;
+  return days.map((d) => {
+    if (map[d] !== undefined) current = map[d];
+    return current;
+  });
+}
+
+// Mirrors weightChange computation in src/pages/Progress.tsx.
+function weightChange(weights: Array<number | null>): string | null {
+  const nonNull = weights.filter((w): w is number => w !== null);
+  if (nonNull.length < 2) return null;
+  return (nonNull[nonNull.length - 1] - nonNull[0]).toFixed(1);
+}
+
+describe('Weight carry-forward', () => {
+  it('logs on day 1 (72) and day 6 (71) → days 1–5 = 72, days 6+ = 71', () => {
+    const days = ['2026-01-01', '2026-01-02', '2026-01-03', '2026-01-04', '2026-01-05', '2026-01-06', '2026-01-07'];
+    const out = resolveWeightPerDay(days, null, [
+      { date: '2026-01-01', weight: 72 },
+      { date: '2026-01-06', weight: 71 },
+    ]);
+    expect(out).toEqual([72, 72, 72, 72, 72, 71, 71]);
+  });
+
+  it('seeds from latest log before window — day 1 of window inherits prior weight', () => {
+    const days = ['2026-04-01', '2026-04-02', '2026-04-03', '2026-04-04'];
+    const out = resolveWeightPerDay(days, 70, [
+      { date: '2026-04-03', weight: 69 },
+    ]);
+    expect(out).toEqual([70, 70, 69, 69]);
+  });
+
+  it('no prior log + first in-window log on day 10 → days 1–9 stay null (no fabrication)', () => {
+    const days = Array.from({ length: 12 }, (_, i) =>
+      `2026-04-${String(i + 1).padStart(2, '0')}`,
+    );
+    const out = resolveWeightPerDay(days, null, [
+      { date: '2026-04-10', weight: 75 },
+    ]);
+    expect(out.slice(0, 9)).toEqual(Array(9).fill(null));
+    expect(out.slice(9)).toEqual([75, 75, 75]);
+  });
+
+  it('no log ever → entire window is null', () => {
+    const days = ['2026-04-01', '2026-04-02', '2026-04-03'];
+    const out = resolveWeightPerDay(days, null, []);
+    expect(out).toEqual([null, null, null]);
+  });
+
+  it('Weight Change stat uses carried-forward first vs last (not raw logged)', () => {
+    // Logs: 72 on day 1, 71 on day 6. Window = 7 days.
+    // Carried: [72,72,72,72,72,71,71]. Change = 71 - 72 = -1.0.
+    const carried = resolveWeightPerDay(
+      ['d1', 'd2', 'd3', 'd4', 'd5', 'd6', 'd7'],
+      null,
+      [{ date: 'd1', weight: 72 }, { date: 'd6', weight: 71 }],
+    );
+    expect(weightChange(carried)).toBe('-1.0');
+  });
+
+  it('Weight Change stat is null when no weight ever logged', () => {
+    const carried = resolveWeightPerDay(['d1', 'd2'], null, []);
+    expect(weightChange(carried)).toBeNull();
+  });
+
+  it('Weight Change reflects seed-vs-final when only prior log exists (flat line)', () => {
+    // Seed = 70, no in-window logs. Carried = [70,70,70]. Diff = 0.0 — but
+    // weightChange returns null when there are fewer than 2 *distinct* entries?
+    // Spec uses count-based check (length < 2), so [70,70,70] → "0.0".
+    const carried = resolveWeightPerDay(['d1', 'd2', 'd3'], 70, []);
+    expect(weightChange(carried)).toBe('0.0');
+  });
+});
