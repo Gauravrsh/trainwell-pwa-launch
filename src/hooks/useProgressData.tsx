@@ -54,7 +54,7 @@ export const useProgressData = (
       const endDateStr = format(endDate, 'yyyy-MM-dd');
 
       // Fetch all data in parallel
-      const [profileRes, foodLogsRes, workoutsRes, weightLogsRes, stepLogsRes, bmrLogsRes, bmrPriorRes] = await Promise.all([
+      const [profileRes, foodLogsRes, workoutsRes, weightLogsRes, stepLogsRes, bmrLogsRes, bmrPriorRes, weightPriorRes] = await Promise.all([
         supabase
           .from('profiles')
           .select('bmr, weight_kg')
@@ -101,6 +101,15 @@ export const useProgressData = (
           .lt('effective_date', startDateStr)
           .order('effective_date', { ascending: false })
           .limit(1),
+        // Weight carry-forward: latest weight log strictly BEFORE the window —
+        // needed to seed day 1 with the most recent prior weight.
+        supabase
+          .from('weight_logs')
+          .select('weight_kg, logged_date')
+          .eq('client_id', targetClientId)
+          .lt('logged_date', startDateStr)
+          .order('logged_date', { ascending: false })
+          .limit(1),
       ]);
 
       if (profileRes.error) throw profileRes.error;
@@ -110,6 +119,7 @@ export const useProgressData = (
       if (stepLogsRes.error) throw stepLogsRes.error;
       if (bmrLogsRes.error) throw bmrLogsRes.error;
       if (bmrPriorRes.error) throw bmrPriorRes.error;
+      if (weightPriorRes.error) throw weightPriorRes.error;
 
       // TW-028: Build a per-day historical BMR resolver.
       // - Seed with the latest BMR row strictly before the window (or 0 if none).
@@ -156,6 +166,12 @@ export const useProgressData = (
       // Generate daily progress data
       const days = eachDayOfInterval({ start: startDate, end: endDate });
       let currentBmr = seedBmr;
+      // Weight carry-forward: seed with latest log before window (or null if
+      // the user has never logged a weight). Days before the first-ever log
+      // remain null — no fabricated history.
+      const seedWeightRaw = weightPriorRes.data?.[0]?.weight_kg;
+      let currentWeight: number | null =
+        seedWeightRaw !== undefined && seedWeightRaw !== null ? Number(seedWeightRaw) : null;
       const progressData: DailyProgress[] = days.map((day) => {
         const dateStr = format(day, 'yyyy-MM-dd');
         // Advance to a new BMR if one became effective on this day.
@@ -165,7 +181,13 @@ export const useProgressData = (
         const bmr = currentBmr;
         const intake = foodByDate[dateStr] ?? null;
         const burnt = workoutsByDate[dateStr] ?? null;
-        const weight = weightByDate[dateStr] ?? null;
+        // Carry-forward: if a fresh weight was logged today, advance the
+        // pointer; otherwise hold the previous value (which may still be
+        // null if no weight has ever been logged up to this day).
+        if (weightByDate[dateStr] !== undefined) {
+          currentWeight = weightByDate[dateStr];
+        }
+        const weight = currentWeight;
         const stepData = stepsByDate[dateStr];
         const steps = stepData?.steps ?? null;
         const stepCalories = stepData?.calories ?? 0;
