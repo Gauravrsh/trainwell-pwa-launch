@@ -19,7 +19,8 @@ const calendarRenderBlock = calendarSource.slice(
 describe("Calendar boundary-only UI", () => {
   it("renders date cells as numbers with border-state classes, not dots or icons", () => {
     expect(dateCellBlock).toContain("getDayMarkBorder");
-    expect(dateCellBlock).toContain("getStatusBorder");
+    expect(dateCellBlock).toContain("hasCompletedWorkout");
+    expect(dateCellBlock).toContain("hasStepLog");
     expect(dateCellBlock).toContain("border-2");
     expect(dateCellBlock).not.toMatch(/<(?:Dumbbell|Check|Clock|X|AlertCircle|CalendarOff|UserX|Palmtree)\b/);
     expect(dateCellBlock).not.toMatch(/absolute|rounded-full|bottom-|top-|left-|right-|w-\d(?:\.\d)?\s+h-\d(?:\.\d)?/);
@@ -36,7 +37,8 @@ describe("Calendar boundary-only UI", () => {
   });
 
   it("blocks the old Completed/Missed/Pending dot calendar from returning anywhere in the calendar render", () => {
-    expect(calendarRenderBlock).not.toMatch(/Completed|Missed|Pending/);
+    // "hasCompletedWorkout" is a variable name, not UI text — exclude it from the pattern
+    expect(calendarRenderBlock).not.toMatch(/(?<!hasCompleted)(?:Completed|Missed|Pending)(?!Workout)/);
     expect(calendarRenderBlock).not.toMatch(/rounded-full/);
     expect(calendarRenderBlock).not.toMatch(/<(?:Check|Clock|X|AlertCircle)\b/);
   });
