@@ -40,7 +40,7 @@ const paidPlans = [
     name: 'Pro',
     price: 999,
     period: '/month',
-    description: '30 days + 3-day grace · Unlimited clients',
+    description: '',
     razorpayButtonId: 'pl_S6cIGsJyU7Owle',
     features: [
       'Unlimited active clients',
@@ -55,11 +55,12 @@ const paidPlans = [
     name: 'Elite',
     price: 9999,
     period: '/year',
-    description: '~₹833/month · Unlimited clients\n~17% less than monthly plan',
+    description: '',
     badge: 'BEST VALUE',
     razorpayButtonId: 'pl_S6ccDIYhIw1AaB',
     features: [
       'Everything in Pro',
+      'AI Powered Insights for your clients',
       'One payment. Year-long focus on clients.',
       'Referral rewards (annual)',
       'Priority support',
@@ -265,7 +266,7 @@ export function PlanSelectionModal({
                   <span className="text-2xl font-bold text-foreground">₹0</span>
                   <span className="text-muted-foreground"> forever</span>
                 </div>
-                <p className="text-sm text-muted-foreground mb-1">Up to 3 active clients · All features unlocked</p>
+                <p className="text-sm text-muted-foreground mb-1"></p>
                 <p className="text-xs text-muted-foreground">Upgrade below to remove the 3-client cap.</p>
               </div>
 
