@@ -5,7 +5,7 @@ import flywheel from '@/assets/flywheel-mockups/option1-final-v8.png';
 
 const CTASection = forwardRef<HTMLElement>((_, ref) => {
   return (
-    <section ref={ref} className="px-4 py-16 sm:py-24 text-center">
+    <section ref={ref} data-pdf-section="flywheel" className="px-4 py-16 sm:py-24 text-center">
       <div className="mx-auto max-w-3xl">
         <h2 className="text-2xl font-extrabold sm:text-3xl">
           The Flywheel That Builds{' '}

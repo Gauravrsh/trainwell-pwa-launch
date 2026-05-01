@@ -30,7 +30,7 @@ const steps = [
 
 const HowItWorks = forwardRef<HTMLElement>((_, ref) => {
   return (
-    <section ref={ref} className="px-4 py-16 sm:py-24">
+    <section ref={ref} data-pdf-section="how" className="px-4 py-16 sm:py-24">
       <div className="mx-auto max-w-4xl">
         <motion.p
           className="text-center text-xs font-semibold uppercase tracking-widest text-primary mb-3"

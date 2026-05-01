@@ -31,7 +31,7 @@ const rules = [
 
 const HouseRules = forwardRef<HTMLElement>((_, ref) => {
   return (
-    <section ref={ref} className="px-4 py-16 sm:py-24 bg-secondary/20">
+    <section ref={ref} data-pdf-section="rules" className="px-4 py-16 sm:py-24 bg-secondary/20">
       <div className="mx-auto max-w-4xl">
         <motion.h2
           className="text-center text-2xl font-extrabold sm:text-3xl"

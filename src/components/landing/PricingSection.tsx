@@ -72,7 +72,7 @@ const plans = [
 
 const PricingSection = forwardRef<HTMLElement>((_, ref) => {
   return (
-    <section ref={ref} className="px-4 py-16 sm:py-24 bg-secondary/20" id="pricing">
+    <section ref={ref} data-pdf-section="pricing" className="px-4 py-16 sm:py-24 bg-secondary/20" id="pricing">
       <div className="mx-auto max-w-5xl">
         <motion.h2
           className="text-center text-2xl font-extrabold sm:text-3xl"

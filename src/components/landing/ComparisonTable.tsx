@@ -18,7 +18,7 @@ const rows = [
 
 const ComparisonTable = forwardRef<HTMLElement>((_, ref) => {
   return (
-    <section ref={ref} className="px-4 py-16 sm:py-24">
+    <section ref={ref} data-pdf-section="comparison" className="px-4 py-16 sm:py-24">
       <div className="mx-auto max-w-3xl">
         <motion.h2
           className="text-center text-2xl font-extrabold sm:text-3xl"
