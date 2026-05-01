@@ -154,7 +154,7 @@ export default function Terms() {
                 <ul className="list-disc list-inside space-y-1 ml-2">
                   <li><span className="font-medium text-foreground">Smart (Free):</span> ₹0 forever — up to 3 active clients</li>
                   <li><span className="font-medium text-foreground">Pro (Monthly):</span> ₹999/month — unlimited clients</li>
-                  <li><span className="font-medium text-foreground">Elite (Annual):</span> ₹9,999/year — 14 months access, unlimited clients</li>
+                  <li><span className="font-medium text-foreground">Elite (Annual):</span> ₹9,999/year — 12 months access, unlimited clients</li>
                 </ul>
               </div>
 
@@ -181,7 +181,7 @@ export default function Terms() {
               <div>
                 <h4 className="font-semibold text-foreground mb-2">Elite Plan — ₹9,999/year</h4>
                 <ul className="list-disc list-inside space-y-1 ml-2">
-                  <li>365 days base + 60 bonus days = <strong>425 days total validity</strong>.</li>
+                  <li><strong>365 days total validity</strong> from payment date.</li>
                   <li>Unlimited active clients.</li>
                   <li>Auto-downgrades to Smart (Free) on grace expiry — existing data is retained, but trainer will need to select 3 clients on which to continue. Rest clients will get disabled.</li>
                   <li>Disabled clients are re-enabled as soon as the trainer renews the plan.</li>
