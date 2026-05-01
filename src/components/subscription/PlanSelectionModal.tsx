@@ -40,7 +40,7 @@ const paidPlans = [
     name: 'Pro',
     price: 999,
     period: '/month',
-    description: '30 days + 3-day grace · Unlimited clients',
+    description: '',
     razorpayButtonId: 'pl_S6cIGsJyU7Owle',
     features: [
       'Unlimited active clients',
@@ -60,6 +60,7 @@ const paidPlans = [
     razorpayButtonId: 'pl_S6ccDIYhIw1AaB',
     features: [
       'Everything in Pro',
+      'AI insights for your clients',
       'One payment. Year-long focus on clients.',
       'Referral rewards (annual)',
       'Priority support',
@@ -265,8 +266,14 @@ export function PlanSelectionModal({
                   <span className="text-2xl font-bold text-foreground">₹0</span>
                   <span className="text-muted-foreground"> forever</span>
                 </div>
-                <p className="text-sm text-muted-foreground mb-1">Up to 3 active clients · All features unlocked</p>
-                <p className="text-xs text-muted-foreground">Upgrade below to remove the 3-client cap.</p>
+                <ul className="space-y-1.5">
+                  {['Up to 3 active clients','All features unlocked','No card required','Cancel anytime'].map((f) => (
+                    <li key={f} className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <Check className="w-4 h-4 text-success flex-shrink-0" />
+                      {f}
+                    </li>
+                  ))}
+                </ul>
               </div>
 
               {paidPlans.map((plan) => (
@@ -310,7 +317,9 @@ export function PlanSelectionModal({
                     <span className="text-muted-foreground">{plan.period}</span>
                   </div>
 
-                  <p className="text-sm text-muted-foreground mb-3 whitespace-pre-line">{plan.description}</p>
+                  {plan.description && (
+                    <p className="text-sm text-muted-foreground mb-3 whitespace-pre-line">{plan.description}</p>
+                  )}
 
                   <ul className="space-y-1.5">
                     {plan.features.map((feature) => (

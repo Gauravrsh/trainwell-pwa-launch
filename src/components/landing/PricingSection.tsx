@@ -19,7 +19,7 @@ const plans = [
     icon: Sparkles,
     price: '₹0',
     period: ' forever',
-    description: 'Up to 3 active clients · All features unlocked',
+    description: '',
     subnote: 'Stay free, or upgrade when you scale.',
     features: [
       'Up to 3 active clients',
@@ -37,7 +37,7 @@ const plans = [
     icon: Rocket,
     price: '₹999',
     period: '/month',
-    description: '30 days + 3-day grace · Unlimited clients',
+    description: '',
     features: [
       'Unlimited active clients',
       'All features unlocked',
@@ -59,6 +59,7 @@ const plans = [
     badge: 'BEST VALUE',
     features: [
       'Everything in Pro',
+      'AI insights for your clients',
       'One payment. Year-long focus on clients.',
       'Referral rewards (annual)',
       'Priority support',
@@ -132,7 +133,9 @@ const PricingSection = forwardRef<HTMLElement>((_, ref) => {
                   <span className="text-muted-foreground">{p.period}</span>
                 </div>
 
-                <p className="text-sm text-muted-foreground mb-3 whitespace-pre-line">{p.description}</p>
+                {p.description && (
+                  <p className="text-sm text-muted-foreground mb-3 whitespace-pre-line">{p.description}</p>
+                )}
 
                 <ul className="space-y-1.5 flex-1">
                   {p.features.map((f) => (
