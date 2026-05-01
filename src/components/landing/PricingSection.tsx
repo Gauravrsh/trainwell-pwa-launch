@@ -19,8 +19,8 @@ const plans = [
     icon: Sparkles,
     price: '₹0',
     period: ' forever',
-    description: 'Up to 3 active clients · All features unlocked',
-    subnote: 'Stay free, or upgrade when you scale.',
+    description: '',
+    subnote: '',
     features: [
       'Up to 3 active clients',
       'All features unlocked',
@@ -37,7 +37,7 @@ const plans = [
     icon: Rocket,
     price: '₹999',
     period: '/month',
-    description: '30 days + 3-day grace · Unlimited clients',
+    description: '',
     features: [
       'Unlimited active clients',
       'All features unlocked',
@@ -88,7 +88,12 @@ const PricingSection = forwardRef<HTMLElement>((_, ref) => {
           initial="hidden" whileInView="visible" viewport={{ once: true }}
           variants={fadeUp} custom={0.5}
         >
-          {`That social media post where your client flaunts the results, and gives you the credit — what would you pay for that? It's priceless right? \nFocus on what truly matters and what will get your clients' results. Cutting corners on that is, well, a bad career decision!!`}
+          {`That social media post where your client flaunts the results, and gives you the credit — what would you pay for that? 
+
+
+It's priceless right?
+ 
+Focus on what truly matters and what will get your clients' results. Cutting corners on that is, well, a bad career decision!!`}
         </motion.p>
 
         {/* Beta Pricing Pill — moved below paragraph, above Smart plan */}
@@ -118,7 +123,7 @@ const PricingSection = forwardRef<HTMLElement>((_, ref) => {
                 }`}
               >
                 {p.badge && (
-                  <span className="absolute -top-3 left-1/2 -translate-x-1/2 px-2 py-0.5 bg-primary text-primary-foreground text-xs font-bold rounded whitespace-nowrap">
+                  <span className="absolute -top-3 left-0 right-0 mx-auto w-fit px-2 py-0.5 bg-primary text-primary-foreground text-xs font-bold rounded whitespace-nowrap z-10">
                     {p.badge}
                   </span>
                 )}
@@ -133,7 +138,7 @@ const PricingSection = forwardRef<HTMLElement>((_, ref) => {
                   <span className="text-muted-foreground">{p.period}</span>
                 </div>
 
-                <p className="text-sm text-muted-foreground mb-3 whitespace-pre-line">{p.description}</p>
+                {p.description && <p className="text-sm text-muted-foreground mb-3 whitespace-pre-line">{p.description}</p>}
 
                 <ul className="space-y-1.5 flex-1">
                   {p.features.map((f) => (
