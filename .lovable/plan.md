@@ -1,54 +1,62 @@
-## Weight Carry-Forward Logic — Implementation Plan
+## Decision Alignment
 
-### Goal
-Treat the **latest logged weight as the user's weight for every consecutive day until a fresh weight is logged**, across all weight displays and the Weight Change stat. No fabrication for days before the first-ever weight log. BMR is never recomputed from this.
+**I agree with your decision.** Here's why:
 
-### Confirmed scope (per your answers)
-1. **Seed before window:** YES — fetch the latest weight log strictly before the window start and carry it into day 1.
-2. **Days before any weight ever existed:** stay `null` (no fabricated history, gap on chart).
-3. **Weight Change stat:** use carried-forward values (true change across the window).
-4. **No BMR recomputation.** Weight carry-forward applies only to the Outcome chart (Chart 2) + Weight Change stat. No other math touched.
+### Arguments FOR (your position, which I endorse)
 
----
+1. **"Whatever gets tracked, gets done"** — Steps are manually tracked active effort. Denying visual reinforcement for tracked activity contradicts the core philosophy. If a client walks 12,000 steps and logs them, that IS compliance.
+2. **Real-world training reality** — Not every day has a prescribed gym workout. Rest days with active recovery (walking, steps) are part of any sensible program. A calendar full of blank tiles on "rest days" despite the client logging 10K+ steps sends the wrong signal — it looks like the client did nothing.
+3. **Trainer-client alignment** — Trainers already see step logs in progress charts. If the calendar doesn't reflect this, there's a disconnect between what the trainer sees in Progress vs Calendar. Same data, inconsistent visual treatment.
+4. **Motivation flywheel** — The neon border is the primary dopamine hit. Withholding it from step-logging days breaks the streak visual, which is the single most powerful retention mechanic in the calendar.
 
-### Files to change
+### Arguments AGAINST (acknowledged, but overridden)
 
-**1. `src/hooks/useProgressData.tsx`** (single source of truth)
-- Add a 7th parallel query: latest `weight_logs` row strictly **before** `startDateStr` (limit 1, descending). Mirrors the existing `bmrPriorRes` pattern exactly.
-- Replace the current "weight = `weightByDate[dateStr] ?? null`" mapping with a carry-forward walk:
-  - Initialize `currentWeight = seedWeightFromPrior ?? null`.
-  - For each day ascending: if `weightByDate[dateStr]` exists → update `currentWeight` to that value. Then assign `weight = currentWeight` (which stays `null` until the first-ever log appears).
-- The `DailyProgress.weight` field now means "effective weight on that day" instead of "logged that day". This is the only behavioural change in the hook.
-
-**2. `src/components/progress/OutcomeChart.tsx`**
-- No code change needed — it already reads `day.weight` and `connectNulls`. With carry-forward in the hook, the line will now render a flat segment between logs (correct visual for "weight held steady until next log") instead of interpolating a slope between two distant points.
-- Tooltip text "No weight logged" still triggers correctly for pre-first-log days (where `weight` remains `null`).
-
-**3. `src/pages/Progress.tsx`** (Weight Change stat)
-- Currently computes weight delta from first vs last **logged** entry in the window. Switch to: first non-null vs last non-null of the now-carried-forward `data[].weight` array.
-- If everything is still `null` (no log ever) → render `—` as today.
-
-**4. `src/test/progress-math.test.ts`**
-- Add a new `describe` block: **"Weight carry-forward"** with these cases:
-  - Log on day 1 (72), log on day 6 (71): days 1–5 = 72, days 6+ = 71.
-  - Seed from before window: latest prior log = 70 → day 1 of window = 70 until next log inside window.
-  - No prior log + first in-window log on day 10: days 1–9 = `null`, days 10+ = that value.
-  - Weight Change stat uses carried-forward first vs last (not raw logged first vs last).
-  - No log ever → weight array all `null`, Weight Change = `—`.
+1. **Signal dilution** — A trainer can no longer distinguish "did prescribed workout" from "just walked" at a glance. *Counter: this is a feature, not a bug. The calendar tracks compliance/effort, not workout type. The workout detail modal already shows what was done.*
+2. **Low-effort gaming** — A client could log 100 steps to get the neon border. *Counter: the trainer sees the step count in the detail view. The "Mirror Doesn't Lie" — gaming is self-evident and self-defeating.*
 
 ---
 
-### What I will NOT touch
-- BMR logic, deficit math, Action chart, Steps chart, Calendar — untouched.
-- No DB schema changes, no migrations, no RLS changes.
-- No data backfill for any user.
-- `weight_logs` table and `WeightLogModal` flow — unchanged. Users still log discrete weight events; carry-forward is purely a read-side derivation.
+## Build Plan
+
+### Current State
+
+- The month grid renders `border-success` (neon) only when a `workout` exists with `status === 'completed'`
+- Step logs are fetched on-demand when a date is tapped, NOT pre-fetched for the month grid
+- No step data is available during grid rendering
+
+### Changes Required
+
+**1. `src/pages/Calendar.tsx**`
+
+- **Add a month-level step log query** — new `useQuery` that fetches all `step_logs` rows for the visible month range (same pattern as the existing workouts query). Select only `logged_date` since we just need presence, not counts.
+- **Build a `stepDatesSet**` — a `Set<string>` of dates that have step logs, for O(1) lookup during cell rendering.
+- **Update the date cell border logic** (line ~1194) — change from:
+  ```
+  const statusBorder = workout ? getStatusBorder(workout.status) : null;
+  ```
+  to:
+  ```
+  const hasCompletedWorkout = workout?.status === 'completed';
+  const hasStepLog = stepDatesSet.has(dateStr);
+  const statusBorder = (hasCompletedWorkout || hasStepLog) ? 'border-success' : null;
+  ```
+- **Update legend label** — Change "Logged" to "Logged" (no change needed if already generic) to cover both workout and step logging.
+- **Invalidate step query on step save** — after `handleStepSave` succeeds, invalidate the step-dates query so the neon border appears immediately without page refresh.
+
+**2. `src/test/calendar-boundary-ui.test.ts**`
+
+- No structural changes needed — existing tests verify border classes exist, not what triggers them. The `border-success` class and `getStatusBorder` references remain. Will verify tests still pass.
+
+### What does NOT change
+
+- Trainer view step queries (already separate)
+- Progress charts, deficit math, carry-forward logic — untouched
+- Day mark priority (marks still override step/workout borders)
+- Step logging modal and save flow — unchanged
+- No DB migrations, no RLS changes
 
 ### Risk
-Low. Single hook change + one stat recalculation + tests. The chart component is unchanged. If carry-forward ever feels wrong, reverting the hook restores prior behaviour.
 
-### Verification after build
-- Run the test suite (`vitest run`) — all existing TW-028 tests must still pass + new weight tests pass.
-- Spot-check Gaurav's profile: Outcome chart should now show a flat-then-step weight line instead of dotted gaps, and the Weight Change number should reflect carried-forward delta.
+Low. Single file change (Calendar.tsx) adding one read query and adjusting one conditional. The step_logs table already has RLS and indexes on `client_id` + `logged_date`.
 
-Approve to proceed.
+Accordingly, make sure the for user [Gaurav.rsh@gmail.com](mailto:Gaurav.rsh@gmail.com) boundary is made neon for 30 April, since active steps have been logged. Apply this logic since 1April for all users trainers or clients if they have logged steps. 
