@@ -998,6 +998,9 @@ const Calendar = () => {
       setExistingStepLog({ id: existingStepLog?.id || '', step_count: count });
       setShowStepModal(false);
       promptPushPermission();
+      // Invalidate step-dates so the neon border appears immediately
+      queryClient.invalidateQueries({ queryKey: ['step-dates'] });
+      queryClient.invalidateQueries({ queryKey: ['client-step-dates'] });
     } catch (error) {
       logError('Calendar.handleStepSave', error);
       toast.error('Failed to save steps');
