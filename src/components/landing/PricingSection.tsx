@@ -59,6 +59,7 @@ const plans = [
     badge: 'BEST VALUE',
     features: [
       'Everything in Pro',
+      'AI Powered Insights for your clients',
       'One payment. Year-long focus on clients.',
       'Referral rewards (annual)',
       'Priority support',
