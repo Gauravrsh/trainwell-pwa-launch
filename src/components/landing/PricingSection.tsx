@@ -61,7 +61,7 @@ const plans = [
       'Everything in Pro',
       'AI insights for your clients',
       'One payment. Year-long focus on clients.',
-      'Referral rewards (annual)',
+      'Accelerated Referral Rewards ',
       'Priority support',
       'Get invite to in-person meetups with elite trainers',
     ],
@@ -88,7 +88,12 @@ const PricingSection = forwardRef<HTMLElement>((_, ref) => {
           initial="hidden" whileInView="visible" viewport={{ once: true }}
           variants={fadeUp} custom={0.5}
         >
-          {`That social media post where your client flaunts the results, and gives you the credit — what would you pay for that? It's priceless right? \nFocus on what truly matters and what will get your clients' results. Cutting corners on that is, well, a bad career decision!!`}
+          {`That social media post where your client flaunts the results, and gives you the credit — what would you pay for that? 
+
+
+It's priceless right?
+ 
+Focus on what truly matters and what will get your clients' results. Cutting corners on that is, well, a bad career decision!!`}
         </motion.p>
 
         {/* Beta Pricing Pill — moved below paragraph, above Smart plan */}

@@ -62,7 +62,7 @@ const paidPlans = [
       'Everything in Pro',
       'AI insights for your clients',
       'One payment. Year-long focus on clients.',
-      'Referral rewards (annual)',
+      'Accelerated Referral Rewards ',
       'Priority support',
       'Get invite to in-person meetups with elite trainers',
     ],
