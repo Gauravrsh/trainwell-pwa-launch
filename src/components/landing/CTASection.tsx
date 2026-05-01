@@ -1,7 +1,7 @@
 import { forwardRef } from 'react';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import flywheel from '@/assets/flywheel-mockups/option1-final-v8.png';
+import flywheel from '@/assets/flywheel-mockups/option1-final-v9.png';
 
 const CTASection = forwardRef<HTMLElement>((_, ref) => {
   return (
@@ -16,7 +16,7 @@ const CTASection = forwardRef<HTMLElement>((_, ref) => {
         <div className="mx-auto mt-8 w-full max-w-[560px]">
           <img
             src={flywheel}
-            alt="Vecto Flywheel of Growth: client tracks, results come, client stays, gives testimonials, refers friends, reputation grows, more clients, repeat"
+            alt="Vecto Flywheel: Client Tracks -> Gets Results -> Testimonials & Referrals -> More Clients -> Repeat"
             className="block w-full h-auto"
             loading="lazy"
           />
