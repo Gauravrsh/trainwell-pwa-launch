@@ -142,6 +142,21 @@ const Calendar = () => {
     enabled: !!profile && !isTrainer,
   });
 
+  // Fetch step log dates for the user (client view) — presence only
+  const { data: stepDates = [] } = useQuery({
+    queryKey: ['step-dates', profile?.id],
+    queryFn: async () => {
+      if (!profile) return [];
+      const { data, error } = await supabase
+        .from('step_logs')
+        .select('logged_date')
+        .eq('client_id', profile.id);
+      if (error) throw error;
+      return (data ?? []).map((r: { logged_date: string }) => r.logged_date);
+    },
+    enabled: !!profile && !isTrainer,
+  });
+
   // Fetch trainer's clients using secure RPC (excludes payment info)
   const { data: clients = [] } = useQuery({
     queryKey: ['trainer-clients', profile?.id],
@@ -170,6 +185,21 @@ const Calendar = () => {
       
       if (error) throw error;
       return data as Workout[];
+    },
+    enabled: !!selectedClientId && isTrainer,
+  });
+
+  // Fetch step log dates for selected client (trainer view) — presence only
+  const { data: clientStepDates = [] } = useQuery({
+    queryKey: ['client-step-dates', selectedClientId],
+    queryFn: async () => {
+      if (!selectedClientId) return [];
+      const { data, error } = await supabase
+        .from('step_logs')
+        .select('logged_date')
+        .eq('client_id', selectedClientId);
+      if (error) throw error;
+      return (data ?? []).map((r: { logged_date: string }) => r.logged_date);
     },
     enabled: !!selectedClientId && isTrainer,
   });
@@ -992,6 +1022,12 @@ const Calendar = () => {
 
   // Use client workouts for trainer view, regular workouts for client view
   const displayWorkouts = isTrainer && selectedClientId ? clientWorkouts : workouts;
+
+  // Build a Set of dates with step logs for O(1) lookup during cell rendering
+  const stepDatesSet = useMemo(() => {
+    const dates = isTrainer && selectedClientId ? clientStepDates : stepDates;
+    return new Set(dates);
+  }, [isTrainer, selectedClientId, clientStepDates, stepDates]);
 
   // Ensure we only auto-center once per "viewer + selected client + day" combination
   const lastAutoScrollKeyRef = useRef<string | null>(null);
