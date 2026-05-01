@@ -55,11 +55,11 @@ const plans = [
     icon: Crown,
     price: '₹9,999',
     period: '/year',
-    description: '~₹714/month · Unlimited clients\n~28% less than monthly plan',
+    description: '~₹833/month · Unlimited clients\n~17% less than monthly plan',
     badge: 'BEST VALUE',
     features: [
       'Everything in Pro',
-      '14 months for the price of 12',
+      'One payment. Year-long focus on clients.',
       'Referral rewards (annual)',
       'Priority support',
       'Get invite to in-person meetups with elite trainers',

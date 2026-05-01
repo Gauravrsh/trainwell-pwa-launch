@@ -41,8 +41,8 @@ async function verifyRazorpaySignature(
 
 // Map payment amount (paise) to plan type
 function inferPlanType(amountPaise: number): 'monthly' | 'annual' | null {
-  if (amountPaise === 49900) return 'monthly';   // ₹499
-  if (amountPaise === 598800) return 'annual';    // ₹5988
+  if (amountPaise === 99900) return 'monthly';   // ₹999
+  if (amountPaise === 999900) return 'annual';   // ₹9,999
   return null;
 }
 
@@ -159,7 +159,7 @@ Deno.serve(async (req) => {
       });
 
       if (trainerProfileId && planType) {
-        const durationDays = planType === 'annual' ? 425 : 30; // Annual = 14 months (425 days)
+        const durationDays = planType === 'annual' ? 365 : 30; // Annual = 12 months (365 days)
 
         // Check for existing subscription
         const { data: existingSub } = await supabase
