@@ -1,77 +1,120 @@
-# Annual Plan: Drop "12+2 months", keep ₹9,999 for 12 months
+## Cold Outreach Deck — v4 Regeneration Plan
 
-## Decision recap
+Generates `/mnt/documents/vecto-cold-outreach-dark-v4.pdf` via a fresh ReportLab script. All pages share one type system, one dark theme, and tighter margins so type can grow.
 
-- **Elite (Annual)**: ₹9,999 for **12 months (365 days)**. No bonus 60 days, no "14 months for the price of 12".
-- **New monthly equivalent on display**: ₹9,999 / 12 = **~₹833/month**.
-- **New savings line**: vs Pro ₹999/month → savings ≈ (999−833)/999 = **~17% less than monthly plan** (was ~28%).
-- Pro (Monthly) remains **₹999/month**, Smart (Free) unchanged.
+---
 
-## Complete list of every place pricing / annual duration appears
+### Global rules (applied to every page)
 
-This is the authoritative inventory I will touch. Anything not listed here either already states only "Annual" without numbers, or is unrelated (`9999` z-index in modal CSS — ignored).
+- **Page size**: A4 portrait.
+- **Margins**: ~24 pt all sides (down from current ~50–60 pt). Same on every page.
+- **Background**: Solid `#0F172A` (Obsidian). White primary text, `#9FFF2B` (Vecto Neon) accent, `#94A3B8` muted.
+- **Type system** (one family, used everywhere — Helvetica family in ReportLab as the closest universal stand-in for Inter):
+  - Eyebrow / chips: 11 pt bold, tracked uppercase, neon
+  - H1 / hero: 38 pt bold, white with neon accent words
+  - H2 / page title: 28 pt bold
+  - Body: 15 pt, line-height ~1.45
+  - Microcopy: 11 pt muted
+  - Pill / badge: 10 pt bold
+- No page-to-page font drift. No mixed sizes.
 
-### A. UI surfaces shown to users (must change)
+---
 
-1. `**src/components/landing/PricingSection.tsx**` — landing page Pricing section
-  - Elite price block: "₹9,999/year"
-  - Description: `~₹714/month · Unlimited clients\n~28% less than monthly plan` → `~₹833/month · Unlimited clients\n~17% less than monthly plan`
-  - Feature bullet: `'14 months for the price of 12'` → remove 
-2. `**src/components/subscription/PlanSelectionModal.tsx**` — in-app paywall modal (the modal trainers see when picking/renewing a plan)
-  - Same description string → ₹833 / ~17%
-  - Same `'14 months for the price of 12'` feature bullet → remove
-3. `**src/pages/Terms.tsx**` — Terms & Conditions page (public)
-  - Line 157 plans overview: "Elite (Annual): ₹9,999/year — **14 months access**, unlimited clients" → "₹9,999/year — 12 months access, unlimited clients"
-  - Line 182 heading "Elite Plan — ₹9,999/year" — unchanged
-  - Line 184 detail: "365 days base + 60 bonus days = **425 days total validity**" → "365 days validity"
-4. `**public/landing-mockup.html**` — static marketing mockup
-  - Already shows `₹5,988/year` (stale). Update to `₹9,999/year`. (Confirms the file is currently out of sync; will bring it in line.)
+### Page 1 — Hero (calendar)
 
-### B. Backend (must change to keep DB ↔ UI consistent)
+- Eyebrow: `FOR TRAINERS WHO DELIVER RESULTS` (neon, tracked)
+- H1: `Whatever Gets Tracked, Gets Done.` (`Gets Done.` in neon)
+- Body (15 pt): "Your clients pay you for results. Results come from consistency. Yes, just consistency! And you know it. Vecto tracks every workout and every meal — **today, not tomorrow**."
+- Neon CTA-styled chip: `Get Started` (visual only, no link)
+- Microcopy: `No credit card · Upto 3 clients free · No question asked cancellation`
+- Small pill: `● Used by top PTs across India`
+- **Calendar — redrawn as ReportLab vector** to match the live `CalendarMockup.tsx`:
+  - Header: `Client: Rahul M.` / `March 2026` / `85% Compliance` neon pill
+  - 7-col grid, March 2026 starts on Sunday, day 23 = today
+  - **Boundary-only tiles** (no fill, no emoji icons):
+    - Today (23): filled neon, dark text
+    - Logged: green border (`#22C55E`)
+    - Holiday: muted gray border
+    - Trainer Leave: amber border (`#F59E0B`)
+    - Client Leave: red border (`#EF4444`)
+    - Future / blank: faint card tint
+  - Same day-status mapping as the live component (1–22 logged with leave/holiday exceptions on 4, 7, 10, 14, 19, 21; today=23; rest future)
+  - **Legend underneath**: Today · Logged · Holiday · Trainer Leave · Client Leave (boundary swatches, matches live)
+  - Italic footer: "Total visibility on why your client is (or isn't) winning."
 
-5. `**supabase/functions/razorpay-webhook/index.ts**`
-  - Line 44: `if (amountPaise === 49900) return 'monthly';` → `99900` (₹999) — already mismatched with current ₹999 UI; will fix.
-  - Line 45: `if (amountPaise === 598800) return 'annual';` → `999900` (₹9,999) — fix.
-  - Line 162: `durationDays = planType === 'annual' ? 425 : 30` → `365 : 30`. Comment updated.
-6. **New migration** to update `create_trainer_subscription` / `renew_trainer_subscription` (and any helper) so server-side amount + duration match:
-  - Latest version is `supabase/migrations/20260417055537_*.sql` which already uses `9999` and `425`. We only need to change `v_duration := 425` → `365` (two occurrences) and any place that hardcodes `425`.
-  - Older migrations using `499/5988` are historical — not re-run, leave untouched.
+### Page 2 — How It Works
 
-### C. Places that mention "Annual" but no numeric price/duration (NO change needed — listed for transparency)
+- H2 + 3 numbered steps from the landing `HowItWorks` section, body at 15 pt
+- Reduced top/bottom padding so each step gets generous block height
+- Neon step-numbers in circles (visual motif)
 
-- `src/pages/Refer.tsx` — referral matrix uses the word "Annual" only. Referral validity bonuses (e.g., `+90 days per annual referral`) are unrelated to the plan duration and are unchanged.
-- `src/components/referral/ReferralTermsAccordion.tsx` — same.
-- `src/hooks/useTrainerSubscription.tsx`, `src/components/subscription/TrainerPlatformSubscription.tsx` — only use the type literal `'annual'`.
-- All other migrations that still reference `5988` / `499` are historical migrations already applied; we do not edit historical migrations.
-- `src/integrations/supabase/types.ts` — auto-generated, untouched.
+### Page 3 — House Rules
 
-## Replacement copy for the dropped "14 months for the price of 12" bullet
+- H2 + the rule list from `HouseRules` at 15 pt
+- Two-column on rule rows where it helps density without shrinking type
 
-To keep the Elite feature list at 5 bullets, replace with one of:
+### Page 4 — Comparison Table
 
-- `'Best value annual pricing'`, OR
-- `'Lock pricing for the year'`
+- H2 + the comparison grid from `ComparisonTable`, rendered as a ReportLab Table at 14 pt
+- Tighter margins, larger row height, generous cell padding for readability
 
-I will use **'Lock pricing for the year'** (matches Sage/Ruler tone) unless you say otherwise.----No, it gives impression of fluctuating prices. Give a copy that gives the message "focus on client results, not renewing every month". Should be under 7 words.
+### Page 5 — Pricing intro (clean)
 
-## Files that will be edited
+- H2: `Small Investment Big Returns` (`Big Returns` neon)
+- Paragraph (15 pt, centered, max ~70% width):
+  > "That social media post where your client flaunts the results, and gives you the credit — what would you pay for that?
+  >
+  > It's priceless right?
+  >
+  > Focus on what truly matters and what will get your clients' results. Cutting corners on that is, well, a bad career decision!!"
+- Neon `⚡ Special Beta Pricing*` pill
+- Lots of breathing room — intentional editorial restraint (per your direction)
 
-- `src/components/landing/PricingSection.tsx`
-- `src/components/subscription/PlanSelectionModal.tsx`
-- `src/pages/Terms.tsx`
-- `public/landing-mockup.html`
-- `supabase/functions/razorpay-webhook/index.ts`
-- New migration file under `supabase/migrations/` adjusting `create_trainer_subscription` + `renew_trainer_subscription` durations from 425 → 365 (and inline `WHEN p_plan_type = 'annual' THEN 9999` amounts left as-is).
+### Page 6 — Pricing cards (new page)
 
-## Out of scope (flagged for your awareness)
+Three plan cards stacked vertically, each card laid out **horizontally**:
 
-- The marketing PDFs (`vecto-cold-outreach-dark.pdf`, `vecto-cold-outreach-light.pdf`) we generated earlier still embed the old "14 months / ₹714" copy. After the code change, I'll regenerate the dark PDF so the cold-outreach material matches.
-- Memory note `mem://features/trainer-platform-subscriptions/model-and-constraints` currently says "₹5988 annual (425 days)". I'll refresh it to "₹9,999 annual (365 days)" after approval.
+```text
+┌───────────────────────────────────────────────────────┐
+│  [icon]  Smart            │  ✓ Up to 3 active clients │
+│  ₹0  forever              │  ✓ All features unlocked  │
+│                           │  ✓ No card required       │
+│  (left ~2/5)              │  ✓ Cancel anytime         │
+└───────────────────────────────────────────────────────┘
+```
 
-## Confirmation requested
+Same template for Pro and Elite. Elite gets `BEST VALUE` badge + neon border.
 
-1. Confirm new monthly-equivalent display: **~₹833/month, ~17% less than monthly**. OK?---yes, okay
-2. Confirm replacement bullet: **"Lock pricing for the year"**. OK or prefer different wording?---- I gave my input on it above.
-3. Confirm Terms wording: **"₹9,999/year — 12 months access, unlimited clients"** and remove the "365 + 60 bonus = 425 days" line entirely. OK? ---- okay
+Content (latest from landing page):
 
-On approval I will execute changes A1–A4, B5, B6, regenerate the dark cold-outreach PDF, and refresh the memory note.
+- **Smart · ₹0 forever**: Up to 3 active clients · All features unlocked · No card required · Cancel anytime
+- **Pro · ₹999 /month**: Unlimited active clients · All features unlocked · UPI & card payments · Cancel anytime · Get invite to learning webinars
+- **Elite · ₹9,999 /year** (sub-line: `~₹833/month · Unlimited clients · ~17% less than monthly plan`): Everything in Pro · **AI Powered Insights for your clients** · One payment. Year-long focus on clients. · Referral rewards (annual) · Priority support · Get invite to in-person meetups with elite trainers
+
+Footnote (11 pt muted, centered): "* Beta launch pricing. Subject to revision. Existing paid subscribers continue at their paid rate until renewal."
+
+No `Start Free / Go Pro / Go Elite` buttons inside cards — they read as web CTAs and waste vertical space in print.
+
+### Page 7 — Flywheel + minimal CTA
+
+- H2: `The Flywheel That Builds Your Reputation, and Your Career` (accents in neon)
+- **Flywheel image: latest v9 5-node version** (`/mnt/documents/option1-final-v9.png` — Client Tracks → Gets Results → Testimonials & Referrals → More Clients → Repeat, empty center). Replaces the old 8-spoke "Flywheel of Growth".
+- Subtle bordered panel (no header/microcopy):
+  - `Sign up at vecto.fit` (`vecto.fit` in neon)
+  - `Or DM us on WhatsApp`
+- **Removed**: green "Start Free" button, "START IN 60 SECONDS" eyebrow, bottom "No card · 3 clients free · Cancel anytime" line.
+
+---
+
+### Output & QA
+
+- Output: `/mnt/documents/vecto-cold-outreach-dark-v4.pdf`
+- Render every page to JPG via `pdftoppm` and inspect each for: overflow, padding still too thick, type still small relative to landing, calendar legend correctness, plan content accuracy, removed elements actually gone, flywheel is the new v9.
+- Iterate until clean, then deliver via `<lov-artifact>`.
+
+### Technical notes
+
+- ReportLab `SimpleDocTemplate` with custom `onPage` to paint full-bleed dark background (since A4 default is white).
+- Custom `PageTemplate` with single `Frame` at the new tighter margins.
+- Calendar drawn with `Drawing` + `Rect`/`String` primitives so it's vector-sharp and matches the live boundary style exactly.
+- Plan cards built as a ReportLab `Table` with two columns (40% / 60%) and rounded corner styling via `BOX` + `LINEABOVE`/`LINEBELOW` (or a custom Flowable for true rounded corners if needed).
