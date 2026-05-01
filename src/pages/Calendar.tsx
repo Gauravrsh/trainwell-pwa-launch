@@ -1227,7 +1227,10 @@ const Calendar = () => {
                     // Boundary-only model:
                     // priority: today > day mark > completed workout > default
                     const markBorder = dayMark ? getDayMarkBorder(dayMark.mark_type) : null;
-                    const statusBorder = workout ? getStatusBorder(workout.status) : null;
+                    const dateStr = format(date, 'yyyy-MM-dd');
+                    const hasCompletedWorkout = workout?.status === 'completed';
+                    const hasStepLog = stepDatesSet.has(dateStr);
+                    const statusBorder = (hasCompletedWorkout || hasStepLog) ? 'border-success' : null;
 
                     let cellClass: string;
                     if (isToday) {
