@@ -1,113 +1,77 @@
-## Problem
+# Annual Plan: Drop "12+2 months", keep ₹9,999 for 12 months
 
-The previous PDFs were rebuilt natively in ReportLab. That choice is the root cause of every issue you flagged:
+## Decision recap
 
-- ReportLab can't reproduce the real calendar mockup (status borders, icons, today ring, legend) — what you saw was an approximation.
-- Manual flow layout led to text overflow, cramped pages, the WhatsApp CTA colliding with the calendar, and asymmetric whitespace.
-- Mobile-feel typography is impossible to match when fonts are hand-sized in points.
+- **Elite (Annual)**: ₹9,999 for **12 months (365 days)**. No bonus 60 days, no "14 months for the price of 12".
+- **New monthly equivalent on display**: ₹9,999 / 12 = **~₹833/month**.
+- **New savings line**: vs Pro ₹999/month → savings ≈ (999−833)/999 = **~17% less than monthly plan** (was ~28%).
+- Pro (Monthly) remains **₹999/month**, Smart (Free) unchanged.
 
-## New approach: render the real site, slice by section
+## Complete list of every place pricing / annual duration appears
 
-Drop ReportLab. Use **Playwright (headless Chromium)** to open the live landing page (`https://vecto.fit`) at a **mobile viewport (414 × auto)**, then export to a multi-page A4 PDF where **each landing section becomes its own page (or 2 pages if tall)**. This guarantees the calendar, fonts, colors, spacing, and WhatsApp CTA look exactly like what a trainer sees on their phone — because it literally *is* the rendered site.
+This is the authoritative inventory I will touch. Anything not listed here either already states only "Annual" without numbers, or is unrelated (`9999` z-index in modal CSS — ignored).
 
-Dark theme only, as requested.
+### A. UI surfaces shown to users (must change)
 
-## Deliverable
+1. `**src/components/landing/PricingSection.tsx**` — landing page Pricing section
+  - Elite price block: "₹9,999/year"
+  - Description: `~₹714/month · Unlimited clients\n~28% less than monthly plan` → `~₹833/month · Unlimited clients\n~17% less than monthly plan`
+  - Feature bullet: `'14 months for the price of 12'` → remove 
+2. `**src/components/subscription/PlanSelectionModal.tsx**` — in-app paywall modal (the modal trainers see when picking/renewing a plan)
+  - Same description string → ₹833 / ~17%
+  - Same `'14 months for the price of 12'` feature bullet → remove
+3. `**src/pages/Terms.tsx**` — Terms & Conditions page (public)
+  - Line 157 plans overview: "Elite (Annual): ₹9,999/year — **14 months access**, unlimited clients" → "₹9,999/year — 12 months access, unlimited clients"
+  - Line 182 heading "Elite Plan — ₹9,999/year" — unchanged
+  - Line 184 detail: "365 days base + 60 bonus days = **425 days total validity**" → "365 days validity"
+4. `**public/landing-mockup.html**` — static marketing mockup
+  - Already shows `₹5,988/year` (stale). Update to `₹9,999/year`. (Confirms the file is currently out of sync; will bring it in line.)
 
-A single file: `/mnt/documents/vecto-cold-outreach-dark-v2.pdf`
+### B. Backend (must change to keep DB ↔ UI consistent)
 
-5 pages, A4 portrait, mobile-rendered, dark theme:
+5. `**supabase/functions/razorpay-webhook/index.ts**`
+  - Line 44: `if (amountPaise === 49900) return 'monthly';` → `99900` (₹999) — already mismatched with current ₹999 UI; will fix.
+  - Line 45: `if (amountPaise === 598800) return 'annual';` → `999900` (₹9,999) — fix.
+  - Line 162: `durationDays = planType === 'annual' ? 425 : 30` → `365 : 30`. Comment updated.
+6. **New migration** to update `create_trainer_subscription` / `renew_trainer_subscription` (and any helper) so server-side amount + duration match:
+  - Latest version is `supabase/migrations/20260417055537_*.sql` which already uses `9999` and `425`. We only need to change `v_duration := 425` → `365` (two occurrences) and any place that hardcodes `425`.
+  - Older migrations using `499/5988` are historical — not re-run, leave untouched.
 
-```text
-Page 1 — Hero + Calendar mockup (full, no overlap)
-Page 2 — How It Works (3 steps)
-Page 3 — Rules of the House (3 rules)
-Page 4 — WhatsApp vs VECTO comparison + Pricing (Smart/Pro/Elite)
-Page 5 — Flywheel + dual CTA (vecto.fit + WhatsApp/reply) + footer
-```
+### C. Places that mention "Annual" but no numeric price/duration (NO change needed — listed for transparency)
 
-Pricing splits to its own page if it doesn't fit cleanly with the comparison table — the script measures and decides automatically.
+- `src/pages/Refer.tsx` — referral matrix uses the word "Annual" only. Referral validity bonuses (e.g., `+90 days per annual referral`) are unrelated to the plan duration and are unchanged.
+- `src/components/referral/ReferralTermsAccordion.tsx` — same.
+- `src/hooks/useTrainerSubscription.tsx`, `src/components/subscription/TrainerPlatformSubscription.tsx` — only use the type literal `'annual'`.
+- All other migrations that still reference `5988` / `499` are historical migrations already applied; we do not edit historical migrations.
+- `src/integrations/supabase/types.ts` — auto-generated, untouched.
 
-## How the slicing works
+## Replacement copy for the dropped "14 months for the price of 12" bullet
 
-1. Add `data-pdf-section="hero|how|rules|comparison|pricing|flywheel"` attributes on the existing landing section wrappers (one-line edit per section, no visual change).
-2. Playwright loads `https://vecto.fit` at 414px width, waits for fonts + images, scrolls through to trigger `whileInView` framer-motion animations, then takes one full-page screenshot per `[data-pdf-section]`.
-3. Each section image is placed on its own A4 page with consistent 8mm margins and a small footer (`vecto.fit · Page X / 5`). If a section is taller than one page, it splits across two pages at a safe gap (no mid-text cuts — we measure background-color stripes to find safe break points).
-4. Embed all pages into one PDF via `img2pdf` (lossless, small file).
+To keep the Elite feature list at 5 bullets, replace with one of:
 
-## Specific fixes to your bugs
+- `'Best value annual pricing'`, OR
+- `'Lock pricing for the year'`
 
-| Bug | Fix |
-|---|---|
-| WhatsApp CTA overlapping calendar on p1 | Hero section is captured as a single rendered DOM node — overlap was a ReportLab artifact, gone by construction. There is no "WhatsApp CTA" on the live hero (only `Get Started`); the WhatsApp/reply CTA was a PDF-only addition and will live on the **final** page only. |
-| Calendar UI not exact (missing colour boundaries) | We screenshot the real `<CalendarMockup />` — every status border, icon, today ring, and legend renders identically to production. |
-| Text overflow | Real CSS handles wrapping; nothing is hand-positioned. |
-| Fonts too small / not mobile-optimized | Captured at 414px viewport = mobile font-stack and sizes (`text-3xl` hero, `text-base` body, etc.). Scaled down only ~5% to fit A4 width, so type stays large and crisp. |
-| Asymmetric whitespace, clutter | One section per page with uniform margins. No more cramming. |
-| House Rules + How It Works on same page | Each gets its own A4 page. |
+I will use **'Lock pricing for the year'** (matches Sage/Ruler tone) unless you say otherwise.----No, it gives impression of fluctuating prices. Give a copy that gives the message "focus on client results, not renewing every month". Should be under 7 words.
 
-## Tiny code change in the repo
+## Files that will be edited
 
-Add `data-pdf-section` to 6 existing section wrappers — purely an HTML attribute, no styling impact, no test changes needed:
+- `src/components/landing/PricingSection.tsx`
+- `src/components/subscription/PlanSelectionModal.tsx`
+- `src/pages/Terms.tsx`
+- `public/landing-mockup.html`
+- `supabase/functions/razorpay-webhook/index.ts`
+- New migration file under `supabase/migrations/` adjusting `create_trainer_subscription` + `renew_trainer_subscription` durations from 425 → 365 (and inline `WHEN p_plan_type = 'annual' THEN 9999` amounts left as-is).
 
-- `HeroSection.tsx` → `<section data-pdf-section="hero" ...>`
-- `HowItWorks.tsx` → `data-pdf-section="how"`
-- `HouseRules.tsx` → `data-pdf-section="rules"`
-- `ComparisonTable.tsx` → `data-pdf-section="comparison"`
-- `PricingSection.tsx` → `data-pdf-section="pricing"`
-- `CTASection.tsx` → `data-pdf-section="flywheel"`
+## Out of scope (flagged for your awareness)
 
-For the dual CTA block (vecto.fit + WhatsApp), we won't modify the live site. Instead the script overlays a small CTA card onto the final flywheel page using a Playwright `page.evaluate` that injects a sticky neon-bordered card *after screenshot capture is staged* — so production users never see it, only the PDF does.
+- The marketing PDFs (`vecto-cold-outreach-dark.pdf`, `vecto-cold-outreach-light.pdf`) we generated earlier still embed the old "14 months / ₹714" copy. After the code change, I'll regenerate the dark PDF so the cold-outreach material matches.
+- Memory note `mem://features/trainer-platform-subscriptions/model-and-constraints` currently says "₹5988 annual (425 days)". I'll refresh it to "₹9,999 annual (365 days)" after approval.
 
-## Generation script (high level, runs in /tmp)
+## Confirmation requested
 
-```python
-# /tmp/build_pdf.py
-from playwright.sync_api import sync_playwright
-import img2pdf, io
-from PIL import Image
+1. Confirm new monthly-equivalent display: **~₹833/month, ~17% less than monthly**. OK?---yes, okay
+2. Confirm replacement bullet: **"Lock pricing for the year"**. OK or prefer different wording?---- I gave my input on it above.
+3. Confirm Terms wording: **"₹9,999/year — 12 months access, unlimited clients"** and remove the "365 + 60 bonus = 425 days" line entirely. OK? ---- okay
 
-URL = "https://vecto.fit"
-SECTIONS = ["hero", "how", "rules", "comparison", "pricing", "flywheel"]
-A4_W, A4_H = 2480, 3508  # 300 DPI
-
-with sync_playwright() as p:
-    browser = p.chromium.launch()
-    ctx = browser.new_context(viewport={"width": 414, "height": 900},
-                              device_scale_factor=2)
-    page = ctx.new_page()
-    page.goto(URL, wait_until="networkidle")
-    # scroll to trigger framer-motion whileInView
-    page.evaluate("...smooth scroll to bottom then top...")
-    # inject CTA card into flywheel section (PDF-only)
-    page.evaluate("...insert dual-CTA card after #flywheel content...")
-
-    images = []
-    for s in SECTIONS:
-        el = page.query_selector(f'[data-pdf-section="{s}"]')
-        png = el.screenshot(omit_background=False)
-        images.append(pad_to_a4(png))   # center on A4, dark bg, footer
-
-with open("/mnt/documents/vecto-cold-outreach-dark-v2.pdf", "wb") as f:
-    f.write(img2pdf.convert([i for i in images]))
-```
-
-`pad_to_a4` handles: scale to A4 width minus 8mm margins, paginate if taller than one A4 height (safe-cut between background blocks), paint the obsidian-black canvas, and add the small white footer text.
-
-## Mandatory QA cycle
-
-After generation I will:
-1. `pdftoppm -jpeg -r 150` every page,
-2. inspect each one for overflow / cuts / overlap / faint text / wrong calendar colors,
-3. fix and re-render until clean,
-4. report what I checked and any fixes applied.
-
-## Out of scope / explicitly not doing
-
-- No light theme this round (you asked dark only).
-- No new copy or content rewrites — pure visual fidelity to the live site.
-- No persistent injection of the WhatsApp CTA into the live landing page.
-
-## Confirmation
-
-Going ahead means: install Playwright + Chromium in the sandbox, add 6 one-line `data-pdf-section` attributes to the landing components, run the script, QA, and ship `vecto-cold-outreach-dark-v2.pdf`. Approve and I'll execute.
+On approval I will execute changes A1–A4, B5, B6, regenerate the dark cold-outreach PDF, and refresh the memory note.
