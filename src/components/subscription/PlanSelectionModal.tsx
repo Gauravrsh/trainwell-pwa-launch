@@ -266,8 +266,7 @@ export function PlanSelectionModal({
                   <span className="text-2xl font-bold text-foreground">₹0</span>
                   <span className="text-muted-foreground"> forever</span>
                 </div>
-                <p className="text-sm text-muted-foreground mb-1"></p>
-                <p className="text-xs text-muted-foreground">Upgrade below to remove the 3-client cap.</p>
+                <p className="text-xs text-muted-foreground mb-1">Upgrade below to remove the 3-client cap.</p>
               </div>
 
               {paidPlans.map((plan) => (
@@ -311,7 +310,7 @@ export function PlanSelectionModal({
                     <span className="text-muted-foreground">{plan.period}</span>
                   </div>
 
-                  <p className="text-sm text-muted-foreground mb-3 whitespace-pre-line">{plan.description}</p>
+                  {plan.description && <p className="text-sm text-muted-foreground mb-3 whitespace-pre-line">{plan.description}</p>}
 
                   <ul className="space-y-1.5">
                     {plan.features.map((feature) => (

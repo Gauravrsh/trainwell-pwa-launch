@@ -138,7 +138,7 @@ Focus on what truly matters and what will get your clients' results. Cutting cor
                   <span className="text-muted-foreground">{p.period}</span>
                 </div>
 
-                <p className="text-sm text-muted-foreground mb-3 whitespace-pre-line">{p.description}</p>
+                {p.description && <p className="text-sm text-muted-foreground mb-3 whitespace-pre-line">{p.description}</p>}
 
                 <ul className="space-y-1.5 flex-1">
                   {p.features.map((f) => (
