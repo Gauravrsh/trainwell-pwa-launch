@@ -1,77 +1,76 @@
-# Annual Plan: Drop "12+2 months", keep ₹9,999 for 12 months
+# Pricing modal + Flywheel updates
 
-## Decision recap
+## A. Pricing — landing section + in-app modal
 
-- **Elite (Annual)**: ₹9,999 for **12 months (365 days)**. No bonus 60 days, no "14 months for the price of 12".
-- **New monthly equivalent on display**: ₹9,999 / 12 = **~₹833/month**.
-- **New savings line**: vs Pro ₹999/month → savings ≈ (999−833)/999 = **~17% less than monthly plan** (was ~28%).
-- Pro (Monthly) remains **₹999/month**, Smart (Free) unchanged.
+Both surfaces must stay in sync: `src/components/landing/PricingSection.tsx` and `src/components/subscription/PlanSelectionModal.tsx`.
 
-## Complete list of every place pricing / annual duration appears
+### A1. Smart (Free) — remove description line
 
-This is the authoritative inventory I will touch. Anything not listed here either already states only "Annual" without numbers, or is unrelated (`9999` z-index in modal CSS — ignored).
+- Drop the `description` line "Up to 3 active clients · All features unlocked" from rendering.
+- Keep the 4 bullets (`Up to 3 active clients`, `All features unlocked`, `No card required`, `Cancel anytime`).
+- In landing card: skip the `<p>{description}</p>` when description is empty/null.
+- In modal: the Smart card is informational (not in `paidPlans`). Remove the "Up to 3 active clients · All features unlocked" `<p>` line and the "Upgrade below to remove the 3-client cap" subnote so it shows only price + a clean bullet list (we'll add the same 4 bullets there for parity).
 
-### A. UI surfaces shown to users (must change)
+### A2. Pro — remove description line
 
-1. `**src/components/landing/PricingSection.tsx**` — landing page Pricing section
-  - Elite price block: "₹9,999/year"
-  - Description: `~₹714/month · Unlimited clients\n~28% less than monthly plan` → `~₹833/month · Unlimited clients\n~17% less than monthly plan`
-  - Feature bullet: `'14 months for the price of 12'` → remove 
-2. `**src/components/subscription/PlanSelectionModal.tsx**` — in-app paywall modal (the modal trainers see when picking/renewing a plan)
-  - Same description string → ₹833 / ~17%
-  - Same `'14 months for the price of 12'` feature bullet → remove
-3. `**src/pages/Terms.tsx**` — Terms & Conditions page (public)
-  - Line 157 plans overview: "Elite (Annual): ₹9,999/year — **14 months access**, unlimited clients" → "₹9,999/year — 12 months access, unlimited clients"
-  - Line 182 heading "Elite Plan — ₹9,999/year" — unchanged
-  - Line 184 detail: "365 days base + 60 bonus days = **425 days total validity**" → "365 days validity"
-4. `**public/landing-mockup.html**` — static marketing mockup
-  - Already shows `₹5,988/year` (stale). Update to `₹9,999/year`. (Confirms the file is currently out of sync; will bring it in line.)
+- Drop "30 days + 3-day grace · Unlimited clients" from rendering (landing + modal).
+- Grace period stays as backend-only logic. No user-visible mention anywhere.
+- Bullets unchanged.
 
-### B. Backend (must change to keep DB ↔ UI consistent)
+### A3. Elite — add bullet + center the badge
 
-5. `**supabase/functions/razorpay-webhook/index.ts**`
-  - Line 44: `if (amountPaise === 49900) return 'monthly';` → `99900` (₹999) — already mismatched with current ₹999 UI; will fix.
-  - Line 45: `if (amountPaise === 598800) return 'annual';` → `999900` (₹9,999) — fix.
-  - Line 162: `durationDays = planType === 'annual' ? 425 : 30` → `365 : 30`. Comment updated.
-6. **New migration** to update `create_trainer_subscription` / `renew_trainer_subscription` (and any helper) so server-side amount + duration match:
-  - Latest version is `supabase/migrations/20260417055537_*.sql` which already uses `9999` and `425`. We only need to change `v_duration := 425` → `365` (two occurrences) and any place that hardcodes `425`.
-  - Older migrations using `499/5988` are historical — not re-run, leave untouched.
+- Insert `'AI insights for your clients'` as bullet #2, immediately after `'Everything in Pro'`. Applies to landing + modal.
+- Center the BEST VALUE badge:
+  - Landing card already uses `absolute -top-3 left-1/2 -translate-x-1/2` — verify it actually centers visually; the issue is likely the card's `flex flex-col` with no `relative` quirk, or the badge's `whitespace-nowrap` width. Will switch to a flex-wrapper approach: badge inside a centered absolutely-positioned `div` (`left-0 right-0 flex justify-center -top-3`) so its own width doesn't bias placement.
+  - Modal card: badge currently lives inline in the header row (visually right-of-name). Move it to an absolute centered chip on the card, same pattern as landing, so it sits dead-center on the top border.-------no change to be done here. in horizontal alignment of the BEST VALUE chip
 
-### C. Places that mention "Annual" but no numeric price/duration (NO change needed — listed for transparency)
+### A4. Cleanup
 
-- `src/pages/Refer.tsx` — referral matrix uses the word "Annual" only. Referral validity bonuses (e.g., `+90 days per annual referral`) are unrelated to the plan duration and are unchanged.
-- `src/components/referral/ReferralTermsAccordion.tsx` — same.
-- `src/hooks/useTrainerSubscription.tsx`, `src/components/subscription/TrainerPlatformSubscription.tsx` — only use the type literal `'annual'`.
-- All other migrations that still reference `5988` / `499` are historical migrations already applied; we do not edit historical migrations.
-- `src/integrations/supabase/types.ts` — auto-generated, untouched.
+- Remove now-unused `description` field rendering path or accept empty string and conditionally render. Keep the data shape stable.
+- No copy changes elsewhere.
 
-## Replacement copy for the dropped "14 months for the price of 12" bullet
+## B. Flywheel of Growth — regenerate PNG
 
-To keep the Elite feature list at 5 bullets, replace with one of:
+Asset path: `src/assets/flywheel-mockups/option1-final-v9.png` (bump version so PWA cache busts).
+Update import in `src/components/landing/CTASection.tsx` and the alt text.
 
-- `'Best value annual pricing'`, OR
-- `'Lock pricing for the year'`
+### B1. Composition rules
 
-I will use **'Lock pricing for the year'** (matches Sage/Ruler tone) unless you say otherwise.----No, it gives impression of fluctuating prices. Give a copy that gives the message "focus on client results, not renewing every month". Should be under 7 words.
+- 5 nodes only, evenly spaced at 72° intervals around a circle, starting at 12 o'clock and going clockwise:
+  1. Client Tracks
+  2. Gets Results
+  3. Testimonials & Referrals (use the existing "refers friends" icon — two-people / share icon)
+  4. More Clients
+  5. Repeat
+- 5 curved neon arrows, one between each consecutive pair, all the same arc length, same curvature, same arrowhead size. Equal radial distance from center for every node and every arrow midpoint.
+- Center: completely empty. No wordmark, no "Flywheel of Growth" text, no V. mark.
 
-## Files that will be edited
+### B2. Visual style (match current dark theme)
+
+- Background: Obsidian Black (#0F172A).
+- Arrows + arrowheads: Vecto Neon (#9FFF2B).
+- Node circles: dark fill with neon stroke; icon inside in neon; label in white sans-serif below each node.
+- Same icon weight, font, and stroke widths as `option1-final-v8.png` so it visually swaps in cleanly.
+
+### B3. Generation method
+
+- Use Lovable AI Gateway image model (`google/gemini-3-pro-image-preview`) with a precise prompt enforcing: 5 nodes, 72° spacing, 5 equal curved arrows clockwise, empty center, exact labels and order, dark+neon palette.
+- Output to `/tmp`, QA by viewing the PNG, iterate prompt until spacing/arrow count are correct, then save final to `src/assets/flywheel-mockups/option1-final-v9.png`.
+- Update CTASection import to `option1-final-v9.png` and refresh `alt` text to: "Vecto Flywheel of Growth: client tracks, gets results, testimonials and referrals, more clients, repeat."
+
+## Files touched
 
 - `src/components/landing/PricingSection.tsx`
 - `src/components/subscription/PlanSelectionModal.tsx`
-- `src/pages/Terms.tsx`
-- `public/landing-mockup.html`
-- `supabase/functions/razorpay-webhook/index.ts`
-- New migration file under `supabase/migrations/` adjusting `create_trainer_subscription` + `renew_trainer_subscription` durations from 425 → 365 (and inline `WHEN p_plan_type = 'annual' THEN 9999` amounts left as-is).
+- `src/components/landing/CTASection.tsx`
+- `src/assets/flywheel-mockups/option1-final-v9.png` (new)
 
-## Out of scope (flagged for your awareness)
+## Out of scope
 
-- The marketing PDFs (`vecto-cold-outreach-dark.pdf`, `vecto-cold-outreach-light.pdf`) we generated earlier still embed the old "14 months / ₹714" copy. After the code change, I'll regenerate the dark PDF so the cold-outreach material matches.
-- Memory note `mem://features/trainer-platform-subscriptions/model-and-constraints` currently says "₹5988 annual (425 days)". I'll refresh it to "₹9,999 annual (365 days)" after approval.
+- No backend, RLS, pricing-amount, or webhook changes (₹0 / ₹999 / ₹9,999 stay as-is).
+- No changes to Terms page or marketing PDFs in this pass.
 
-## Confirmation requested
+## Verification
 
-1. Confirm new monthly-equivalent display: **~₹833/month, ~17% less than monthly**. OK?---yes, okay
-2. Confirm replacement bullet: **"Lock pricing for the year"**. OK or prefer different wording?---- I gave my input on it above.
-3. Confirm Terms wording: **"₹9,999/year — 12 months access, unlimited clients"** and remove the "365 + 60 bonus = 425 days" line entirely. OK? ---- okay
-
-On approval I will execute changes A1–A4, B5, B6, regenerate the dark cold-outreach PDF, and refresh the memory note.
+- Visual check at 414px and 897px viewports for both pricing surfaces (badge centered, no leftover description lines).
+- Open flywheel PNG at full size to confirm 5 nodes, equal arrow spacing, empty center, labels correct.
