@@ -174,7 +174,6 @@ export function TrainerPlatformSubscription() {
           <SubscriptionExpiryWarning
             daysRemaining={status.daysRemaining}
             endDate={subscription?.end_date || ''}
-            onRenew={() => setShowPlanModal(true)}
           />
         )}
       </AnimatePresence>
