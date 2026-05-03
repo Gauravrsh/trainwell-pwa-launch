@@ -1,19 +1,16 @@
 import { motion } from 'framer-motion';
 import { AlertTriangle, X } from 'lucide-react';
 import { useState } from 'react';
-import { Button } from '@/components/ui/button';
 import { format } from 'date-fns';
 
 interface SubscriptionExpiryWarningProps {
   daysRemaining: number;
   endDate: string;
-  onRenew: () => void;
 }
 
-export function SubscriptionExpiryWarning({ 
-  daysRemaining, 
-  endDate, 
-  onRenew 
+export function SubscriptionExpiryWarning({
+  daysRemaining,
+  endDate,
 }: SubscriptionExpiryWarningProps) {
   const [dismissed, setDismissed] = useState(false);
 
@@ -49,13 +46,6 @@ export function SubscriptionExpiryWarning({
             {daysRemaining > 0 && ` (${daysRemaining} day${daysRemaining === 1 ? '' : 's'} remaining)`}.
             After 3 grace days, both you and your clients will have read-only access.
           </p>
-          <Button
-            onClick={onRenew}
-            size="sm"
-            className="mt-3 bg-warning text-warning-foreground hover:bg-warning/90"
-          >
-            Renew Plan
-          </Button>
         </div>
       </div>
     </motion.div>
