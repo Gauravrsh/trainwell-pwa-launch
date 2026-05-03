@@ -1,7 +1,7 @@
 import { forwardRef } from 'react';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import flywheel from '@/assets/flywheel-mockups/option1-final-v9.png';
+import flywheel from '@/assets/flywheel-mockups/option1-final-v7.png';
 
 const CTASection = forwardRef<HTMLElement>((_, ref) => {
   return (
