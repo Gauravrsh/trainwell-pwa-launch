@@ -665,6 +665,93 @@ export type Database = {
           },
         ]
       }
+      promo_codes: {
+        Row: {
+          code: string
+          created_at: string
+          description: string | null
+          discount_type: Database["public"]["Enums"]["promo_discount_type"]
+          discount_value: number
+          id: string
+          is_active: boolean
+          max_redemptions_per_trainer: number
+          max_redemptions_total: number | null
+          plan_type: Database["public"]["Enums"]["platform_plan_type"]
+          redemption_count: number
+          updated_at: string
+          valid_from: string
+          valid_until: string
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          description?: string | null
+          discount_type: Database["public"]["Enums"]["promo_discount_type"]
+          discount_value: number
+          id?: string
+          is_active?: boolean
+          max_redemptions_per_trainer?: number
+          max_redemptions_total?: number | null
+          plan_type: Database["public"]["Enums"]["platform_plan_type"]
+          redemption_count?: number
+          updated_at?: string
+          valid_from: string
+          valid_until: string
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          description?: string | null
+          discount_type?: Database["public"]["Enums"]["promo_discount_type"]
+          discount_value?: number
+          id?: string
+          is_active?: boolean
+          max_redemptions_per_trainer?: number
+          max_redemptions_total?: number | null
+          plan_type?: Database["public"]["Enums"]["platform_plan_type"]
+          redemption_count?: number
+          updated_at?: string
+          valid_from?: string
+          valid_until?: string
+        }
+        Relationships: []
+      }
+      promo_redemptions: {
+        Row: {
+          granted_end_date: string
+          granted_plan_type: Database["public"]["Enums"]["platform_plan_type"]
+          granted_start_date: string
+          id: string
+          promo_code_id: string
+          redeemed_at: string
+          redeemed_by: string
+          subscription_id: string
+          trainer_id: string
+        }
+        Insert: {
+          granted_end_date: string
+          granted_plan_type: Database["public"]["Enums"]["platform_plan_type"]
+          granted_start_date: string
+          id?: string
+          promo_code_id: string
+          redeemed_at?: string
+          redeemed_by?: string
+          subscription_id: string
+          trainer_id: string
+        }
+        Update: {
+          granted_end_date?: string
+          granted_plan_type?: Database["public"]["Enums"]["platform_plan_type"]
+          granted_start_date?: string
+          id?: string
+          promo_code_id?: string
+          redeemed_at?: string
+          redeemed_by?: string
+          subscription_id?: string
+          trainer_id?: string
+        }
+        Relationships: []
+      }
       push_subscriptions: {
         Row: {
           auth_key: string
@@ -1076,6 +1163,33 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      admin_redeem_promo_code: {
+        Args: { p_code: string; p_start_date?: string; p_trainer_id: string }
+        Returns: {
+          amount: number | null
+          created_at: string
+          end_date: string
+          grace_end_date: string | null
+          id: string
+          is_trial_used: boolean | null
+          max_trial_clients: number | null
+          payment_status: string | null
+          plan_type: Database["public"]["Enums"]["platform_plan_type"]
+          razorpay_order_id: string | null
+          razorpay_payment_id: string | null
+          start_date: string
+          status: Database["public"]["Enums"]["platform_subscription_status"]
+          trainer_id: string
+          trial_clients_count: number | null
+          updated_at: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "trainer_platform_subscriptions"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
       apply_referral_reward: {
         Args: { p_referral_id: string }
         Returns: boolean
@@ -1358,6 +1472,7 @@ export type Database = {
         | "expired"
         | "cancelled"
         | "pending_payment"
+      promo_discount_type: "percent" | "flat" | "extension_days"
       service_type: "workout" | "nutrition" | "both"
       session_status:
         | "scheduled"
@@ -1513,6 +1628,7 @@ export const Constants = {
         "cancelled",
         "pending_payment",
       ],
+      promo_discount_type: ["percent", "flat", "extension_days"],
       service_type: ["workout", "nutrition", "both"],
       session_status: [
         "scheduled",
