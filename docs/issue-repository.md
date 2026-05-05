@@ -672,3 +672,55 @@ This was a stale installed-PWA/app-shell recurrence, not data corruption and not
 - Focused tests cover calendar boundary UI, app-shell freshness, completed-workout relog behaviour, and workout re-save idempotency.
 - The calendar render now fails tests if old dot/icon UI or `Completed/Missed/Pending` legend text returns anywhere in the calendar section.
 - The cache guard now runs before React and before lazy calendar chunks, so old bundles no longer get to be the judge, jury, and executioner.
+
+## TW-031 — Non-step exercises contributed 0 kcal to "Avg Daily Deficit" (calorie engine missing end-to-end)
+
+**Reported:** Gaurav, May 4 2026 — flagged that a 900m freestyle swim plus ~10K steps showed a daily deficit of only 192 kcal. Investigation across the `workouts` table for all clients showed `calories_burnt` was `0` or `NULL` on essentially every row.
+
+### Root cause (three-layer failure)
+
+1. **App never wrote `workouts.calories_burnt`.** The column exists and is summed by `useProgressData.tsx`, but no save path in `ClientWorkoutLogModal.tsx`, `TrainerWorkoutLogModal.tsx`, or `WorkoutLogModal.tsx` ever computed or persisted an estimate. Every non-step exercise — swimming, cycling, HIIT, mobility, strength — silently contributed 0 to total expenditure.
+2. **Step calories were weight-blind.** `step_logs.estimated_calories` used a flat `step_count * 0.04` heuristic, so a 60kg client and a 110kg client logging 10K steps got identical credit.
+3. **Read path was correct but starved.** `useProgressData.tsx` faithfully summed the empty column and produced a deficit number that looked plausible enough to ship but understated reality by hundreds of kcal on workout-heavy days.
+
+### Fix (server-side only — zero UI changes per user directive)
+
+- **Migration `20260505020821_…_auto_calculate_calories.sql`:**
+  - `met_for_exercise(name, category)` — MET lookup table covering swim strokes (freestyle, breaststroke, backstroke, butterfly, open water), running paces, cycling, rowing, SkiErg, HIIT, yoga, mobility, strength variants, jump rope, hiking, boxing.
+  - `estimate_exercise_seconds(...)` — fills missing duration: distance ÷ activity-specific pace (e.g. 2 min/100m for swim freestyle), or `reps × ~3s + rest` for set/rep work.
+  - `get_client_weight_on(client_id, date)` — resolves historical weight via `weight_logs` carry-forward, falling back to `profiles.weight_kg`.
+  - `BEFORE INSERT/UPDATE` triggers on `public.exercises` and `public.workouts` recompute `calories_burnt = MET × weightKg × hours` on every write — no app code path can bypass it.
+  - One-shot idempotent backfill: recomputed `calories_burnt` for every workout in the last 90 days for every client, using historical weight at the workout's date.
+- **Migration `20260505020906_…`:** Converted `step_logs.estimated_calories` from a generated column to a regular column, then added a trigger using `weightKg × 0.0005 × steps`. Backfilled the trailing 90 days for all users.
+- **Auto-regen of `src/integrations/supabase/types.ts`** from the schema change. No hand edits.
+
+### Verification
+
+- Gaurav 2026-05-04 freestyle 900m → ~901 kcal (was 0). Daily deficit corrected from **192 → ~1,144 kcal**.
+- Spot-checked 5 non-Gaurav clients with at least one non-step workout in the trailing 90 days: every previously-zero `calories_burnt` row now carries a non-zero MET-based estimate.
+- `useProgressData.tsx` read path was deliberately untouched; the same `SUM(workouts.calories_burnt)` it has always done now returns real numbers.
+- `progress-math.test.ts` still green (it tests aggregation, not the per-row source).
+
+### Files touched
+
+- `supabase/migrations/20260505020821_872a6f0f-5029-4bf0-9d9e-a09c6a5579c2.sql`
+- `supabase/migrations/20260505020906_7f09037a-2776-4eee-a96c-976ed9e8cb47.sql`
+- `src/integrations/supabase/types.ts` (auto-regen)
+- `.lovable/plan.md`
+
+### Out of scope / known limits
+
+- MET table is finite; unknown custom exercise names fall back to a conservative 4.0 MET.
+- No UI surface for the estimate (per user directive). Trainers and clients cannot override — calculation is 100% system-driven.
+- Rep/set strength work uses inferred duration; for very short or very long sessions actual burn may diverge ±20%.
+
+### Process miss (SOP-2)
+
+This bug was diagnosed and shipped *before* a TW-### entry was opened, because the trigger word in the user's message was `Bug:` (capital B) and my repo-first grep matched only lowercase `bug:`. Closing block was also missed on the original fix turn. Trigger detection is now treated as case-insensitive going forward; the closing block below settles the original debt.
+
+### Closing Block
+
+- **TW-ID:** TW-031
+- **Files touched:** the two migrations above + auto-regen of `types.ts`
+- **Repo updated:** ✅
+- **Regression check:** progress-math suite green; spot checks across 5 clients confirm non-zero burns; step-only days unchanged at median weight.

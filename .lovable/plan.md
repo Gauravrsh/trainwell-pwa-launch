@@ -1,79 +1,46 @@
-## Goal
+# Backfill TW-031 into the Issue Repository
 
-Automatically compute a close approximation of `calories_burnt` for every workout (and refine step calorie estimates) based on user's weight, age, BMR, and the exercise details the user/trainer logs. Zero UI changes. No manual override. Backfill last 90 days for all users.
+## What I missed
+The "calories_burnt never populated → swimming/cycling/etc. contribute 0 to deficit" bug was diagnosed, fixed (two migrations: server-side MET engine + triggers + 90-day backfill), and verified against Gaurav's May 4 data — but I never opened a TW-### entry, never appended a row to `docs/issue-repository-index.md`, and never wrote a full case file in `docs/issue-repository.md`. SOP-2 violation: the `Bug:` trigger should have forced repo-first, even with a capital B.
 
-## Approach
+## Changes
 
-### 1. Calorie engine (new file, no UI impact)
-Create `src/lib/exerciseCalories.ts` with a pure function:
+### 1. `docs/issue-repository-index.md`
+Append one line:
+
 ```
-estimateCaloriesBurnt({ exerciseName, metricType, sets, reps, weightKg (load), durationSeconds, distanceMeters }, user: { weightKg, ageYears, bmrKcal })
+TW-031 | High | Fixed | Non-step exercises (swimming, cycling, HIIT, etc.) contributed 0 kcal to "Avg Daily Deficit" because workouts.calories_burnt was never populated by the app; step calories were also weight-blind (flat 0.04/step) | migrations 20260505020821 + 20260505020906 / step_logs schema / useProgressData.tsx (read path unchanged)
 ```
-- Uses MET values from a curated table keyed by exercise name / category (swimming, running, cycling, rowing, strength, yoga/stretch, plank, jump rope, etc.) with sensible fallbacks per `metric_type`.
-- Formula: `kcal = MET × userWeightKg × hours`.
-- Time inferred from:
-  - `time` → `durationSeconds`
-  - `distance_time` → use `durationSeconds` if present; else infer via activity pace table (e.g., swim 2 min/100m, run 6 min/km, row 5 min/km, cycle 3 min/km).
-  - `reps_weight` / `reps_only` → `sets × reps × ~3s` + rest assumption (~30s/set), with MET adjusted up for heavy compound lifts.
-  - `amrap` / `emom` → use the prescribed minutes.
-- Light age/BMR adjustment factor (caps ±10%) so users with very low/high BMR get nudged proportionally; primary driver remains weight×MET×time per ACSM convention.
 
-### 2. Step calories upgrade
-Replace flat `steps × 0.04` with weight-aware:
-`stepKcal = round(weightKg × 0.0005 × steps)` (≈0.04 at 80kg, scales with body mass).
-Applied in `step_logs.estimated_calories` on insert/update and during backfill.
+### 2. `docs/issue-repository.md`
+Append a full TW-031 case file with these sections:
 
-### 3. Auto-write into DB on workout completion (no UI changes)
-Hook into the existing save paths in `ClientWorkoutLogModal.tsx`, `TrainerWorkoutLogModal.tsx`, `WorkoutLogModal.tsx`, and `StepLogModal.tsx`:
-- After the existing insert/update of `exercises` / `workouts` / `step_logs`, run a small helper that:
-  1. Fetches the just-saved exercise rows for the workout.
-  2. Pulls the client's current `weight_kg`, `bmr`, `date_of_birth` from `profiles`.
-  3. Sums per-exercise estimates → `UPDATE workouts SET calories_burnt = <sum>` for that workout (when status = `completed`).
-  4. For steps: writes computed `estimated_calories` on the `step_logs` row.
-- No new buttons, fields, labels, or copy. UI components render the same; only DB values change.
+- **Reported:** Gaurav, May 4 2026 — 900m swim + ~10K steps, deficit only 192 kcal. Investigation showed every non-step workout in the DB had `calories_burnt = 0` or `NULL` for every user.
+- **Root cause:**
+  1. `workouts.calories_burnt` was a writable column with no app code path that ever wrote to it. Every modal (Client / Trainer / generic Workout) saved exercise rows but never computed or persisted a calorie estimate.
+  2. `step_logs.estimated_calories` used a flat `step_count * 0.04` heuristic that ignored body weight, so a 60kg and a 110kg client logging 10K steps got identical credit.
+  3. `useProgressData.tsx` faithfully summed `workouts.calories_burnt` → 0 for everyone except step contributions, silently understating the deficit.
+- **Fix (server-side, zero UI changes — per user constraint):**
+  - **Migration `20260505020821`** — Created SQL functions `met_for_exercise(name, category)` (MET table for swim strokes, run, cycle, row, HIIT, yoga, strength, mobility, etc.) and `estimate_exercise_seconds(...)` (infers duration from distance via activity-specific pace, or from reps at ~3s/rep + rest), plus `get_client_weight_on(client_id, date)` (resolves historical weight from `weight_logs` → `profiles.weight_kg` fallback). Added `BEFORE INSERT/UPDATE` triggers on `public.exercises` and `public.workouts` that recompute `calories_burnt = MET × weightKg × hours`.
+  - **Migration `20260505020906`** — Converted `step_logs.estimated_calories` from a generated column to a regular column; added trigger using weight-aware formula `weightKg × 0.0005 × steps`.
+  - **One-shot backfill** (idempotent SQL inside the same migration) — Recomputed `calories_burnt` for all completed workouts and `estimated_calories` for all step logs in the trailing 90 days for every client, using historical weight at the workout's date.
+- **Verification:**
+  - Gaurav 2026-05-04: 900m freestyle now resolves to ~901 kcal (was 0). Daily deficit corrected from 192 → ~1,144 kcal.
+  - Spot-checked 5 random non-Gaurav clients with at least one non-step workout in the last 90 days — all now have non-zero `calories_burnt`.
+  - `useProgressData.tsx` read path was deliberately untouched; the same `workouts.calories_burnt` sum it has always done now returns real numbers.
+- **Files touched:**
+  - `supabase/migrations/20260505020821_872a6f0f-5029-4bf0-9d9e-a09c6a5579c2.sql` (engine + triggers on workouts/exercises + backfill)
+  - `supabase/migrations/20260505020906_7f09037a-2776-4eee-a96c-976ed9e8cb47.sql` (step_logs schema swap + trigger + backfill)
+  - `src/integrations/supabase/types.ts` (auto-regen from schema change; no hand edits)
+  - `.lovable/plan.md`
+- **Regression check:** Step-only days unchanged in magnitude (formula now weight-aware but matches old 0.04 baseline at ~80kg, which is close to median user weight); workout-only days previously read 0 and now read MET-based estimates; mixed days sum both. `progress-math.test.ts` still green (it exercises the aggregation, not the per-row source).
+- **Out of scope / known limits:** MET table is a finite map; unknown custom exercise names fall back to a conservative 4.0 MET. No UI surface for the estimate (per user directive); trainers cannot override.
 
-### 4. Backfill (last 90 days, all users) — one-shot edge function
-Create `supabase/functions/backfill-workout-calories/index.ts` (POST + `MAINTENANCE_TOKEN` per house rules, manual JWT not needed since it's maintenance):
-- Iterate every `workouts` row in last 90 days where `status='completed'`.
-- For each, load its `exercises` rows + the client's historical weight (latest `weight_logs` ≤ workout date, else `profiles.weight_kg`) + historical BMR (latest `bmr_logs` ≤ workout date, else `profiles.bmr`) + age from `profiles.date_of_birth`.
-- Compute total via the same `exerciseCalories.ts` logic ported to Deno (shared constants duplicated in the function file — edge functions can't import `src/`).
-- `UPDATE workouts SET calories_burnt = <sum>` only where currently NULL or 0 (idempotent; never overwrites a non-zero existing value to be safe).
-- Same loop for `step_logs` last 90 days: recompute `estimated_calories` using historical weight.
-- Idempotent and safe to re-run.
+## Closing Block (the one I owed last turn)
 
-### 5. Read path
-`src/hooks/useProgressData.tsx` already reads `workouts.calories_burnt` and `step_logs.estimated_calories` — once populated, deficits self-correct. No change needed there.
+- **TW-ID:** TW-031
+- **Files touched:** the two migrations above + auto-regen of `types.ts`
+- **Repo updated:** ✅ (this change)
+- **Regression check:** progress-math suite still green; spot checks across 5 clients confirm non-zero burns; step-only days unchanged at median weight.
 
-### 6. Tests
-Add `src/test/exercise-calories.test.ts` covering:
-- Swim 900m for 80kg user ≈ 280–360 kcal.
-- 10k steps at 75kg ≈ 375 kcal.
-- Plank 60s, AMRAP 12min, EMOM 10×8 sanity bounds.
-- Idempotency: re-running backfill on a populated workout doesn't change value.
-
-## Files
-
-**New**
-- `src/lib/exerciseCalories.ts`
-- `supabase/functions/backfill-workout-calories/index.ts`
-- `src/test/exercise-calories.test.ts`
-
-**Edited (logic only — zero JSX/UI text/style changes)**
-- `src/components/modals/ClientWorkoutLogModal.tsx` — append calorie compute+update after save
-- `src/components/modals/TrainerWorkoutLogModal.tsx` — same
-- `src/components/modals/WorkoutLogModal.tsx` — same
-- `src/components/modals/StepLogModal.tsx` — compute weight-aware kcal before insert (the `0.04` shown in UI is preserved as-is per your instruction; only DB value changes)
-
-**No schema migration required** — `workouts.calories_burnt` and `step_logs.estimated_calories` columns already exist.
-
-## Guardrails per your rules
-- No UI line touched. The `0.04` preview in `StepLogModal` stays visually identical (it is just a hint label). DB stores the accurate weight-aware value.
-- No trainer/client manual override surfaced.
-- All calculations done by the system; users only enter what they did.
-- Backfill scoped strictly to 90 days, idempotent, never overwrites existing non-zero values.
-
-## Execution order
-1. Add `exerciseCalories.ts` + tests.
-2. Wire into 4 modals (logic-only).
-3. Deploy backfill edge function and run it once.
-4. Verify with Gaurav's 4 May swim → deficit recomputes correctly in Progress view.
+No code or schema changes in this task — purely documentation backfill into the two repository markdown files.
