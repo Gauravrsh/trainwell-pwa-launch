@@ -1,104 +1,79 @@
-# V5 Cold Outreach Deck — Update Plan
+## Goal
 
-Source: `/mnt/documents/vecto-cold-outreach-dark-v3.pdf` (6 pages)
-Output: `/mnt/documents/vecto-cold-outreach-dark-v5.pdf` (7 pages)
+Automatically compute a close approximation of `calories_burnt` for every workout (and refine step calorie estimates) based on user's weight, age, BMR, and the exercise details the user/trainer logs. Zero UI changes. No manual override. Backfill last 90 days for all users.
 
-## Scope (only what was asked)
+## Approach
 
-### 1. Calendar UI — page 1
-
-Replace the current "icons + X dots + red fill" calendar with the latest **boundary-only** swatch system from `src/components/landing/CalendarMockup.tsx`:
-
-- **Cells** show only the day number, no icons, no X marks.
-- **States** (border-only, no fill except Today):
-  - Logged → 2px green border
-  - Client Leave → 2px red border
-  - Trainer Leave → 2px amber border
-  - Holiday → 2px muted-grey border
-  - Today (23) → solid lime fill, black numeral, bold
-  - Future / past blank → no border, faint card bg
-- Reuse the **same March 2026 dataset** the live mockup uses (logged streak with leave/holiday markers — see CalendarMockup.tsx).
-- **Legend** must match the live legend exactly: Today (lime fill), Logged, Holiday, Trainer Leave, Client Leave (border swatches only). No "Done / Missed / Pending" labels. No round dots.
-- Header chip stays "85% Compliance"; subtitle stays "Total visibility on why your client is (or isn't) winning."
-
-### 2. Pro & Elite cards — content refresh
-
-Pull copy verbatim from `src/components/landing/PricingSection.tsx`:
-
-**Smart** (already correct, but remove subtitle):
-
-- Remove "Up to 3 active clients · All features unlocked" subtitle (landing has no description for Smart).
-
-**Pro** (₹999/month):
-
-- Remove subtitle "30 days + 3-day grace · Unlimited clients" (landing has no description).
-- Features (unchanged): Unlimited active clients · All features unlocked · UPI & card payments · Cancel anytime · Get invite to learning webinars.
-
-**Elite** (₹9,999/year):
-
-- Description: `~₹833/month · Unlimited clients\n~17% less than monthly plan` (kept)
-- Features (add one new bullet, second from top):
-  1. Everything in Pro
-  2. **AI Powered Insights for your clients** ← NEW
-  3. One payment. Year-long focus on clients.
-  4. Referral rewards (annual)
-  5. Priority support
-  6. Get invite to in-person meetups with elite trainers
-- "BEST VALUE" badge stays. Ensure to have this badge centre aligned.
-
-### 3. Split current page 5 → two pages
-
-**New page 5 — Headline + intro copy** (centered, dark, generous whitespace):
-
-- H2: `Small Investment` (white) +  `Big Returns` (lime gradient)
-- Paragraph (verbatim from landing, preserving line breaks):
-  > That social media post where your client flaunts the results, and gives you the credit — what would you pay for that?
-  >
-  > &nbsp;
-  >
-  > It's priceless right?
-  >
-  > &nbsp;
-  >
-  > Focus on what truly matters and what will get your clients' results. Cutting corners on that is, well, a bad career decision!!
-
-**New page 6 — Beta chip + 3 plan blocks**:
-
-- Beta pricing pill at top: lightning bolt + "Special Beta Pricing*"
-- Three plan cards (Smart / Pro / Elite) with the refreshed copy above.
-- Footer asterisk note: "* Beta launch pricing. Subject to revision. Existing paid subscribers continue at their paid rate until renewal."
-
-(Existing page 6 — Flywheel/CTA — becomes page 7. No other changes.)
-
-## Brand Compliance Constraints (non-negotiable)
-
-- Background: Obsidian Black `#0A0A0A` everywhere.
-- Lime accent `#BFFF00` (Vecto Neon), white `#FAFAFA` for data text, muted grey for body subdued.
-- "VECTO" only ever appears with lime **V** + white **ECTO**, uppercase, Inter Black, tracking -0.02em.
-- App icon `V.` is NOT used anywhere (forbidden adjacent to wordmark — already absent in V3, will stay absent).
-- Neon coverage ≤ 15% of any composition.
-- Inter font family throughout (Black for display, Regular/Medium for body).
-- No drop shadows on wordmark, no gradients on letters, no Caregiver/Innocent/Hero language.
-- Voice unchanged from V3 (Sage + Ruler + Jester).
-
-## Implementation
-
-```text
-1. Write Python (reportlab) script at /tmp/build_v5.py mirroring V3 structure
-   - Reuse v3 layout for pages 1–4 and 7 (was page 6)
-   - Replace calendar block on page 1 with new boundary-only renderer
-   - Update Pro/Elite card data
-   - Split pricing into two pages
-2. Render: python /tmp/build_v5.py → /mnt/documents/vecto-cold-outreach-dark-v5.pdf
-3. QA: pdftoppm -jpeg -r 130 → inspect every page image with code--view
-   - Brand check: colors, fonts, lime ratio, wordmark integrity
-   - UI check: calendar legend matches live, pricing matches landing
-   - Layout check: no overflow, no clipped text, page breaks clean
-4. Iterate fix-and-verify until clean. Report QA findings in final message.
+### 1. Calorie engine (new file, no UI impact)
+Create `src/lib/exerciseCalories.ts` with a pure function:
 ```
+estimateCaloriesBurnt({ exerciseName, metricType, sets, reps, weightKg (load), durationSeconds, distanceMeters }, user: { weightKg, ageYears, bmrKcal })
+```
+- Uses MET values from a curated table keyed by exercise name / category (swimming, running, cycling, rowing, strength, yoga/stretch, plank, jump rope, etc.) with sensible fallbacks per `metric_type`.
+- Formula: `kcal = MET × userWeightKg × hours`.
+- Time inferred from:
+  - `time` → `durationSeconds`
+  - `distance_time` → use `durationSeconds` if present; else infer via activity pace table (e.g., swim 2 min/100m, run 6 min/km, row 5 min/km, cycle 3 min/km).
+  - `reps_weight` / `reps_only` → `sets × reps × ~3s` + rest assumption (~30s/set), with MET adjusted up for heavy compound lifts.
+  - `amrap` / `emom` → use the prescribed minutes.
+- Light age/BMR adjustment factor (caps ±10%) so users with very low/high BMR get nudged proportionally; primary driver remains weight×MET×time per ACSM convention.
 
-## Deliverable
+### 2. Step calories upgrade
+Replace flat `steps × 0.04` with weight-aware:
+`stepKcal = round(weightKg × 0.0005 × steps)` (≈0.04 at 80kg, scales with body mass).
+Applied in `step_logs.estimated_calories` on insert/update and during backfill.
 
-`<lov-artifact path="vecto-cold-outreach-dark-v5.pdf" mime_type="application/pdf"></lov-artifact>`
+### 3. Auto-write into DB on workout completion (no UI changes)
+Hook into the existing save paths in `ClientWorkoutLogModal.tsx`, `TrainerWorkoutLogModal.tsx`, `WorkoutLogModal.tsx`, and `StepLogModal.tsx`:
+- After the existing insert/update of `exercises` / `workouts` / `step_logs`, run a small helper that:
+  1. Fetches the just-saved exercise rows for the workout.
+  2. Pulls the client's current `weight_kg`, `bmr`, `date_of_birth` from `profiles`.
+  3. Sums per-exercise estimates → `UPDATE workouts SET calories_burnt = <sum>` for that workout (when status = `completed`).
+  4. For steps: writes computed `estimated_calories` on the `step_logs` row.
+- No new buttons, fields, labels, or copy. UI components render the same; only DB values change.
 
-Plus a short QA summary listing what was verified and any issues found+fixed during regression review.
+### 4. Backfill (last 90 days, all users) — one-shot edge function
+Create `supabase/functions/backfill-workout-calories/index.ts` (POST + `MAINTENANCE_TOKEN` per house rules, manual JWT not needed since it's maintenance):
+- Iterate every `workouts` row in last 90 days where `status='completed'`.
+- For each, load its `exercises` rows + the client's historical weight (latest `weight_logs` ≤ workout date, else `profiles.weight_kg`) + historical BMR (latest `bmr_logs` ≤ workout date, else `profiles.bmr`) + age from `profiles.date_of_birth`.
+- Compute total via the same `exerciseCalories.ts` logic ported to Deno (shared constants duplicated in the function file — edge functions can't import `src/`).
+- `UPDATE workouts SET calories_burnt = <sum>` only where currently NULL or 0 (idempotent; never overwrites a non-zero existing value to be safe).
+- Same loop for `step_logs` last 90 days: recompute `estimated_calories` using historical weight.
+- Idempotent and safe to re-run.
+
+### 5. Read path
+`src/hooks/useProgressData.tsx` already reads `workouts.calories_burnt` and `step_logs.estimated_calories` — once populated, deficits self-correct. No change needed there.
+
+### 6. Tests
+Add `src/test/exercise-calories.test.ts` covering:
+- Swim 900m for 80kg user ≈ 280–360 kcal.
+- 10k steps at 75kg ≈ 375 kcal.
+- Plank 60s, AMRAP 12min, EMOM 10×8 sanity bounds.
+- Idempotency: re-running backfill on a populated workout doesn't change value.
+
+## Files
+
+**New**
+- `src/lib/exerciseCalories.ts`
+- `supabase/functions/backfill-workout-calories/index.ts`
+- `src/test/exercise-calories.test.ts`
+
+**Edited (logic only — zero JSX/UI text/style changes)**
+- `src/components/modals/ClientWorkoutLogModal.tsx` — append calorie compute+update after save
+- `src/components/modals/TrainerWorkoutLogModal.tsx` — same
+- `src/components/modals/WorkoutLogModal.tsx` — same
+- `src/components/modals/StepLogModal.tsx` — compute weight-aware kcal before insert (the `0.04` shown in UI is preserved as-is per your instruction; only DB value changes)
+
+**No schema migration required** — `workouts.calories_burnt` and `step_logs.estimated_calories` columns already exist.
+
+## Guardrails per your rules
+- No UI line touched. The `0.04` preview in `StepLogModal` stays visually identical (it is just a hint label). DB stores the accurate weight-aware value.
+- No trainer/client manual override surfaced.
+- All calculations done by the system; users only enter what they did.
+- Backfill scoped strictly to 90 days, idempotent, never overwrites existing non-zero values.
+
+## Execution order
+1. Add `exerciseCalories.ts` + tests.
+2. Wire into 4 modals (logic-only).
+3. Deploy backfill edge function and run it once.
+4. Verify with Gaurav's 4 May swim → deficit recomputes correctly in Progress view.
