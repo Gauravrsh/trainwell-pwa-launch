@@ -1194,6 +1194,7 @@ export type Database = {
         Args: { p_referral_id: string }
         Returns: boolean
       }
+      backfill_calories_last_90_days: { Args: never; Returns: Json }
       bump_dictionary_usage: {
         Args: { p_dictionary_id: string }
         Returns: undefined
@@ -1250,6 +1251,19 @@ export type Database = {
         }
         Returns: undefined
       }
+      estimate_exercise_seconds: {
+        Args: {
+          _actual_distance_meters: number
+          _actual_duration_seconds: number
+          _actual_emom_minutes: number
+          _actual_reps: number
+          _actual_rounds: number
+          _actual_sets: number
+          _metric_type: string
+          _name: string
+        }
+        Returns: number
+      }
       generate_unique_id: {
         Args: { p_role: Database["public"]["Enums"]["user_role"] }
         Returns: string
@@ -1271,6 +1285,10 @@ export type Database = {
           unique_id: string
           weight_kg: number
         }[]
+      }
+      get_client_weight_on: {
+        Args: { _client_id: string; _on_date: string }
+        Returns: number
       }
       get_my_trainer_profile: {
         Args: never
@@ -1340,6 +1358,14 @@ export type Database = {
           role: Database["public"]["Enums"]["user_role"]
           unique_id: string
         }[]
+      }
+      met_for_exercise: {
+        Args: { _metric_type: string; _name: string }
+        Returns: number
+      }
+      recompute_workout_calories: {
+        Args: { _workout_id: string }
+        Returns: number
       }
       record_heartbeat: { Args: never; Returns: undefined }
       renew_trainer_subscription: {
