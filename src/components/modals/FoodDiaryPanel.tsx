@@ -8,7 +8,7 @@ import { FoodDiaryEditModal, FoodDiaryEditValues } from './FoodDiaryEditModal';
 
 type MealType = 'breakfast' | 'lunch' | 'dinner' | 'snack';
 
-interface DiaryRow {
+export interface DiaryRow {
   id: string;
   meal_type: MealType;
   raw_text: string | null;
@@ -18,6 +18,7 @@ interface DiaryRow {
   fat: number;
   pending_analysis: boolean;
   matched_dictionary_id: string | null;
+  created_at: string;
 }
 
 interface Props {
@@ -26,6 +27,12 @@ interface Props {
   isToday: boolean;
   isReadOnly: boolean; // true for trainers
   refreshSignal: number; // bump to force refetch (after a save)
+  /**
+   * TW-032: Surface the freshly-loaded rows to the parent so any sibling
+   * summary widgets (e.g. FoodSessionSummary) derive from the same DB-backed
+   * source of truth instead of maintaining a parallel in-memory write log.
+   */
+  onRowsChange?: (rows: DiaryRow[]) => void;
 }
 
 const MEAL_ORDER: MealType[] = ['breakfast', 'lunch', 'snack', 'dinner'];
@@ -33,30 +40,36 @@ const MEAL_EMOJI: Record<MealType, string> = {
   breakfast: '🌅', lunch: '☀️', snack: '🍎', dinner: '🌙',
 };
 
-export const FoodDiaryPanel = ({ clientId, loggedDate, isToday, isReadOnly, refreshSignal }: Props) => {
+export const FoodDiaryPanel = ({ clientId, loggedDate, isToday, isReadOnly, refreshSignal, onRowsChange }: Props) => {
   const [rows, setRows] = useState<DiaryRow[]>([]);
   const [loading, setLoading] = useState(false);
   const [editing, setEditing] = useState<DiaryRow | null>(null);
   const [savingEdit, setSavingEdit] = useState(false);
 
   const fetchRows = useCallback(async () => {
-    if (!clientId) return;
+    if (!clientId) {
+      setRows([]);
+      onRowsChange?.([]);
+      return;
+    }
     setLoading(true);
     try {
       const { data, error } = await supabase
         .from('food_logs')
-        .select('id, meal_type, raw_text, calories, protein, carbs, fat, pending_analysis, matched_dictionary_id')
+        .select('id, meal_type, raw_text, calories, protein, carbs, fat, pending_analysis, matched_dictionary_id, created_at')
         .eq('client_id', clientId)
         .eq('logged_date', loggedDate)
         .order('created_at', { ascending: true });
       if (error) throw error;
-      setRows((data || []) as DiaryRow[]);
+      const next = (data || []) as DiaryRow[];
+      setRows(next);
+      onRowsChange?.(next);
     } catch (err) {
       logError('FoodDiaryPanel.fetch', err);
     } finally {
       setLoading(false);
     }
-  }, [clientId, loggedDate]);
+  }, [clientId, loggedDate, onRowsChange]);
 
   useEffect(() => { void fetchRows(); }, [fetchRows, refreshSignal]);
 
@@ -80,7 +93,11 @@ export const FoodDiaryPanel = ({ clientId, loggedDate, isToday, isReadOnly, refr
     // Snapshot for undo
     const snapshot = { ...row };
     // Optimistic remove
-    setRows((prev) => prev.filter((r) => r.id !== row.id));
+    setRows((prev) => {
+      const next = prev.filter((r) => r.id !== row.id);
+      onRowsChange?.(next);
+      return next;
+    });
 
     const { error } = await supabase.from('food_logs').delete().eq('id', row.id);
     if (error) {
