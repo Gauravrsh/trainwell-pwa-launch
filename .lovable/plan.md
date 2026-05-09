@@ -1,46 +1,86 @@
-# Backfill TW-031 into the Issue Repository
 
-## What I missed
-The "calories_burnt never populated → swimming/cycling/etc. contribute 0 to deficit" bug was diagnosed, fixed (two migrations: server-side MET engine + triggers + 90-day backfill), and verified against Gaurav's May 4 data — but I never opened a TW-### entry, never appended a row to `docs/issue-repository-index.md`, and never wrote a full case file in `docs/issue-repository.md`. SOP-2 violation: the `Bug:` trigger should have forced repo-first, even with a capital B.
+# TW-032 — Food Log: session summary diverges from Today's Diary
 
-## Changes
+## The inconsistency (visible in screenshot)
 
-### 1. `docs/issue-repository-index.md`
-Append one line:
+- "Today's Diary" header: **572 kcal**, 2 entries (Breakfast 322, Snack 250).
+- "3 meals logged" pill: **882 kcal**, 3 entries (Breakfast 322, Snack **310**, Snack 250).
+- Delta is exactly one Snack: **310 kcal, P4 / C36 / F18**. It exists in the session pill but not in the diary that drives Progress/Calendar/deficit.
 
+User-visible damage: the client trusts the green pill ("882 kcal logged"), but the deficit engine, trainer view, and tomorrow's Progress chart will all use 572. Silent under/over-reporting in either direction destroys the "Mirror doesn't lie" promise.
+
+## Root cause
+
+`FoodLogModal.tsx` maintains **two independent stores** for the same fact set:
+
+1. **`sessionMeals` (in-memory array)** — appended at lines 409 and 436 immediately after `await onSave(...)`. This is what the green "N meals logged" pill (`FoodSessionSummary`) renders.
+2. **`food_logs` rows in DB** — fetched by `FoodDiaryPanel` whenever `refreshSignal` (`diaryRefresh`) bumps. This is what the "Today's Diary" header renders, and what every downstream feature reads.
+
+These two stores can drift in three ways, all currently unhandled:
+
+- **A — Silent save failure.** `onSave` is awaited but its error path only `toast`s; `setSessionMeals` still runs. If the insert RLS-fails, network-fails, or commits to a different `logged_date`/`client_id`, the pill grows but the diary doesn't.
+- **B — Delete-from-diary doesn't prune the session.** `FoodDiaryPanel.handleDelete` removes the row from `rows` and the DB, but never tells `FoodLogModal` to drop the corresponding entry from `sessionMeals`. The screenshot is consistent with this: user logged the 310-kcal snack, then tapped the trash icon next to it in the diary list, leaving it stranded in the pill. (Most likely cause based on the data.)
+- **C — Edit-from-diary doesn't update the session.** Same gap as B: editing macros via the pencil icon updates the DB row but the pill keeps the stale numbers.
+
+The architectural mistake is having `sessionMeals` exist at all. It's a parallel write log of a thing the database is already authoritative about.
+
+## Fix (server stays untouched, no schema changes)
+
+**Single-source-of-truth refactor.** Delete `sessionMeals` state and derive the "meals logged" pill from the same `food_logs` rows the diary already fetches.
+
+### Changes
+
+1. **`src/components/modals/FoodSessionSummary.tsx`** — keep the component, but change its data contract: it now accepts the same `DiaryRow[]` shape the diary uses (or a slim projection), and shows totals/per-meal breakdown computed from it. Add a "session-only" filter prop so it can optionally show "meals logged in this modal session" by filtering rows whose `created_at >= modalOpenedAt`. Default to "today's diary totals" so it can never disagree with the diary header.
+
+2. **`src/components/modals/FoodLogModal.tsx`** —
+   - Remove `sessionMeals` state and the two `setSessionMeals(...)` appends (lines 409, 436) and the reset at 513.
+   - Lift the diary fetch up: have `FoodDiaryPanel` accept an optional `onRowsChange(rows)` callback and surface the current rows to the modal. Modal passes those rows into `FoodSessionSummary`.
+   - Capture `modalOpenedAt = useRef(new Date().toISOString())` on mount; pass to `FoodSessionSummary` so the pill still reads "N meals logged this session" by filtering on `created_at`. (We need `created_at` in the diary `select`, which it already returns implicitly — just add to the projection.)
+
+3. **`src/components/modals/FoodDiaryPanel.tsx`** —
+   - Add `created_at` to the select (line 48).
+   - Add `onRowsChange?: (rows: DiaryRow[]) => void` to props; call it from inside the existing `setRows(...)` paths (initial fetch, optimistic delete, post-save refetch).
+   - No UI changes.
+
+4. **No DB migration, no edge function, no Progress/Calendar code touched.** The downstream truth (`food_logs` table) was already correct; we're only stopping the UI from lying about it.
+
+### Why this is the right fix, not a patch
+
+Patching B and C alone (prune `sessionMeals` on delete, update on edit) leaves A unfixed and re-opens the door every time a future contributor adds a new write path. Eliminating the parallel store closes the whole class of bug.
+
+## Verification plan
+
+- Manual: log a meal → appears in both panels with identical numbers. Delete it from diary → disappears from both. Edit macros → both reflect new numbers. Force a save failure (offline) → neither panel grows.
+- Existing automated coverage: `progress-math.test.ts` unaffected (read path unchanged). Add a tiny vitest case asserting `FoodSessionSummary` totals === sum of diary rows it received, for a fixture with 0/1/many meals and a deleted-mid-session scenario.
+- Spot-check production: query `food_logs` for affected user and confirm only 2 rows for `2026-05-09` (the diary is right, the pill is wrong).
+
+## Files touched
+
+- `src/components/modals/FoodLogModal.tsx` (remove sessionMeals state + plumbing)
+- `src/components/modals/FoodSessionSummary.tsx` (new prop contract, derives from diary rows)
+- `src/components/modals/FoodDiaryPanel.tsx` (expose rows + add `created_at` to select)
+- `src/test/food-log-session-consistency.test.ts` (new)
+- `docs/issue-repository-index.md` (append TW-032 row)
+- `docs/issue-repository.md` (append TW-032 case file: report, RCA, fix, verification, files, regression check)
+
+## Issue repo entries to add
+
+**Index row (`docs/issue-repository-index.md`):**
 ```
-TW-031 | High | Fixed | Non-step exercises (swimming, cycling, HIIT, etc.) contributed 0 kcal to "Avg Daily Deficit" because workouts.calories_burnt was never populated by the app; step calories were also weight-blind (flat 0.04/step) | migrations 20260505020821 + 20260505020906 / step_logs schema / useProgressData.tsx (read path unchanged)
+TW-032 | High | Open → Fixed | Food Log modal "N meals logged" pill diverged from "Today's Diary" — pill counted in-memory session writes that no longer existed in DB after a delete (or never landed there on save failure), causing client/trainer to see two different daily totals in the same modal | FoodLogModal.tsx / FoodSessionSummary.tsx / FoodDiaryPanel.tsx
 ```
 
-### 2. `docs/issue-repository.md`
-Append a full TW-031 case file with these sections:
+**Case file (`docs/issue-repository.md`):** full sections — Reported, RCA (the three drift modes A/B/C above), Fix (single-source-of-truth refactor), Verification, Files touched, Regression check (downstream untouched; aggregation tests still green), Out-of-scope (no schema, no UI redesign, no copy changes).
 
-- **Reported:** Gaurav, May 4 2026 — 900m swim + ~10K steps, deficit only 192 kcal. Investigation showed every non-step workout in the DB had `calories_burnt = 0` or `NULL` for every user.
-- **Root cause:**
-  1. `workouts.calories_burnt` was a writable column with no app code path that ever wrote to it. Every modal (Client / Trainer / generic Workout) saved exercise rows but never computed or persisted a calorie estimate.
-  2. `step_logs.estimated_calories` used a flat `step_count * 0.04` heuristic that ignored body weight, so a 60kg and a 110kg client logging 10K steps got identical credit.
-  3. `useProgressData.tsx` faithfully summed `workouts.calories_burnt` → 0 for everyone except step contributions, silently understating the deficit.
-- **Fix (server-side, zero UI changes — per user constraint):**
-  - **Migration `20260505020821`** — Created SQL functions `met_for_exercise(name, category)` (MET table for swim strokes, run, cycle, row, HIIT, yoga, strength, mobility, etc.) and `estimate_exercise_seconds(...)` (infers duration from distance via activity-specific pace, or from reps at ~3s/rep + rest), plus `get_client_weight_on(client_id, date)` (resolves historical weight from `weight_logs` → `profiles.weight_kg` fallback). Added `BEFORE INSERT/UPDATE` triggers on `public.exercises` and `public.workouts` that recompute `calories_burnt = MET × weightKg × hours`.
-  - **Migration `20260505020906`** — Converted `step_logs.estimated_calories` from a generated column to a regular column; added trigger using weight-aware formula `weightKg × 0.0005 × steps`.
-  - **One-shot backfill** (idempotent SQL inside the same migration) — Recomputed `calories_burnt` for all completed workouts and `estimated_calories` for all step logs in the trailing 90 days for every client, using historical weight at the workout's date.
-- **Verification:**
-  - Gaurav 2026-05-04: 900m freestyle now resolves to ~901 kcal (was 0). Daily deficit corrected from 192 → ~1,144 kcal.
-  - Spot-checked 5 random non-Gaurav clients with at least one non-step workout in the last 90 days — all now have non-zero `calories_burnt`.
-  - `useProgressData.tsx` read path was deliberately untouched; the same `workouts.calories_burnt` sum it has always done now returns real numbers.
-- **Files touched:**
-  - `supabase/migrations/20260505020821_872a6f0f-5029-4bf0-9d9e-a09c6a5579c2.sql` (engine + triggers on workouts/exercises + backfill)
-  - `supabase/migrations/20260505020906_7f09037a-2776-4eee-a96c-976ed9e8cb47.sql` (step_logs schema swap + trigger + backfill)
-  - `src/integrations/supabase/types.ts` (auto-regen from schema change; no hand edits)
-  - `.lovable/plan.md`
-- **Regression check:** Step-only days unchanged in magnitude (formula now weight-aware but matches old 0.04 baseline at ~80kg, which is close to median user weight); workout-only days previously read 0 and now read MET-based estimates; mixed days sum both. `progress-math.test.ts` still green (it exercises the aggregation, not the per-row source).
-- **Out of scope / known limits:** MET table is a finite map; unknown custom exercise names fall back to a conservative 4.0 MET. No UI surface for the estimate (per user directive); trainers cannot override.
+## Closing block (will be emitted post-implementation)
 
-## Closing Block (the one I owed last turn)
+- **TW-ID:** TW-032
+- **Files touched:** above
+- **Repo updated:** ✅
+- **Regression check:** progress-math + existing food-log tests green; new session-consistency test green; manual flow (log → delete → edit → offline-save) verified.
 
-- **TW-ID:** TW-031
-- **Files touched:** the two migrations above + auto-regen of `types.ts`
-- **Repo updated:** ✅ (this change)
-- **Regression check:** progress-math suite still green; spot checks across 5 clients confirm non-zero burns; step-only days unchanged at median weight.
+## Out of scope
 
-No code or schema changes in this task — purely documentation backfill into the two repository markdown files.
+- No UI/visual changes (per standing user constraint).
+- No backfill needed — DB was always correct; only the pill lied.
+- No change to Progress, Calendar, deficit math, or trainer view.
