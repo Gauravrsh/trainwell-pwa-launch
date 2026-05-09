@@ -402,7 +402,6 @@ export const FoodLogModal = ({ open, onOpenChange, onSave, clientId = null, logg
         pendingAnalysis: true,
         matchedDictionaryId: null,
       });
-      setSessionMeals((prev) => [...prev, { mealType, calories: 0, protein: 0, carbs: 0, fat: 0 }]);
       return true;
     }
 
@@ -429,7 +428,6 @@ export const FoodLogModal = ({ open, onOpenChange, onSave, clientId = null, logg
       quantityValue,
       quantityUnit,
     });
-    setSessionMeals((prev) => [...prev, { mealType, ...totals }]);
     return true;
   };
 
@@ -506,7 +504,7 @@ export const FoodLogModal = ({ open, onOpenChange, onSave, clientId = null, logg
   const handleClose = (o: boolean) => {
     if (!o) {
       resetForm();
-      setSessionMeals([]);
+      setDiaryRows([]);
       setRecentMeals([]);
       autoSaveAfterAnalyzeRef.current = false;
     }
@@ -567,9 +565,10 @@ export const FoodLogModal = ({ open, onOpenChange, onSave, clientId = null, logg
               isToday={isToday}
               isReadOnly={isReadOnly}
               refreshSignal={diaryRefresh}
+              onRowsChange={setDiaryRows}
             />
             <AnimatePresence>
-              {sessionMeals.length > 0 && <FoodSessionSummary meals={sessionMeals} />}
+              <FoodSessionSummary rows={diaryRows} modalOpenedAt={modalOpenedAtRef.current} />
             </AnimatePresence>
 
             {/* SNAP TAB */}
