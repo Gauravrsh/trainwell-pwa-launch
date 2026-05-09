@@ -2,19 +2,24 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronDown, Flame, Beef, Wheat, Droplets } from 'lucide-react';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { useState } from 'react';
+import type { DiaryRow } from './FoodDiaryPanel';
 
 type MealType = 'breakfast' | 'lunch' | 'dinner' | 'snack';
 
-interface SessionMeal {
-  mealType: MealType;
-  calories: number;
-  protein: number;
-  carbs: number;
-  fat: number;
-}
-
 interface FoodSessionSummaryProps {
-  meals: SessionMeal[];
+  /**
+   * TW-032: All of today's diary rows from the DB. The summary is now a pure
+   * derived view — never a parallel store — so it cannot disagree with the
+   * Today's Diary header.
+   */
+  rows: DiaryRow[];
+  /**
+   * ISO timestamp captured when the modal opened. Rows whose created_at >=
+   * this value count as "this session"; the pill collapses anything older
+   * into the count but only highlights session adds. When omitted, every row
+   * counts (back-compat).
+   */
+  modalOpenedAt?: string;
 }
 
 const mealEmojis: Record<MealType, string> = {
@@ -24,10 +29,25 @@ const mealEmojis: Record<MealType, string> = {
   snack: '🍎'
 };
 
-export const FoodSessionSummary = ({ meals }: FoodSessionSummaryProps) => {
+export const FoodSessionSummary = ({ rows, modalOpenedAt }: FoodSessionSummaryProps) => {
   const [isOpen, setIsOpen] = useState(false);
 
-  if (meals.length === 0) return null;
+  // Only count completed (non-pending) rows logged in this modal session.
+  const sessionRows = rows.filter((r) => {
+    if (r.pending_analysis) return false;
+    if (!modalOpenedAt) return true;
+    return r.created_at >= modalOpenedAt;
+  });
+
+  if (sessionRows.length === 0) return null;
+
+  const meals = sessionRows.map((r) => ({
+    mealType: r.meal_type as MealType,
+    calories: r.calories || 0,
+    protein: r.protein || 0,
+    carbs: r.carbs || 0,
+    fat: r.fat || 0,
+  }));
 
   const totals = meals.reduce(
     (acc, meal) => ({

@@ -11,7 +11,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { logError } from '@/lib/errorUtils';
 import { FoodSessionSummary } from './FoodSessionSummary';
-import { FoodDiaryPanel } from './FoodDiaryPanel';
+import { FoodDiaryPanel, type DiaryRow } from './FoodDiaryPanel';
 import { format } from 'date-fns';
 import { FOOD_UNITS, FoodUnit, parseQuantity } from '@/lib/foodUnits';
 
@@ -38,14 +38,6 @@ interface FoodItem {
   originalProtein?: number;
   originalCarbs?: number;
   originalFat?: number;
-}
-
-interface SessionMeal {
-  mealType: MealType;
-  calories: number;
-  protein: number;
-  carbs: number;
-  fat: number;
 }
 
 interface RecentMeal {
@@ -128,7 +120,9 @@ export const FoodLogModal = ({ open, onOpenChange, onSave, clientId = null, logg
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [items, setItems] = useState<FoodItem[]>([]);
-  const [sessionMeals, setSessionMeals] = useState<SessionMeal[]>([]);
+  // TW-032: derived from the diary panel's rows — single source of truth.
+  const [diaryRows, setDiaryRows] = useState<DiaryRow[]>([]);
+  const modalOpenedAtRef = useRef<string>(new Date().toISOString());
   const [aiError, setAiError] = useState<{ code: string; message: string } | null>(null);
   const [recentMeals, setRecentMeals] = useState<RecentMeal[]>([]);
   const [loadingRecent, setLoadingRecent] = useState(false);
@@ -147,6 +141,8 @@ export const FoodLogModal = ({ open, onOpenChange, onSave, clientId = null, logg
     if (open) {
       setMealType(getDefaultMealType());
       setTab('snap');
+      // Reset the session window so only meals logged after this open count.
+      modalOpenedAtRef.current = new Date().toISOString();
     }
   }, [open]);
 
@@ -406,7 +402,6 @@ export const FoodLogModal = ({ open, onOpenChange, onSave, clientId = null, logg
         pendingAnalysis: true,
         matchedDictionaryId: null,
       });
-      setSessionMeals((prev) => [...prev, { mealType, calories: 0, protein: 0, carbs: 0, fat: 0 }]);
       return true;
     }
 
@@ -433,7 +428,6 @@ export const FoodLogModal = ({ open, onOpenChange, onSave, clientId = null, logg
       quantityValue,
       quantityUnit,
     });
-    setSessionMeals((prev) => [...prev, { mealType, ...totals }]);
     return true;
   };
 
@@ -510,7 +504,7 @@ export const FoodLogModal = ({ open, onOpenChange, onSave, clientId = null, logg
   const handleClose = (o: boolean) => {
     if (!o) {
       resetForm();
-      setSessionMeals([]);
+      setDiaryRows([]);
       setRecentMeals([]);
       autoSaveAfterAnalyzeRef.current = false;
     }
@@ -571,9 +565,10 @@ export const FoodLogModal = ({ open, onOpenChange, onSave, clientId = null, logg
               isToday={isToday}
               isReadOnly={isReadOnly}
               refreshSignal={diaryRefresh}
+              onRowsChange={setDiaryRows}
             />
             <AnimatePresence>
-              {sessionMeals.length > 0 && <FoodSessionSummary meals={sessionMeals} />}
+              <FoodSessionSummary rows={diaryRows} modalOpenedAt={modalOpenedAtRef.current} />
             </AnimatePresence>
 
             {/* SNAP TAB */}

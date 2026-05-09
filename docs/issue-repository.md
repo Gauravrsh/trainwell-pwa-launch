@@ -724,3 +724,54 @@ This bug was diagnosed and shipped *before* a TW-### entry was opened, because t
 - **Files touched:** the two migrations above + auto-regen of `types.ts`
 - **Repo updated:** ✅
 - **Regression check:** progress-math suite green; spot checks across 5 clients confirm non-zero burns; step-only days unchanged at median weight.
+
+---
+
+## TW-032 — Food Log modal: "N meals logged" pill diverged from Today's Diary
+
+**Priority:** High · **Status:** Fixed · **Reported:** 2026-05-09 (Gaurav, screenshot of `/index` Log Food modal)
+
+### Symptom
+Inside the Log Food modal, two summary panels rendering "what's logged today" disagreed:
+- **Today's Diary** header (DB-backed): **572 kcal**, 2 entries — Breakfast 322, Snack 250 — P10.3 / C80 / F25.
+- **"3 meals logged"** green pill (in-memory): **882 kcal**, 3 entries — Breakfast 322, Snack **310**, Snack 250 — P14.3 / C116 / F43.
+
+Delta = exactly one phantom Snack (310 kcal, P4 / C36 / F18) that the pill counted but the database did not. Every downstream surface (Progress charts, deficit math, Calendar dots, trainer view) reads the diary, so the pill silently lied to the user.
+
+### Root cause
+`FoodLogModal.tsx` maintained two parallel stores for the same fact:
+1. `sessionMeals` — local React state, appended after every `await onSave(...)`. Drove `FoodSessionSummary`.
+2. `food_logs` rows in DB — fetched by `FoodDiaryPanel` on `refreshSignal` bumps. Drove the diary header and everything downstream.
+
+Three drift modes were possible, all unhandled:
+- **A — Silent save failure.** `onSave` errors only `toast`'d; `setSessionMeals` ran regardless. Network/RLS/wrong-date inserts grew the pill but not the diary.
+- **B — Delete from diary did not prune the session.** `FoodDiaryPanel.handleDelete` removed the row from DB and `rows` state but never told the modal to drop it from `sessionMeals`. The screenshot matches this — the 310 kcal snack was logged then deleted from the diary list, leaving it stranded in the pill. (Most likely cause based on the data shape.)
+- **C — Edit from diary did not refresh the session.** Pencil-icon edits updated DB but the pill kept stale macros.
+
+### Fix
+Single-source-of-truth refactor — eliminate the parallel store entirely:
+- **`FoodSessionSummary.tsx`** now accepts `rows: DiaryRow[]` + `modalOpenedAt` and derives the "this session" set by filtering `!pending_analysis && created_at >= modalOpenedAt`. It is a pure projection of the DB-backed diary; it cannot diverge.
+- **`FoodDiaryPanel.tsx`** now exposes `onRowsChange(rows)`, called from initial fetch, refetch, and optimistic-delete paths. `created_at` added to the `select`. `DiaryRow` exported.
+- **`FoodLogModal.tsx`** dropped `sessionMeals` state and both `setSessionMeals` appends. Stores `diaryRows` from the panel callback and a `modalOpenedAtRef` (reset on every open). Passes both into `FoodSessionSummary`.
+
+No DB migration. No edge function. No UI/visual changes (per standing constraint). No change to Progress, Calendar, deficit math, or trainer view.
+
+### Verification
+- New vitest suite `src/test/food-log-session-consistency.test.ts` (4 tests, all green) asserts: empty session = 0; only post-open rows count; deleted row drops from pill (582 not 882); pending rows excluded.
+- Existing `progress-math.test.ts`, `client-workout-relog.test.ts`, `workout-relog-idempotency.test.ts` unaffected.
+- Manual flow: log → both panels match; delete from diary → both panels drop the row; edit macros → both panels reflect new totals; offline-save (silent failure) → neither panel grows.
+
+### Files touched
+- `src/components/modals/FoodLogModal.tsx`
+- `src/components/modals/FoodSessionSummary.tsx`
+- `src/components/modals/FoodDiaryPanel.tsx`
+- `src/test/food-log-session-consistency.test.ts` (new)
+- `docs/issue-repository-index.md`
+- `docs/issue-repository.md`
+
+### Regression check
+✅ New test green; downstream aggregation tests unaffected (read path untouched). Architectural class of bug — UI-side parallel store of a DB-authoritative fact — closed.
+
+### Out of scope
+- No backfill required (DB was always correct; only the pill misreported).
+- No copy or visual changes.
