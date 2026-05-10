@@ -1,86 +1,50 @@
+## Goal
 
-# TW-032 — Food Log: session summary diverges from Today's Diary
+Rewrite Gaurav's BMR to **1750** for **all past dates** and make 1750 the current value going forward. Every chart, calculation, and profile surface must reflect 1750.
 
-## The inconsistency (visible in screenshot)
+User: `Gaurav.rsh@gmail.com` → profile id `a1bb2e3b-e10b-4cea-b7b9-24c8a0bc5e5f`
 
-- "Today's Diary" header: **572 kcal**, 2 entries (Breakfast 322, Snack 250).
-- "3 meals logged" pill: **882 kcal**, 3 entries (Breakfast 322, Snack **310**, Snack 250).
-- Delta is exactly one Snack: **310 kcal, P4 / C36 / F18**. It exists in the session pill but not in the diary that drives Progress/Calendar/deficit.
+## Current state (verified earlier)
 
-User-visible damage: the client trusts the green pill ("882 kcal logged"), but the deficit engine, trainer view, and tomorrow's Progress chart will all use 572. Silent under/over-reporting in either direction destroys the "Mirror doesn't lie" promise.
+- `profiles.bmr` = **1859**, `bmr_updated_at` = 2026-04-28
+- `bmr_logs` has **one row**: `effective_date = 2026-01-01`, `bmr = 1859`
+- Progress page resolver (`useProgressData.tsx`) walks `bmr_logs` ascending and seeds with the latest row before the window. Because there's only one historical row dated 2026-01-01, every day from then onward currently resolves to 1859.
 
-## Root cause
+## What changes
 
-`FoodLogModal.tsx` maintains **two independent stores** for the same fact set:
+### 1. Database (one-off migration, bypasses RLS as service role)
 
-1. **`sessionMeals` (in-memory array)** — appended at lines 409 and 436 immediately after `await onSave(...)`. This is what the green "N meals logged" pill (`FoodSessionSummary`) renders.
-2. **`food_logs` rows in DB** — fetched by `FoodDiaryPanel` whenever `refreshSignal` (`diaryRefresh`) bumps. This is what the "Today's Diary" header renders, and what every downstream feature reads.
+```sql
+-- a) Rewrite the single historical row so all past days resolve to 1750
+UPDATE public.bmr_logs
+SET bmr = 1750
+WHERE client_id = 'a1bb2e3b-e10b-4cea-b7b9-24c8a0bc5e5f';
 
-These two stores can drift in three ways, all currently unhandled:
-
-- **A — Silent save failure.** `onSave` is awaited but its error path only `toast`s; `setSessionMeals` still runs. If the insert RLS-fails, network-fails, or commits to a different `logged_date`/`client_id`, the pill grows but the diary doesn't.
-- **B — Delete-from-diary doesn't prune the session.** `FoodDiaryPanel.handleDelete` removes the row from `rows` and the DB, but never tells `FoodLogModal` to drop the corresponding entry from `sessionMeals`. The screenshot is consistent with this: user logged the 310-kcal snack, then tapped the trash icon next to it in the diary list, leaving it stranded in the pill. (Most likely cause based on the data.)
-- **C — Edit-from-diary doesn't update the session.** Same gap as B: editing macros via the pencil icon updates the DB row but the pill keeps the stale numbers.
-
-The architectural mistake is having `sessionMeals` exist at all. It's a parallel write log of a thing the database is already authoritative about.
-
-## Fix (server stays untouched, no schema changes)
-
-**Single-source-of-truth refactor.** Delete `sessionMeals` state and derive the "meals logged" pill from the same `food_logs` rows the diary already fetches.
-
-### Changes
-
-1. **`src/components/modals/FoodSessionSummary.tsx`** — keep the component, but change its data contract: it now accepts the same `DiaryRow[]` shape the diary uses (or a slim projection), and shows totals/per-meal breakdown computed from it. Add a "session-only" filter prop so it can optionally show "meals logged in this modal session" by filtering rows whose `created_at >= modalOpenedAt`. Default to "today's diary totals" so it can never disagree with the diary header.
-
-2. **`src/components/modals/FoodLogModal.tsx`** —
-   - Remove `sessionMeals` state and the two `setSessionMeals(...)` appends (lines 409, 436) and the reset at 513.
-   - Lift the diary fetch up: have `FoodDiaryPanel` accept an optional `onRowsChange(rows)` callback and surface the current rows to the modal. Modal passes those rows into `FoodSessionSummary`.
-   - Capture `modalOpenedAt = useRef(new Date().toISOString())` on mount; pass to `FoodSessionSummary` so the pill still reads "N meals logged this session" by filtering on `created_at`. (We need `created_at` in the diary `select`, which it already returns implicitly — just add to the projection.)
-
-3. **`src/components/modals/FoodDiaryPanel.tsx`** —
-   - Add `created_at` to the select (line 48).
-   - Add `onRowsChange?: (rows: DiaryRow[]) => void` to props; call it from inside the existing `setRows(...)` paths (initial fetch, optimistic delete, post-save refetch).
-   - No UI changes.
-
-4. **No DB migration, no edge function, no Progress/Calendar code touched.** The downstream truth (`food_logs` table) was already correct; we're only stopping the UI from lying about it.
-
-### Why this is the right fix, not a patch
-
-Patching B and C alone (prune `sessionMeals` on delete, update on edit) leaves A unfixed and re-opens the door every time a future contributor adds a new write path. Eliminating the parallel store closes the whole class of bug.
-
-## Verification plan
-
-- Manual: log a meal → appears in both panels with identical numbers. Delete it from diary → disappears from both. Edit macros → both reflect new numbers. Force a save failure (offline) → neither panel grows.
-- Existing automated coverage: `progress-math.test.ts` unaffected (read path unchanged). Add a tiny vitest case asserting `FoodSessionSummary` totals === sum of diary rows it received, for a fixture with 0/1/many meals and a deleted-mid-session scenario.
-- Spot-check production: query `food_logs` for affected user and confirm only 2 rows for `2026-05-09` (the diary is right, the pill is wrong).
-
-## Files touched
-
-- `src/components/modals/FoodLogModal.tsx` (remove sessionMeals state + plumbing)
-- `src/components/modals/FoodSessionSummary.tsx` (new prop contract, derives from diary rows)
-- `src/components/modals/FoodDiaryPanel.tsx` (expose rows + add `created_at` to select)
-- `src/test/food-log-session-consistency.test.ts` (new)
-- `docs/issue-repository-index.md` (append TW-032 row)
-- `docs/issue-repository.md` (append TW-032 case file: report, RCA, fix, verification, files, regression check)
-
-## Issue repo entries to add
-
-**Index row (`docs/issue-repository-index.md`):**
-```
-TW-032 | High | Open → Fixed | Food Log modal "N meals logged" pill diverged from "Today's Diary" — pill counted in-memory session writes that no longer existed in DB after a delete (or never landed there on save failure), causing client/trainer to see two different daily totals in the same modal | FoodLogModal.tsx / FoodSessionSummary.tsx / FoodDiaryPanel.tsx
+-- b) Make 1750 the "current" projection used by Profile card / banner
+UPDATE public.profiles
+SET bmr = 1750,
+    bmr_updated_at = now()
+WHERE id = 'a1bb2e3b-e10b-4cea-b7b9-24c8a0bc5e5f';
 ```
 
-**Case file (`docs/issue-repository.md`):** full sections — Reported, RCA (the three drift modes A/B/C above), Fix (single-source-of-truth refactor), Verification, Files touched, Regression check (downstream untouched; aggregation tests still green), Out-of-scope (no schema, no UI redesign, no copy changes).
+This is a one-off migration — `bmr_logs` keeps its UPDATE/DELETE blocking RLS for normal app use. The history-immutability rule (TW-028) is intentionally being overridden here at your explicit request.
 
-## Closing block (will be emitted post-implementation)
+### 2. App code
 
-- **TW-ID:** TW-032
-- **Files touched:** above
-- **Repo updated:** ✅
-- **Regression check:** progress-math + existing food-log tests green; new session-consistency test green; manual flow (log → delete → edit → offline-save) verified.
+**No code changes.** Both `useProgressData.tsx` (Progress page: Action chart, Outcome chart, Steps chart, Days Missed card, Avg Deficit) and the Profile card already read directly from these two tables. They will recompute on next load.
+
+### 3. Verification (after migration runs)
+
+- Re-query `bmr_logs` and `profiles` for Gaurav → confirm both show 1750.
+- Recompute the daily report (same script as last turn) and confirm every BMR cell shows 1750 and Total Burnt drops by 109/day.
 
 ## Out of scope
 
-- No UI/visual changes (per standing user constraint).
-- No backfill needed — DB was always correct; only the pill lied.
-- No change to Progress, Calendar, deficit math, or trainer view.
+- No change to `weight_logs`, `food_logs`, `step_logs`, `workouts`, or any cached/derived tables. (The Progress page derives expenditure live; nothing to invalidate.)
+- No change to the BMR-logging UI or RLS rules.
+
+## Risk
+
+Once executed, the original 1859 value is **lost** (single row overwrite). If you ever want to restore it I'd need to re-insert manually. Confirm you're OK with this before approving.
+
+Approve to proceed and I'll run the migration.
