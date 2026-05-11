@@ -23,17 +23,16 @@ export function StepsChart({ data }: StepsChartProps) {
 
   const hasAnySteps = data.some(d => d.steps !== null);
 
-  const latestLogged = useMemo(() => {
-    for (let i = data.length - 1; i >= 0; i--) {
-      if (data[i].steps !== null) return data[i];
-    }
-    return null;
-  }, [data]);
+  const dayCount = data.length;
+  const avgSteps = useMemo(() => {
+    if (dayCount === 0) return 0;
+    const total = data.reduce((sum, d) => sum + (d.steps ?? 0), 0);
+    return Math.round(total / dayCount);
+  }, [data, dayCount]);
 
-  const latestSteps = latestLogged?.steps ?? 0;
-  const progressPercent = Math.min((latestSteps / STEP_TARGET) * 100, 100);
-  const estimatedKm = (latestSteps * 0.0008).toFixed(1);
-  const estimatedKcal = Math.round(latestSteps * 0.04);
+  const progressPercent = Math.min((avgSteps / STEP_TARGET) * 100, 100);
+  const estimatedKm = (avgSteps * 0.0008).toFixed(1);
+  const estimatedKcal = Math.round(avgSteps * 0.04);
 
   return (
     <div className="space-y-4">
@@ -43,10 +42,10 @@ export function StepsChart({ data }: StepsChartProps) {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-3xl font-bold text-foreground">
-                {latestSteps.toLocaleString()}
+                {avgSteps.toLocaleString()}
               </p>
               <p className="text-xs text-muted-foreground">
-                {latestLogged ? format(parseISO(latestLogged.date), 'dd MMM yyyy') : '—'}
+                Avg steps per day, in last {dayCount} {dayCount === 1 ? 'day' : 'days'}
               </p>
             </div>
             <div className="text-right text-xs text-muted-foreground">
