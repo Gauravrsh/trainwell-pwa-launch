@@ -1,50 +1,79 @@
 ## Goal
 
-Rewrite Gaurav's BMR to **1750** for **all past dates** and make 1750 the current value going forward. Every chart, calculation, and profile surface must reflect 1750.
+Produce 5 independent, on-brand static creative templates as PNGs, delivered to `/mnt/documents/`. These are template canvases — adaptation to other formats (4:5, 9:16, story) happens in a separate step.
 
-User: `Gaurav.rsh@gmail.com` → profile id `a1bb2e3b-e10b-4cea-b7b9-24c8a0bc5e5f`
+## Brand Compliance (non-negotiable)
 
-## Current state (verified earlier)
+- Background: Obsidian Black `#0F172A` for 4 templates, Vecto Neon `#9FFF2B` for 1 accent template
+- Text/data color: White on black; Black on lime
+- Action color: Vecto Neon `#9FFF2B` used as accent only on black templates
+- Wordmark: `VECTO` always uppercase, mononym, used as a corner mark only (never paired with the V. icon)
+- Voice cue: clinical / minimalist / "Binary Truth" — no decorative arrows, no gradients, no emojis
+- 80–85% blank canvas reserved for later copy
 
-- `profiles.bmr` = **1859**, `bmr_updated_at` = 2026-04-28
-- `bmr_logs` has **one row**: `effective_date = 2026-01-01`, `bmr = 1859`
-- Progress page resolver (`useProgressData.tsx`) walks `bmr_logs` ascending and seeds with the latest row before the window. Because there's only one historical row dated 2026-01-01, every day from then onward currently resolves to 1859.
+## Layout System (shared across all 5)
 
-## What changes
+Fixed three-band grid drawn as faint guides (10% opacity hairlines) so the designer/copy step knows exactly where to drop content:
 
-### 1. Database (one-off migration, bypasses RLS as service role)
-
-```sql
--- a) Rewrite the single historical row so all past days resolve to 1750
-UPDATE public.bmr_logs
-SET bmr = 1750
-WHERE client_id = 'a1bb2e3b-e10b-4cea-b7b9-24c8a0bc5e5f';
-
--- b) Make 1750 the "current" projection used by Profile card / banner
-UPDATE public.profiles
-SET bmr = 1750,
-    bmr_updated_at = now()
-WHERE id = 'a1bb2e3b-e10b-4cea-b7b9-24c8a0bc5e5f';
+```
+┌─────────────────────────────┐
+│ HEADER  (top 15%)           │  short label / eyebrow
+│ ─────────────────────────── │
+│                             │
+│ BODY    (middle 60%)        │  headline + supporting copy
+│                             │
+│ ─────────────────────────── │
+│ FOOTER  (bottom 15%)        │  CTA / handle / wordmark
+└─────────────────────────────┘
 ```
 
-This is a one-off migration — `bmr_logs` keeps its UPDATE/DELETE blocking RLS for normal app use. The history-immutability rule (TW-028) is intentionally being overridden here at your explicit request.
+- 64 px outer safe margin
+- Hairline band dividers at ~10% opacity
+- Tiny `HEADER` / `BODY` / `FOOTER` labels at 8pt, 30% opacity, in the outer margin (printers-mark style) — easy to remove, helpful for adaptation
 
-### 2. App code
+## The 5 Templates (each 1080×1080 PNG, independent design)
 
-**No code changes.** Both `useProgressData.tsx` (Progress page: Action chart, Outcome chart, Steps chart, Days Missed card, Avg Deficit) and the Profile card already read directly from these two tables. They will recompute on next load.
+Each gets a different motif, all drawn from the approved set (no geometric arrows):
 
-### 3. Verification (after migration runs)
+1. **T1 — Obsidian Mark**
+   - Black bg. Single tiny `VECTO` wordmark, bottom-right, white, 14pt, tracked +200.
+   - Otherwise pure negative space. The "purest" template.
 
-- Re-query `bmr_logs` and `profiles` for Gaurav → confirm both show 1750.
-- Recompute the daily report (same script as last turn) and confirm every BMR cell shows 1750 and Total Burnt drops by 109/day.
+2. **T2 — Neon Streak (Top)**
+   - Black bg. One single, razor-thin (2 px) horizontal Vecto Neon streak across the top header band. `VECTO` wordmark bottom-left.
+   - Premium minimalist energy.
 
-## Out of scope
+3. **T3 — Neon Streak (Side Rule)**
+   - Black bg. One vertical 2 px Vecto Neon streak hugging the left safe margin, full bleed top-to-bottom. `VECTO` wordmark bottom-right.
+   - Magazine editorial feel.
 
-- No change to `weight_logs`, `food_logs`, `step_logs`, `workouts`, or any cached/derived tables. (The Progress page derives expenditure live; nothing to invalidate.)
-- No change to the BMR-logging UI or RLS rules.
+4. **T4 — Binary Calendar Watermark**
+   - Black bg. Faint 7×3 grid of small rounded-square cells in the footer band, alternating very-low-opacity Red and Vecto Neon (≤15% opacity) — evokes the Binary Truth calendar without dominating. `VECTO` wordmark top-left.
 
-## Risk
+5. **T5 — Lime Inversion (the 1 accent)**
+   - Vecto Neon `#9FFF2B` bg. All marks in `#0F172A`/Black. Tiny `VECTO` wordmark bottom-right in black. No streaks.
+   - The "loud" template for hero posts / announcement slides.
 
-Once executed, the original 1859 value is **lost** (single row overwrite). If you ever want to restore it I'd need to re-insert manually. Confirm you're OK with this before approving.
+## Production Approach
 
-Approve to proceed and I'll run the migration.
+- Generate as code-drawn PNGs (Python + Pillow) — guarantees exact hex values, exact alignment, crisp 1 px hairlines, perfect typography. AI image generation is unsuitable for brand-compliant geometric work.
+- Font: Inter (matches in-app body) for wordmark; falls back to system sans if Inter unavailable.
+- Output:
+  - `/mnt/documents/vecto-ig-template-01-obsidian-mark.png`
+  - `/mnt/documents/vecto-ig-template-02-neon-streak-top.png`
+  - `/mnt/documents/vecto-ig-template-03-neon-side-rule.png`
+  - `/mnt/documents/vecto-ig-template-04-binary-watermark.png`
+  - `/mnt/documents/vecto-ig-template-05-lime-inversion.png`
+- Plus a contact-sheet `vecto-ig-templates-overview.png` showing all 5 side-by-side for quick comparison.
+
+## QA Step
+
+After generation: open each PNG, verify hex values, margins, wordmark placement, and that the body band remains visually empty. Re-render any that fail before delivering.
+
+## Out of Scope (step 2)
+
+- Filling in copy
+- Adapting to 4:5, 9:16, story, or carousel size variants
+- Multi-slide carousel sequences
+
+Approve and I'll generate the 5 PNGs + overview sheet.
