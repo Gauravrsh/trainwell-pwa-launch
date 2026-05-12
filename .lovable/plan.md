@@ -1,30 +1,28 @@
-## Goal
+## Slide 03 — Recreate "Think Smart Always" reference in Vecto brand
 
-In the Steps card (used in both client and trainer Progress views), replace "yesterday's step count" with **average steps per day across the selected window**.
+**Source reference:** uploaded `IMG-20260511-WA0082.jpg` — light layout with top-left author, top-right index, large two-line headline with one word highlight-blocked, body copy with one accented phrase, decorative dotted arrow, footer URL + "SWIPE".
 
-## Scope
+**Vecto translation (locked spec, identical to slides 00–02):**
+- Canvas: 1088×1344, Obsidian Black `#0F172A` background, no gradients, ~80px inset
+- Top-left eyebrow: `VECTO` wordmark (V lime `#9FFF2B`, ECTO white), Inter Bold ~28px
+- Top-right index: `#03` in Inter Medium lime, inside thin 1.5px lime ring pill
+- Headline: two lines, Inter Extrabold all-caps, white, tracking-tight, ~150px
+  - Line 1: `THINK SMART`
+  - Line 2: `ALWAYS`
+  - The word `SMART` sits on a solid neon lime `#9FFF2B` block (text becomes Obsidian Black for contrast) — the brand-correct equivalent of the yellow highlight in the reference
+- Decorative element: thin 1px lime dotted curl-arrow to the right of "ALWAYS" (mirrors reference)
+- Body copy: Inter Regular, white @ 70%, ~32px, max ~3 lines
+  - `Make thoughtful decisions instead of reacting quickly. Smart thinking leads to better outcomes.`
+  - `Smart thinking` rendered in solid neon lime (brand-accent equivalent of the olive emphasis in the reference)
+- Footer-left: `www.vecto.fit` Inter Regular italic, white @ 60%, ~22px
+- Footer-right: outlined lime pill containing `SWIPE` + neon lime right-arrow, Inter Medium ~22px (replaces the bare "SWIPE" text and matches the arrow-pill used on slides 01/02)
+- Single 1px lime hairline rule under the eyebrow row, matching prior slides
 
-Single file: `src/components/progress/StepsChart.tsx`. The component is shared by client view and trainer view (rendered from `Progress.tsx`), so one change covers both.
+**No changes to:** color tokens, typography rules, wordmark spec, or layout grid — all carried over from the locked carousel system.
 
-## Changes
+**Output:**
+- `src/assets/vecto_carousel_03_think_smart.png`
+- Copy to `/mnt/documents/vecto_carousel_03_think_smart.png`
+- QA: view rendered PNG, check for clipped text, contrast on lime highlight block, wordmark correctness (V lime / ECTO white), no overlaps. Re-render if any issue.
 
-1. **Compute `avgSteps`** = `Math.round(sum(d.steps ?? 0) / data.length)`. Missed/unlogged days count as 0 (per Binary Truth philosophy — confirmed).
-2. **Big number** changes from `latestSteps` → `avgSteps`.
-3. **Subtitle** below the number changes from a date (`"11 May 2026"`) to:  
-   `"Avg steps per day, in last X days"` where `X = data.length`.
-4. **km derived metric** = `(avgSteps * 0.0008).toFixed(1)` — recomputed off the average.
-5. **kcal derived metric** = `Math.round(avgSteps * 0.04)` — recomputed off the average.
-6. **Progress bar** = `(avgSteps / 10000) * 100`, capped at 100. Goal label `"Goal: 10,000"` stays.
-7. **Empty-state guard** updated: show the summary block only if at least one day has logged steps (existing `hasAnySteps` logic kept).
-8. **Bar chart below stays untouched** — it continues to show daily values across the window.
-9. Drop the now-unused `latestLogged` / `latestSteps` derivations.
-
-## Out of scope
-
-- Date-range filter UI itself (already drives `data` length upstream).
-- Action chart, Outcome chart, BMR/weight chart — only Steps card is changing.
-- Backend / data-fetch logic.
-
-## QA
-
-After edit: open Progress page in client view and trainer view, verify big number reads as a sensible average, subtitle reads `"Avg steps per day, in last X days"` matching the date-range filter, km/kcal scale with the average, progress bar reflects avg vs 10k.
+**No code changes.** Asset-only addition.
