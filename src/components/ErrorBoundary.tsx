@@ -1,4 +1,5 @@
 import { Component, ErrorInfo, ReactNode } from "react";
+import { reportClientError, formatErrorForCopy } from "@/lib/errorReporter";
 
 interface Props {
   children: ReactNode;
@@ -6,6 +7,10 @@ interface Props {
 
 interface State {
   hasError: boolean;
+  message?: string;
+  stack?: string | null;
+  componentStack?: string | null;
+  copied?: boolean;
 }
 
 class ErrorBoundary extends Component<Props, State> {
@@ -20,10 +25,42 @@ class ErrorBoundary extends Component<Props, State> {
 
   componentDidCatch(error: Error, errorInfo: ErrorInfo) {
     console.error("[Vecto ErrorBoundary]", error, errorInfo);
+    this.setState({
+      message: error?.message ?? String(error),
+      stack: error?.stack ?? null,
+      componentStack: errorInfo?.componentStack ?? null,
+    });
+    void reportClientError({
+      message: error?.message ?? String(error),
+      stack: error?.stack ?? null,
+      componentStack: errorInfo?.componentStack ?? null,
+      source: "react-error-boundary",
+    });
   }
 
   handleReload = () => {
     window.location.reload();
+  };
+
+  handleCopyDetails = async () => {
+    const text = formatErrorForCopy({
+      message: this.state.message ?? "Unknown error",
+      stack: this.state.stack,
+      componentStack: this.state.componentStack,
+      source: "react-error-boundary",
+    });
+    try {
+      await navigator.clipboard.writeText(text);
+      this.setState({ copied: true });
+      setTimeout(() => this.setState({ copied: false }), 2000);
+    } catch {
+      // Fallback: open a prompt with the text so it can be selected
+      try {
+        window.prompt("Copy error details:", text);
+      } catch {
+        /* noop */
+      }
+    }
   };
 
   render() {
@@ -46,6 +83,12 @@ class ErrorBoundary extends Component<Props, State> {
             style={{ backgroundColor: "#9FFF2B" }}
           >
             Reload
+          </button>
+          <button
+            onClick={this.handleCopyDetails}
+            className="mt-4 text-xs text-gray-500 underline hover:text-gray-300"
+          >
+            {this.state.copied ? "Copied — please share with support" : "Copy error details"}
           </button>
         </div>
       );
