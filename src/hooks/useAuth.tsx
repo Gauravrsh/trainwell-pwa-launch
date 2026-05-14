@@ -66,13 +66,23 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const signUp = async (email: string, password: string) => {
     const redirectUrl = `${window.location.origin}/`;
-    const { error } = await supabase.auth.signUp({
+    const { data, error } = await supabase.auth.signUp({
       email,
       password,
       options: {
         emailRedirectTo: redirectUrl,
       },
     });
+    // Supabase anti-enumeration: when an email is already registered AND
+    // confirmations are enabled, signUp returns 200 with a fake user whose
+    // `identities` array is empty. Surface this as a duplicate-account error
+    // so the UI can guide the user to sign in (TW-034).
+    if (!error && data?.user && Array.isArray(data.user.identities) && data.user.identities.length === 0) {
+      const dupErr = new Error('User already registered') as Error & { code?: string; status?: number };
+      dupErr.code = 'user_already_exists';
+      dupErr.status = 422;
+      return { error: dupErr };
+    }
     return { error: error as Error | null };
   };
 
