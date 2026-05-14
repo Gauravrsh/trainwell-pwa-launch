@@ -53,6 +53,48 @@ export type Database = {
         }
         Relationships: []
       }
+      client_error_reports: {
+        Row: {
+          build_id: string | null
+          captured_at: string
+          component_stack: string | null
+          created_at: string
+          id: string
+          message: string | null
+          profile_id: string | null
+          route: string | null
+          stack: string | null
+          user_agent: string | null
+          user_id: string | null
+        }
+        Insert: {
+          build_id?: string | null
+          captured_at?: string
+          component_stack?: string | null
+          created_at?: string
+          id?: string
+          message?: string | null
+          profile_id?: string | null
+          route?: string | null
+          stack?: string | null
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          build_id?: string | null
+          captured_at?: string
+          component_stack?: string | null
+          created_at?: string
+          id?: string
+          message?: string | null
+          profile_id?: string | null
+          route?: string | null
+          stack?: string | null
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       client_training_plans: {
         Row: {
           amount_due: number | null

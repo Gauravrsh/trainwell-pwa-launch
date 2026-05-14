@@ -1,102 +1,48 @@
-## Goal
-Produce a single PDF (`/mnt/documents/vecto_hooked_audit_screenshots.pdf`) containing exhaustive, unedited live-app screenshots for **Trainer** and **Client** personas, organized linearly by persona then by the 4 Hooked phases (Trigger → Action → Variable Reward → Investment), with the exact labelling format NotebookLM requested.
+## TW-033 — Anisha Rohra hits ErrorBoundary on app launch
 
-## Credentials assumed
-- Account A: `Gaurav.rsh@gmail.com` / `@February$8912_`
-- Account B: `gaurav.sharma@fplabs.tech` / `@February$8912_`
+### What we know
+- **User**: `rohra.aneesha@gmail.com` → profile `Anisha Rohra` (client of trainer `30a0df77…`), Pune, signed up & last sign-in 13-May-2026 04:05 UTC.
+- **State**: brand-new client. **Zero** workouts, food_logs, step_logs, weight_logs, bmr_logs. `profiles.bmr` is **NULL** even though `bmr_updated_at` is set. `profile_complete = true`.
+- **Surface**: production (`vecto.fit`) in-browser (not PWA). Renders the React ErrorBoundary fallback → a render-time exception is being thrown somewhere in `<AppRoutes />` after splash.
+- **No server-side trace**: `ErrorBoundary.componentDidCatch` only does `console.error` (no remote reporting). No matching errors in Postgres/auth logs. So we currently can't see her stack from our side.
 
-I'll confirm which is Trainer vs Client by logging in and reading the dashboard. Please flag now if one of these is actually a different role than expected.
+### Likely suspects (brand-new client, null BMR, no logs)
+1. **`useProgressData` / Progress charts** — `profile.bmr` typed as `number` but is `null`; downstream math (`Number(null)` → NaN, divisions, chart domains) can throw or produce invalid values that crash Recharts.
+2. **Calendar/Home aggregation** — empty arrays for workouts/food/steps combined with null BMR could trip a `.reduce` or date-fns call (e.g. on an empty plan range).
+3. **Trainer-scoped data fetches** — a client with no active training_plan rendering a component that assumes `plan` is defined.
+4. **Stale PWA shell** — less likely (browser, not installed PWA), but `buildFreshness` race on first visit can also cause a one-shot render glitch.
 
-## Capture plan (live preview, mobile viewport 390×844 — matches real PWA usage)
+### Plan
 
-### Trainer persona — screens to capture
-**Trigger**
-- Browser tab on cold load (splash)
-- Auth screen
-- Post-login landing (Trainer dashboard / calendar home)
-- Notification bell open (inbox)
-- Any visible push-permission or install prompt
+**Step 1 — Log the issue (TW-033)**
+Append to `docs/issue-repository-index.md`:
+```
+TW-033 | High | To-investigate | New client (Anisha Rohra) hits ErrorBoundary on app launch in prod browser; null profiles.bmr + zero logs suspected to crash Progress/Calendar render | ErrorBoundary.tsx / useProgressData.tsx / Calendar.tsx
+```
+Add a matching detailed entry to `docs/issue-repository.md` (context, repro user, suspects, status).
 
-**Action**
-- Bottom nav — each tab opened (Home, Calendar, Plans, Refer, Profile)
-- Calendar: today cell, future cell tap → workout/meal log modal sequence
-- Trainer workout log modal: empty → exercise added → saved
-- Food log assignment flow (if available from trainer side)
-- Plans tab: list → "New Plan" modal → client picker → plan-type selection → submit
-- Manage Billing modal on an existing plan
-- Client selector (cross-page)
-- Profile page edits (TrainerProfile edit modal)
+**Step 2 — Make the next crash diagnosable (the real fix-enabler)**
+Currently ErrorBoundary swallows the stack into the user's console only. Upgrade so we can actually see *her* error next time:
+- In `ErrorBoundary.componentDidCatch`: also persist `{message, stack, componentStack, route, userId, ts, buildId}` into a new `public.client_error_reports` table via a tiny insert (RLS: authenticated users may insert their own row; nobody can SELECT except service role).
+- Add a "Copy error details" link under the Reload button so the user can paste the trace into WhatsApp.
+- Wire `window.addEventListener('error', …)` and `'unhandledrejection'` in `main.tsx` to also write to the same table — catches errors that happen outside React (e.g. service-worker / module-init).
 
-**Variable Reward**
-- Calendar with mixed green/red/pending states (scroll today + a couple weeks)
-- Progress page: client selector → Steps chart, Action chart, Outcome chart, quick stats row
-- Referral page (stats > CTA)
-- Subscription/renewal banners or expiry warnings if shown
-- Any toast/confirmation after a successful log
+**Step 3 — Hardening pass on the most-likely crash sites (defensive, no behaviour change for healthy users)**
+- `useProgressData.tsx`: treat `profile.bmr` as `number | null`; coalesce to `0` everywhere math runs; guard chart inputs against `NaN`/empty arrays.
+- `Calendar.tsx` / `Home.tsx`: ensure render path tolerates `plans = []`, `workouts = []`, `null` BMR.
+- `Progress.tsx`: when there is *no* data at all, render the empty state instead of attempting chart math.
 
-**Investment**
-- Profile setup (if re-accessible) or Profile fields (BMR, weight, WhatsApp, city, etc.)
-- Trainer profile edit modal full view
-- Plan creation deep flow (all steps, including legal footer)
-- Adding/inviting a client (referral code surface)
-- Subscription plan-selection modal (monthly vs annual)
+**Step 4 — Reproduce & confirm**
+- Use the browser tool to load prod with a freshly-created throwaway client mirroring Anisha's state (no logs, null BMR) and walk Home → Calendar → Progress → Profile, watching console for the original throw.
+- Once Step 2 is shipped and Anisha reopens the app once, pull her row from `client_error_reports` and pin the exact stack.
+- Patch the offending component, add a regression test under `src/test/` (e.g. `new-client-empty-state.test.ts`).
 
-### Client persona — screens to capture
-**Trigger**
-- Cold splash → auth → post-login Client dashboard
-- Notification bell / inbox (if visible to client)
-- Install prompt modal (force-trigger by route if needed)
-- Any nudge banners
+**Step 5 — Close TW-033** with files-touched list, regression check, and update the index entry to `Fixed`.
 
-**Action**
-- Bottom nav — each tab (Home, Calendar, Progress, MyTrainer, Profile)
-- Calendar: today cell tap → "mark done / edit / mark missed" sequence for assigned workout
-- Client workout log modal: pre-populated trainer recs → edit set → save
-- Food log: Describe tab → entry → AI result → save; Photo tab → camera capture path; batch entry across meals
-- Step log modal: input → live distance/energy preview → save
-- Weight log modal
-- BMR log modal (if client-accessible)
+### Out of scope (for this loop)
+- No Sentry / 3rd-party error service — using our own table keeps it inside Lovable Cloud.
+- No UX rewrite of the ErrorBoundary screen beyond adding the "Copy details" affordance.
 
-**Variable Reward**
-- Calendar showing locked past dates + green/red marks
-- Food session summary after save
-- Food diary panel for the day
-- Progress page: stats row (Avg Deficit, Days Logged, Days Missed, Weight Change), Steps/Action/Outcome charts
-- BMR-stale warning (if surfaced)
-- MyTrainer page
-
-**Investment**
-- ProfileSetup full flow if re-accessible (else Profile page sections)
-- Profile body-metrics editing
-- Initial weight/BMR entry
-- Terms & conditions accordions (Client view)
-- Client subscription view / plan agreement
-
-## Capture method
-1. `browser--navigate_to_sandbox` at 390×844 viewport.
-2. Log in as Account A → identify role from dashboard → capture trainer set if trainer, else client set.
-3. Log out (or open private session via re-navigation), log in as Account B → capture remaining set.
-4. For every screen: `browser--screenshot`, save raw PNG to `/tmp/audit/<persona>/<phase>/<NN>_<short-name>.png`. Files kept unedited (full viewport, no cropping, no annotation overlays).
-5. Trigger modals / states by direct interaction; if a state can't be reached without seed data (e.g. expired subscription banner), I'll note "state not reachable in current account" on that page.
-
-## PDF assembly
-- Tool: Python + ReportLab. One screenshot per page (portrait, US Letter), screenshot scaled to fit width with margin, label text above image.
-- Label format exactly per NotebookLM example:
-  `Trainer View: Screen 07 — Plans tab: New Plan modal, client picker open` (Phase: Action)
-- Section dividers (full-page title pages):
-  - Cover: "VECTO — Hooked Model UI/UX Audit Pack"
-  - Trainer › Trigger / Action / Variable Reward / Investment
-  - Client  › Trigger / Action / Variable Reward / Investment
-- Footer on every page: persona, phase, screen number, viewport (390×844), capture timestamp.
-- No analysis, no commentary, no recreated images. Pure labelled screenshot pack for NotebookLM ingestion.
-- Visual QA: convert final PDF to images via `pdftoppm`, scan every page for clipped images / wrong labels / blank pages, fix and re-render until clean.
-- Output: `/mnt/documents/vecto_hooked_audit_screenshots.pdf` + the raw `/tmp/audit/...` PNG tree (kept in case you want individual files later).
-
-## Out of scope
-- Writing the actual Hooked critique (NotebookLM will do that).
-- Editing, annotating, or recreating any screen.
-- Any code changes to the Vecto app.
-
-## Risks / things I'll surface as I go
-- Some states (expired subscription, push notification actually arriving, install prompt timing) may not be reachable from the two accounts on demand. I'll capture the closest in-app surface and label it `state simulated via route` or `not reachable — closest surface shown`.
-- If both accounts turn out to be the same role, I'll stop and ping you for a second-role login before proceeding.
+### What I need from you before building
+1. Approve creating `public.client_error_reports` (insert-only for `authenticated`, owner-scoped; service-role read).
+2. Confirm I can ask Anisha (via you) to **open the app once more after the patch ships** so her next crash gets captured — otherwise I'll be guessing from suspects only.
