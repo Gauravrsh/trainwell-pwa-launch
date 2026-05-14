@@ -775,3 +775,47 @@ No DB migration. No edge function. No UI/visual changes (per standing constraint
 ### Out of scope
 - No backfill required (DB was always correct; only the pill misreported).
 - No copy or visual changes.
+
+---
+
+## TW-033: New Client Hits ErrorBoundary on App Launch in Production Browser
+
+- **Severity:** High
+- **Status:** 🔍 To-investigate (instrumentation shipped; awaiting next reproduction to capture stack)
+- **Date Found:** 2026-05-14
+- **Reported by:** User (Gaurav) — screenshot from Anisha Rohra (`rohra.aneesha@gmail.com`)
+
+### Symptom
+Brand-new client opens `vecto.fit` in mobile Safari/Chrome (not installed PWA) and lands directly on the ErrorBoundary fallback ("Uh! This shouldn't have happened. Reload"). Reload does not recover. Splash screen completes, then `<AppRoutes />` throws during initial render.
+
+### What we know
+- **Profile:** `Anisha Rohra` / Pune / client of trainer `30a0df77-42a6-4409-8088-96d955d899e2` / signed up 2026-05-13.
+- **Data shape:** `profile_complete = true`, `weight_kg = 118.8`, `height_cm = 156`, `bmr = NULL` (despite `bmr_updated_at` being set), and **zero** rows in `workouts`, `food_logs`, `step_logs`, `weight_logs`, `bmr_logs`. No `client_training_plans` either.
+- **No server signal:** Postgres / auth logs are clean. The previous `ErrorBoundary.componentDidCatch` only did `console.error` locally — her stack never reached us.
+
+### Likely suspects (pending confirmation)
+1. Calendar/Home aggregation hitting an empty-data branch with `null` BMR.
+2. A component assuming a `client_training_plans` row exists.
+3. `useProgressData` math when literally every collection is empty.
+4. Less likely: stale PWA shell — but she is in a fresh browser tab, not the installed PWA.
+
+### Fix shipped this turn (instrumentation only — no behaviour change)
+1. New table `public.client_error_reports` (insert-only for `authenticated`, `SELECT` denied to everyone — only service role can read). Stores `message`, `stack`, `component_stack`, `route`, `user_agent`, `build_id`, `user_id`, `profile_id`, `captured_at`.
+2. New util `src/lib/errorReporter.ts` — single `reportClientError()` that does a best-effort insert and never throws.
+3. `ErrorBoundary.componentDidCatch` now calls `reportClientError()` in addition to `console.error`. The fallback UI gains a small "Copy error details" affordance so users can paste the trace into WhatsApp.
+4. `src/main.tsx` registers `window.addEventListener('error', …)` and `'unhandledrejection'` listeners that also write to `client_error_reports`. Catches throws outside the React tree (module-init, SW, async).
+
+### Next step (once Anisha reopens the app)
+- `SELECT * FROM client_error_reports WHERE user_id = '68c4b509-15aa-430f-9133-567c3aa8aea5' ORDER BY captured_at DESC LIMIT 5;` to retrieve her real stack.
+- Patch the offending component, add a regression test for "brand-new client / null BMR / empty collections", flip TW-033 to ✅ Fixed.
+
+### Files touched (this turn)
+- `supabase/migrations/<timestamp>_client_error_reports.sql` (new table + RLS)
+- `src/lib/errorReporter.ts` (new)
+- `src/components/ErrorBoundary.tsx`
+- `src/main.tsx`
+- `docs/issue-repository-index.md`
+- `docs/issue-repository.md`
+
+### Regression check
+✅ Instrumentation is additive: new table is invisible to all reads, ErrorBoundary still renders the same Vecto-branded fallback, error listeners are no-ops on the happy path. No existing tests touched.
