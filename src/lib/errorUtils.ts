@@ -35,6 +35,8 @@ export function sanitizeErrorMessage(error: unknown): string {
   if (!error) return defaultMessage;
   
   let errorMessage = '';
+  let errorCode = '';
+  let errorStatus = 0;
   
   if (error instanceof Error) {
     errorMessage = error.message;
@@ -44,6 +46,36 @@ export function sanitizeErrorMessage(error: unknown): string {
     errorMessage = String((error as { message: unknown }).message);
   } else {
     return defaultMessage;
+  }
+
+  // Supabase AuthApiError carries `code` and `status` even when `message`
+  // is something generic. We MUST inspect these so the duplicate-signup
+  // case maps to a clear, actionable message instead of "Something went
+  // wrong" (TW-034).
+  if (typeof error === 'object' && error !== null) {
+    const e = error as { code?: unknown; status?: unknown; name?: unknown };
+    if (typeof e.code === 'string') errorCode = e.code;
+    if (typeof e.status === 'number') errorStatus = e.status;
+  }
+
+  if (
+    errorCode === 'user_already_exists' ||
+    errorCode === 'email_exists' ||
+    errorCode === 'email_address_not_authorized'
+  ) {
+    return 'An account with this email already exists. Try signing in instead.';
+  }
+  if (errorCode === 'weak_password') {
+    return 'This password is too weak or has appeared in a data breach. Please choose a stronger, unique password.';
+  }
+  if (errorCode === 'invalid_credentials') {
+    return 'Invalid email or password. Please try again.';
+  }
+  if (errorCode === 'over_email_send_rate_limit' || errorCode === 'over_request_rate_limit') {
+    return 'Too many attempts. Please wait a few minutes and try again.';
+  }
+  if (errorStatus === 422 && /sign[-_ ]?up|register|email/i.test(errorMessage)) {
+    return 'An account with this email already exists. Try signing in instead.';
   }
   
   // Check against known patterns

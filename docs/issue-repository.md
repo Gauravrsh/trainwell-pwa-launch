@@ -819,3 +819,30 @@ Brand-new client opens `vecto.fit` in mobile Safari/Chrome (not installed PWA) a
 
 ### Regression check
 ✅ Instrumentation is additive: new table is invisible to all reads, ErrorBoundary still renders the same Vecto-branded fallback, error listeners are no-ops on the happy path. No existing tests touched.
+
+---
+
+## TW-034 — Duplicate-signup shows generic "Something went wrong"
+
+**Severity:** High  **Status:** Fixed  **Date:** 2026-05-14
+
+**Symptom**
+A user (Puja Chhabria, `unja284@gmail.com`, already a registered client of trainer `30a0df77…` since 2026-04-21) attempted to Sign Up again from the PWA. UI rendered the generic red banner "Sign up failed — Something went wrong. Please try again." with no guidance to sign in. The screenshot showing the email made the report easy to triage but the message itself was useless to the user.
+
+**Root cause (two layers)**
+1. **Anti-enumeration silent success.** With Supabase email confirmation enabled, `supabase.auth.signUp()` for an already-registered email returns HTTP 200 with `data.user` populated but `data.user.identities` as an empty array — *no error object is returned*. Our `useAuth.signUp` only surfaced `error`, so this case fell through as "success" until the next step blew up generically.
+2. **Sanitizer ignored AuthApiError metadata.** `sanitizeErrorMessage` only ran regex against `error.message`. Supabase's `AuthApiError` carries `.code` (`user_already_exists`, `weak_password`, `invalid_credentials`, etc.) and `.status` (422 for duplicates). When the message string didn't match our patterns we fell to the default "Something went wrong" instead of using the code.
+
+**Fix**
+- `src/hooks/useAuth.tsx` — after `signUp`, detect `data.user.identities.length === 0` and synthesize a `user_already_exists` (status 422) error so the UI hits the duplicate-email path.
+- `src/lib/errorUtils.ts` — `sanitizeErrorMessage` now also reads `error.code` and `error.status` from AuthApiError-shaped objects and maps `user_already_exists` / `email_exists` / `weak_password` / `invalid_credentials` / rate-limit codes to the same friendly copy used for the message-pattern matches. Status 422 with sign-up/email vocabulary also maps to the duplicate-account message.
+
+**Files touched**
+- `src/hooks/useAuth.tsx`
+- `src/lib/errorUtils.ts`
+- `docs/issue-repository-index.md`
+- `docs/issue-repository.md`
+
+**Regression check**
+- Existing pattern matches (`User already registered`, `weak_password` text, etc.) still fall through their existing regexes — code-based branch only adds coverage, never removes it.
+- New users (no existing email) still see normal signup flow because `identities` is non-empty for fresh signups.
