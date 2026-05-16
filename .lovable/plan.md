@@ -1,48 +1,70 @@
-## TW-033 — Anisha Rohra hits ErrorBoundary on app launch
+# TW-035 — Trainer "View Workout" shows empty when client logs exercises trainer didn't prescribe
 
-### What we know
-- **User**: `rohra.aneesha@gmail.com` → profile `Anisha Rohra` (client of trainer `30a0df77…`), Pune, signed up & last sign-in 13-May-2026 04:05 UTC.
-- **State**: brand-new client. **Zero** workouts, food_logs, step_logs, weight_logs, bmr_logs. `profiles.bmr` is **NULL** even though `bmr_updated_at` is set. `profile_complete = true`.
-- **Surface**: production (`vecto.fit`) in-browser (not PWA). Renders the React ErrorBoundary fallback → a render-time exception is being thrown somewhere in `<AppRoutes />` after splash.
-- **No server-side trace**: `ErrorBoundary.componentDidCatch` only does `console.error` (no remote reporting). No matching errors in Postgres/auth logs. So we currently can't see her stack from our side.
+## Voice of customer (Vaishnavi → about client Ankita Mishu, 15 May 2026)
 
-### Likely suspects (brand-new client, null BMR, no logs)
-1. **`useProgressData` / Progress charts** — `profile.bmr` typed as `number` but is `null`; downstream math (`Number(null)` → NaN, divisions, chart domains) can throw or produce invalid values that crash Recharts.
-2. **Calendar/Home aggregation** — empty arrays for workouts/food/steps combined with null BMR could trip a `.reduce` or date-fns call (e.g. on an empty plan range).
-3. **Trainer-scoped data fetches** — a client with no active training_plan rendering a component that assumes `plan` is defined.
-4. **Stale PWA shell** — less likely (browser, not installed PWA), but `buildFreshness` race on first visit can also cause a one-shot render glitch.
+1. "When the client logged the workout, I'm not able to see what all is written and done." → Trainer opens the day, modal says "Client has logged their workout. View only." then renders the empty state "No workout logged for this date."
+2. "I'm not able to see the check of the previous workout (which I logged for them) — those are not getting reflected." → Same modal, different days: the workouts she pre-logged for Ankita don't show the actuals the client filled in, so it feels like her prescription "disappeared."
 
-### Plan
+Both complaints are the same bug surfaced from two angles.
 
-**Step 1 — Log the issue (TW-033)**
-Append to `docs/issue-repository-index.md`:
+## Definitive diagnosis (verified against production data)
+
+Database snapshot for Ankita Mishu (`profiles.id = b9d6aa3a-…`), workout for **2026-05-15** (`workouts.id = ceeccc38-…`, status `completed`):
+
+```text
+exercise_name                          | recommended_* | actual_sets | actual_reps | actual_weight
+Thread the Needle (Thoracic Mobility)  | all NULL      |     1       |     10      |     1.00
+Band stretches                         | all NULL      |     1       |     10      |     1.00
 ```
-TW-033 | High | To-investigate | New client (Anisha Rohra) hits ErrorBoundary on app launch in prod browser; null profiles.bmr + zero logs suspected to crash Progress/Calendar render | ErrorBoundary.tsx / useProgressData.tsx / Calendar.tsx
+
+Trainer load path in `src/pages/Calendar.tsx → handleTrainerLogWorkout` (lines 459–481):
+
+```ts
+const hasActualValues = exercises.some(isActualLogged);
+setClientHasLogged(hasActualValues);                        // → true
+setExistingExercises(parsePlannedExercises(exercises));     // → []  (filters by isRecommended)
 ```
-Add a matching detailed entry to `docs/issue-repository.md` (context, repro user, suspects, status).
 
-**Step 2 — Make the next crash diagnosable (the real fix-enabler)**
-Currently ErrorBoundary swallows the stack into the user's console only. Upgrade so we can actually see *her* error next time:
-- In `ErrorBoundary.componentDidCatch`: also persist `{message, stack, componentStack, route, userId, ts, buildId}` into a new `public.client_error_reports` table via a tiny insert (RLS: authenticated users may insert their own row; nobody can SELECT except service role).
-- Add a "Copy error details" link under the Reload button so the user can paste the trace into WhatsApp.
-- Wire `window.addEventListener('error', …)` and `'unhandledrejection'` in `main.tsx` to also write to the same table — catches errors that happen outside React (e.g. service-worker / module-init).
+`parsePlannedExercises` (Calendar.tsx 273–322) filters rows with `isRecommended(...)`. For the 15-May rows every `recommended_*` column is NULL, so the filter returns `[]`. The modal then hits the empty-state branch in `TrainerWorkoutLogModal.tsx` (lines 570–577):
 
-**Step 3 — Hardening pass on the most-likely crash sites (defensive, no behaviour change for healthy users)**
-- `useProgressData.tsx`: treat `profile.bmr` as `number | null`; coalesce to `0` everywhere math runs; guard chart inputs against `NaN`/empty arrays.
-- `Calendar.tsx` / `Home.tsx`: ensure render path tolerates `plans = []`, `workouts = []`, `null` BMR.
-- `Progress.tsx`: when there is *no* data at all, render the empty state instead of attempting chart math.
+```tsx
+{exerciseBlocks.length === 0 && (
+  <p>{isReadOnly ? 'No workout logged for this date' : 'Start by adding an exercise'}</p>
+)}
+```
 
-**Step 4 — Reproduce & confirm**
-- Use the browser tool to load prod with a freshly-created throwaway client mirroring Anisha's state (no logs, null BMR) and walk Home → Calendar → Progress → Profile, watching console for the original throw.
-- Once Step 2 is shipped and Anisha reopens the app once, pull her row from `client_error_reports` and pin the exact stack.
-- Patch the offending component, add a regression test under `src/test/` (e.g. `new-client-empty-state.test.ts`).
+Result: header correctly says "Client has logged their workout. View only." while the body says "No workout logged for this date." — the contradiction Vaishnavi screenshotted.
 
-**Step 5 — Close TW-033** with files-touched list, regression check, and update the index entry to `Fixed`.
+For complaint #2 (older days like 12-May, 13-May, 14-May): rows have both `recommended_*` AND `actual_*` populated, but `parsePlannedExercises` only reads the `recommended_*` columns. So when the client changed weight/reps from what was prescribed, the trainer's read-only view still renders the prescription, not what the client actually did — hence "those are not getting reflected."
 
-### Out of scope (for this loop)
-- No Sentry / 3rd-party error service — using our own table keeps it inside Lovable Cloud.
-- No UX rewrite of the ErrorBoundary screen beyond adding the "Copy details" affordance.
+## Root cause (one line)
 
-### What I need from you before building
-1. Approve creating `public.client_error_reports` (insert-only for `authenticated`, owner-scoped; service-role read).
-2. Confirm I can ask Anisha (via you) to **open the app once more after the patch ships** so her next crash gets captured — otherwise I'll be guessing from suspects only.
+Trainer's read-only "View Workout" modal is hydrated exclusively from `recommended_*` columns. It ignores `actual_*`, so any client-added exercise vanishes and any client edit to a prescribed exercise is invisible.
+
+## Fix
+
+Build a merged "actuals-first" view payload in `handleTrainerLogWorkout` whenever `clientHasLogged` is true, and pass that to `TrainerWorkoutLogModal`.
+
+1. **`src/pages/Calendar.tsx → handleTrainerLogWorkout`** — when `hasActualValues` is true, build `existingExercises` from a new merge helper instead of `parsePlannedExercises`. When false (trainer prescription only, client hasn't logged yet), keep current behavior so the edit flow continues to work.
+2. **`src/pages/Calendar.tsx`** — add `parseExercisesForTrainerView(rows)` that:
+   - For each unique `exercise_name`, picks `actual_*` values when any are present on its rows, otherwise falls back to `recommended_*`.
+   - Reuses the same per-metric-type branching already present in `parseLoggedActuals` / `parsePlannedExercises` (reps grouped per name, others one-row-one-entry).
+   - Returns `PlannedExercisePayload[]` so the existing modal renders it unchanged.
+3. **No changes** to `TrainerWorkoutLogModal.tsx` — it already disables inputs via `isReadOnly`, so showing actuals there is purely additive.
+
+## Verification (post-fix, repeatable from DB)
+
+- For Ankita 2026-05-15: trainer modal must render 2 blocks — "Thread the Needle (Thoracic Mobility) — 1×10 @ 1 kg" and "Band stretches — 1×10 @ 1 kg" — matching the `actual_*` columns above.
+- For Ankita 2026-05-11 (`96ce4d22-…`): every exercise must show the `actual_weight` / `actual_reps` (e.g. Leg extension set 3 → 35 kg × 10, not the prescribed 30 kg × 10).
+- Run `SELECT exercise_name, actual_sets, actual_reps, actual_weight, recommended_weight FROM exercises WHERE workout_id = '<id>'` and compare against what the modal renders — they must match the `actual_*` column row-for-row.
+
+## Issue repository
+
+Append **TW-035** to `docs/issue-repository-index.md` (To-investigate → ✅ Fixed after deploy) and the full entry to `docs/issue-repository.md` with:
+- Reporter: Vaishnavi (trainer) re client Ankita Mishu
+- Symptom, root-cause SQL evidence above
+- Files touched, regression check (trainer create/edit flow for not-yet-logged days still works)
+
+## Out of scope
+
+- No DB migration. No schema change. No client-side write path changes. UI/data-mapping fix only.
