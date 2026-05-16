@@ -536,7 +536,16 @@ const Calendar = () => {
       if (!error && exercises) {
         const hasActualValues = (exercises as unknown as Exercise[]).some(isActualLogged);
         setClientHasLogged(hasActualValues);
-        setExistingExercises(parsePlannedExercises(exercises as unknown as Exercise[]));
+        // TW-035 — Once the client has logged, hydrate the trainer's
+        // read-only modal from actuals (with prescription fallback) so
+        // the body matches the "Client has logged their workout" header.
+        // Otherwise keep showing the trainer's prescription so the
+        // editable flow still works as before.
+        setExistingExercises(
+          hasActualValues
+            ? parseExercisesForTrainerView(exercises as unknown as Exercise[])
+            : parsePlannedExercises(exercises as unknown as Exercise[])
+        );
       }
     } else {
       setExistingExercises([]);
