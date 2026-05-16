@@ -846,3 +846,44 @@ A user (Puja Chhabria, `unja284@gmail.com`, already a registered client of train
 **Regression check**
 - Existing pattern matches (`User already registered`, `weak_password` text, etc.) still fall through their existing regexes — code-based branch only adds coverage, never removes it.
 - New users (no existing email) still see normal signup flow because `identities` is non-empty for fresh signups.
+
+---
+
+## TW-035 — Trainer "View Workout" shows empty when client logs unprescribed exercises
+
+**Severity:** High  **Status:** Fixed  **Date:** 2026-05-16
+
+**Reporter:** Trainer Vaishnavi (`profiles.id = 30a0df77-…`) about client Ankita Mishu (`profiles.id = b9d6aa3a-…`).
+
+**Symptom (verbatim VOC)**
+1. "This is what displayed to me, when the client logged the workout. But I'm not able to see what all is written and done."
+2. "I'm not able to see the check of the previous workout (which I logged for them), those are not getting reflected."
+
+Screenshot showed trainer opening 2026-05-15 for Ankita: header said *"View Workout — Client has logged their workout. View only."* but body said *"No workout logged for this date."*
+
+**Root cause (verified against production DB)**
+`workouts.id = ceeccc38-…` (Ankita, 2026-05-15) contained 2 exercises (`Thread the Needle`, `Band stretches`) with `actual_sets=1, actual_reps=10, actual_weight=1.00` and **all `recommended_*` NULL** — the client added two stretches that the trainer never prescribed.
+
+Trainer's load path in `Calendar.tsx → handleTrainerLogWorkout` used `parsePlannedExercises(rows)`, which filters by `isRecommended(...)`. With every `recommended_*` NULL the filter returned `[]`, so `existingExercises` was empty and `TrainerWorkoutLogModal` rendered the empty-state branch even though `clientHasLogged` was true.
+
+The second complaint shares the same root cause: for days where the trainer prescribed and the client edited the values (e.g. Leg extension set 3, prescribed 30 kg × 10, client actual 35 kg × 10), the modal still read `recommended_*` and never showed the client's actuals.
+
+**Fix**
+- `src/pages/Calendar.tsx` — added `parseExercisesForTrainerView(rows)`: groups exercise rows by name in first-seen order, and for each group picks `actual_*` values (with `recommended_*` fallback) whenever **any** row in the group has actuals logged. Reuses the same per-metric-type branching as the existing parsers.
+- `src/pages/Calendar.tsx → handleTrainerLogWorkout` — when `hasActualValues` is true, hydrate `existingExercises` via the new parser instead of `parsePlannedExercises`. When false (client hasn't logged yet) the trainer still gets the prescription so the editable flow is unchanged.
+- No DB migration. No schema change. No client write-path change.
+
+**Verification (post-fix, repeatable from DB)**
+- Ankita 2026-05-15 (`ceeccc38-…`): trainer modal now renders "Thread the Needle (Thoracic Mobility) — 1×10 @ 1 kg" and "Band stretches — 1×10 @ 1 kg".
+- Ankita 2026-05-11 (`96ce4d22-…`): trainer modal now reflects every `actual_weight` / `actual_reps` value (e.g. Leg extension set 3 = 35 kg × 10).
+- Counter-check SQL: `SELECT exercise_name, actual_sets, actual_reps, actual_weight, recommended_weight FROM exercises WHERE workout_id = '<id>' ORDER BY created_at` — modal contents must match `actual_*` columns row-for-row.
+
+**Files touched**
+- `src/pages/Calendar.tsx`
+- `docs/issue-repository-index.md`
+- `docs/issue-repository.md`
+
+**Regression check**
+- `parsePlannedExercises` and `parseLoggedActuals` are untouched.
+- When the trainer opens a not-yet-logged day, `hasActualValues=false` → old code path preserved, editable flow unaffected.
+- `TrainerWorkoutLogModal` is unchanged; it already disables every input when `clientHasLogged` is true, so surfacing actuals is purely additive (no risk of trainer overwriting client logs).

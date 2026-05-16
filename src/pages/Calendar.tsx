@@ -379,6 +379,73 @@ const Calendar = () => {
     );
   };
 
+  // TW-035 — Trainer's read-only "View Workout" hydrator.
+  // When a client has logged the day, prefer `actual_*` columns and fall
+  // back to `recommended_*` only for rows the client never touched. This
+  // ensures the trainer sees exactly what the client did, including
+  // exercises the client added that the trainer never prescribed (rows
+  // with NULL recommended_* columns, which the prescription-only parser
+  // would silently drop).
+  const parseExercisesForTrainerView = (rows: Exercise[]): PlannedExercisePayload[] => {
+    // Group rows by exercise_name preserving first-seen order.
+    const order: string[] = [];
+    const byName: Map<string, Exercise[]> = new Map();
+    for (const ex of rows) {
+      const name = ex.exercise_name?.trim();
+      if (!name) continue;
+      if (!byName.has(name)) {
+        byName.set(name, []);
+        order.push(name);
+      }
+      byName.get(name)!.push(ex);
+    }
+
+    const result: PlannedExercisePayload[] = [];
+    for (const name of order) {
+      const group = byName.get(name)!;
+      const metricType = (group[0].metric_type ?? DEFAULT_METRIC_TYPE) as MetricType;
+      const useActual = group.some(isActualLogged);
+      const pickReps = (ex: Exercise) =>
+        useActual ? (ex.actual_reps ?? ex.recommended_reps ?? 0) : (ex.recommended_reps ?? 0);
+      const pickWeight = (ex: Exercise) =>
+        useActual ? (ex.actual_weight ?? ex.recommended_weight ?? 0) : (ex.recommended_weight ?? 0);
+      const pickDuration = (ex: Exercise) =>
+        useActual ? (ex.actual_duration_seconds ?? ex.recommended_duration_seconds ?? 0) : (ex.recommended_duration_seconds ?? 0);
+      const pickDistance = (ex: Exercise) =>
+        useActual ? (ex.actual_distance_meters ?? ex.recommended_distance_meters ?? 0) : (ex.recommended_distance_meters ?? 0);
+      const pickRounds = (ex: Exercise) =>
+        useActual ? (ex.actual_rounds ?? ex.recommended_rounds ?? 0) : (ex.recommended_rounds ?? 0);
+      const pickEmomMin = (ex: Exercise) =>
+        useActual ? (ex.actual_emom_minutes ?? ex.recommended_emom_minutes ?? 0) : (ex.recommended_emom_minutes ?? 0);
+
+      if (metricType === 'reps_weight' || metricType === 'reps_only') {
+        const sets = group.map(ex => ({ weight: pickWeight(ex), reps: pickReps(ex) }));
+        result.push({ name, metricType, sets });
+      } else if (metricType === 'time') {
+        result.push({ name, metricType, durationSeconds: pickDuration(group[0]) });
+      } else if (metricType === 'distance_time') {
+        result.push({
+          name, metricType,
+          distanceMeters: pickDistance(group[0]),
+          durationSeconds: pickDuration(group[0]),
+        });
+      } else if (metricType === 'amrap') {
+        result.push({
+          name, metricType,
+          emomMinutes: pickEmomMin(group[0]),
+          rounds: pickRounds(group[0]),
+        });
+      } else if (metricType === 'emom') {
+        result.push({
+          name, metricType,
+          emomMinutes: pickEmomMin(group[0]),
+          emomReps: pickReps(group[0]),
+        });
+      }
+    }
+    return result;
+  };
+
   // Boundary-only styles for logged status (kept name for backward compat)
   const getStatusBorder = (status?: string): string | null => {
     if (status === 'completed') return 'border-success';
@@ -469,7 +536,16 @@ const Calendar = () => {
       if (!error && exercises) {
         const hasActualValues = (exercises as unknown as Exercise[]).some(isActualLogged);
         setClientHasLogged(hasActualValues);
-        setExistingExercises(parsePlannedExercises(exercises as unknown as Exercise[]));
+        // TW-035 — Once the client has logged, hydrate the trainer's
+        // read-only modal from actuals (with prescription fallback) so
+        // the body matches the "Client has logged their workout" header.
+        // Otherwise keep showing the trainer's prescription so the
+        // editable flow still works as before.
+        setExistingExercises(
+          hasActualValues
+            ? parseExercisesForTrainerView(exercises as unknown as Exercise[])
+            : parsePlannedExercises(exercises as unknown as Exercise[])
+        );
       }
     } else {
       setExistingExercises([]);
