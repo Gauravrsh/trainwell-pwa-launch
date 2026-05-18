@@ -887,3 +887,48 @@ The second complaint shares the same root cause: for days where the trainer pres
 - `parsePlannedExercises` and `parseLoggedActuals` are untouched.
 - When the trainer opens a not-yet-logged day, `hasActualValues=false` → old code path preserved, editable flow unaffected.
 - `TrainerWorkoutLogModal` is unchanged; it already disables every input when `clientHasLogged` is true, so surfacing actuals is purely additive (no risk of trainer overwriting client logs).
+
+---
+
+## TW-036 — Stale chunk crash on /dashboard after deploy
+
+**Severity:** High  **Status:** Fixed  **Date:** 2026-05-18
+
+**Reporter:** Gaurav (`gaurav.rsh@gmail.com`). Crash captured via TW-033 ErrorBoundary instrumentation.
+
+**Symptom (verbatim from `client_error_reports`)**
+```
+Time: 2026-05-18T16:51:00.627Z
+Route: https://vecto.fit/dashboard
+UA:   Mozilla/5.0 (Linux; Android 10) Chrome/148 Mobile
+Source: react-error-boundary
+Message: Failed to fetch dynamically imported module:
+         https://vecto.fit/assets/Calendar-DgU0TVB0.js
+Component stack: at Lazy … at Suspense …
+```
+ErrorBoundary rendered the "Uh! This shouldn't have happened" screen.
+
+**Root cause**
+Vite emits content-hashed filenames for every code-split chunk. `src/App.tsx` lazy-loads every authed page via `React.lazy(() => import(...))`. When a new build is deployed, the user's already-loaded `index.html` still references the OLD chunk hash (`Calendar-DgU0TVB0.js`). When React Router navigates to `/dashboard`, the lazy `import()` requests the old path, the CDN returns 404, and the browser throws `TypeError: Failed to fetch dynamically imported module`. The throw bubbles through Suspense to `ErrorBoundary`, which has no way to know this is a recoverable "you have a stale tab" condition versus a real app crash.
+
+The existing `buildFreshness.ts` infra handles the **proactive** path (poll `/build-id.json` on visibility/focus + 3s post-boot) but cannot catch the moment a user clicks straight into a missing chunk.
+
+**Fix**
+- `src/lib/lazyWithReload.ts` (new) — wrapper around `React.lazy` that catches dynamic-import failures matching the chunk-load signature (`Failed to fetch dynamically imported module`, `Loading chunk N failed`, `Importing a module script failed`, CSS chunk variants) and hard-reloads exactly once per chunk URL per session. Per-URL `sessionStorage` guard (`vecto:chunk-reload-attempted`) prevents refresh loops if the chunk truly is broken — second attempt falls through and ErrorBoundary takes over.
+- `src/App.tsx` — replaced every `lazy(() => import(...))` with `lazyWithReload(() => import(...))`. No other behavioral change.
+- The reload helper returns a never-resolving Promise so Suspense holds its fallback during the reload window, avoiding a flash of error UI in the gap.
+
+**Files touched**
+- `src/lib/lazyWithReload.ts` (new)
+- `src/App.tsx`
+- `docs/issue-repository-index.md`
+- `docs/issue-repository.md`
+
+**Regression check**
+- Non-chunk-load errors (real bugs in page modules) still throw — `isChunkLoadError` is a strict regex match.
+- Loop guard: per-URL sessionStorage list means a permanently-missing chunk reloads at most once.
+- No change to `buildFreshness.ts`, service worker, or `manifest.json`.
+- ErrorBoundary continues to capture any non-recoverable failure (including the second pass for the same chunk).
+
+**Verification sentinel**
+- Going forward, occurrences of `Failed to fetch dynamically imported module` in `client_error_reports` should approach zero. Any remaining ones indicate true CDN/network failure, not stale-deploy.

@@ -1,70 +1,41 @@
-# TW-035 — Trainer "View Workout" shows empty when client logs exercises trainer didn't prescribe
+# TW-036 — Stale chunk crash: "Failed to fetch dynamically imported module" on /dashboard
 
-## Voice of customer (Vaishnavi → about client Ankita Mishu, 15 May 2026)
+## Voice of customer (Gaurav, vecto.fit/dashboard, 2026-05-18 16:51 UTC, Android Chrome 148)
 
-1. "When the client logged the workout, I'm not able to see what all is written and done." → Trainer opens the day, modal says "Client has logged their workout. View only." then renders the empty state "No workout logged for this date."
-2. "I'm not able to see the check of the previous workout (which I logged for them) — those are not getting reflected." → Same modal, different days: the workouts she pre-logged for Ankita don't show the actuals the client filled in, so it feels like her prescription "disappeared."
-
-Both complaints are the same bug surfaced from two angles.
-
-## Definitive diagnosis (verified against production data)
-
-Database snapshot for Ankita Mishu (`profiles.id = b9d6aa3a-…`), workout for **2026-05-15** (`workouts.id = ceeccc38-…`, status `completed`):
-
-```text
-exercise_name                          | recommended_* | actual_sets | actual_reps | actual_weight
-Thread the Needle (Thoracic Mobility)  | all NULL      |     1       |     10      |     1.00
-Band stretches                         | all NULL      |     1       |     10      |     1.00
+```
+TypeError: Failed to fetch dynamically imported module:
+  https://vecto.fit/assets/Calendar-DgU0TVB0.js
+Component stack: at Lazy ... at Suspense ...
+Source: react-error-boundary
 ```
 
-Trainer load path in `src/pages/Calendar.tsx → handleTrainerLogWorkout` (lines 459–481):
+ErrorBoundary captured the throw cleanly (TW-033 instrumentation paid off).
 
-```ts
-const hasActualValues = exercises.some(isActualLogged);
-setClientHasLogged(hasActualValues);                        // → true
-setExistingExercises(parsePlannedExercises(exercises));     // → []  (filters by isRecommended)
-```
+## Diagnosis
 
-`parsePlannedExercises` (Calendar.tsx 273–322) filters rows with `isRecommended(...)`. For the 15-May rows every `recommended_*` column is NULL, so the filter returns `[]`. The modal then hits the empty-state branch in `TrainerWorkoutLogModal.tsx` (lines 570–577):
+`src/App.tsx` lazy-loads every authed page (`Calendar`, `Home`, `Plans`, etc.) via `React.lazy(() => import("./pages/..."))`. When a new build is deployed, Vite emits new content-hashed filenames (e.g. `Calendar-DgU0TVB0.js` → `Calendar-XyZ.js`). The user's already-loaded `index.html` (and its in-memory React app) still points at the **old** filename. When React Router navigates to `/dashboard` and triggers the lazy `import()`, the old asset path returns 404 from origin and the browser throws `TypeError: Failed to fetch dynamically imported module` — which bubbles to `ErrorBoundary` and shows the "Uh! This shouldn't have happened" screen.
 
-```tsx
-{exerciseBlocks.length === 0 && (
-  <p>{isReadOnly ? 'No workout logged for this date' : 'Start by adding an exercise'}</p>
-)}
-```
-
-Result: header correctly says "Client has logged their workout. View only." while the body says "No workout logged for this date." — the contradiction Vaishnavi screenshotted.
-
-For complaint #2 (older days like 12-May, 13-May, 14-May): rows have both `recommended_*` AND `actual_*` populated, but `parsePlannedExercises` only reads the `recommended_*` columns. So when the client changed weight/reps from what was prescribed, the trainer's read-only view still renders the prescription, not what the client actually did — hence "those are not getting reflected."
-
-## Root cause (one line)
-
-Trainer's read-only "View Workout" modal is hydrated exclusively from `recommended_*` columns. It ignores `actual_*`, so any client-added exercise vanishes and any client edit to a prescribed exercise is invisible.
+This is the well-known Vite + lazy-loading stale-chunk problem. `buildFreshness.ts` already exists for the SW path, but it only fires on visibility/focus and a 3-second post-boot timer — it does not catch the moment the user clicks a route whose chunk has already vanished from the CDN.
 
 ## Fix
 
-Build a merged "actuals-first" view payload in `handleTrainerLogWorkout` whenever `clientHasLogged` is true, and pass that to `TrainerWorkoutLogModal`.
+1. **`src/lib/lazyWithReload.ts`** (new) — wrapper around `React.lazy` that catches dynamic-import failures matching the chunk-load signature and, exactly once per session per chunk path, hard-reloads the page (`window.location.reload()`). Uses `sessionStorage` key `vecto:chunk-reload-attempted` keyed by the failing URL to prevent infinite reload loops if the chunk truly is broken (in which case the second attempt falls through and the ErrorBoundary takes over). Reuses `logError` for telemetry.
 
-1. **`src/pages/Calendar.tsx → handleTrainerLogWorkout`** — when `hasActualValues` is true, build `existingExercises` from a new merge helper instead of `parsePlannedExercises`. When false (trainer prescription only, client hasn't logged yet), keep current behavior so the edit flow continues to work.
-2. **`src/pages/Calendar.tsx`** — add `parseExercisesForTrainerView(rows)` that:
-   - For each unique `exercise_name`, picks `actual_*` values when any are present on its rows, otherwise falls back to `recommended_*`.
-   - Reuses the same per-metric-type branching already present in `parseLoggedActuals` / `parsePlannedExercises` (reps grouped per name, others one-row-one-entry).
-   - Returns `PlannedExercisePayload[]` so the existing modal renders it unchanged.
-3. **No changes** to `TrainerWorkoutLogModal.tsx` — it already disables inputs via `isReadOnly`, so showing actuals there is purely additive.
+2. **`src/App.tsx`** — replace each `lazy(() => import(...))` with `lazyWithReload(() => import(...))`. No other changes; route structure, fallback, and ErrorBoundary untouched.
 
-## Verification (post-fix, repeatable from DB)
+3. **No DB / SW changes.** The existing `buildFreshness` infra continues to handle the proactive path (visibility change). This patch handles the reactive path (user navigates straight into a missing chunk).
 
-- For Ankita 2026-05-15: trainer modal must render 2 blocks — "Thread the Needle (Thoracic Mobility) — 1×10 @ 1 kg" and "Band stretches — 1×10 @ 1 kg" — matching the `actual_*` columns above.
-- For Ankita 2026-05-11 (`96ce4d22-…`): every exercise must show the `actual_weight` / `actual_reps` (e.g. Leg extension set 3 → 35 kg × 10, not the prescribed 30 kg × 10).
-- Run `SELECT exercise_name, actual_sets, actual_reps, actual_weight, recommended_weight FROM exercises WHERE workout_id = '<id>'` and compare against what the modal renders — they must match the `actual_*` column row-for-row.
+## Verification
+
+- Repro path (manual): build, deploy, navigate to `/`, then deploy a new build that renames `Calendar-*.js`, then click "Dashboard". Before fix → ErrorBoundary screen. After fix → page reloads once and lands on a working `/dashboard`.
+- Sentinel: error reports in `client_error_reports` containing `Failed to fetch dynamically imported module` should drop to ~0 going forward; any remaining ones imply a true CDN/network failure (covered by the second-attempt fallthrough).
+- Loop guard: `sessionStorage["vecto:chunk-reload-attempted"]` ensures a broken deploy can't cause refresh thrash.
 
 ## Issue repository
 
-Append **TW-035** to `docs/issue-repository-index.md` (To-investigate → ✅ Fixed after deploy) and the full entry to `docs/issue-repository.md` with:
-- Reporter: Vaishnavi (trainer) re client Ankita Mishu
-- Symptom, root-cause SQL evidence above
-- Files touched, regression check (trainer create/edit flow for not-yet-logged days still works)
+Append TW-036 to `docs/issue-repository-index.md` (Fixed) and add full entry to `docs/issue-repository.md` with reporter, root cause, fix, regression check.
 
 ## Out of scope
 
-- No DB migration. No schema change. No client-side write path changes. UI/data-mapping fix only.
+- No changes to `buildFreshness.ts`, SW, or `manifest.json`.
+- No deferred chunks beyond what `App.tsx` already lazy-loads.

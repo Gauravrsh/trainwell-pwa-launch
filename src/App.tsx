@@ -1,4 +1,5 @@
-import { useState, useEffect, lazy, Suspense, useRef } from "react";
+import { useState, useEffect, Suspense, useRef } from "react";
+import { lazyWithReload } from "@/lib/lazyWithReload";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -22,22 +23,24 @@ import Auth from "./pages/Auth";
 import Landing from "./pages/Landing";
 
 // Everything else is code-split so we don't ship the full app on first paint.
-const ResetPassword = lazy(() => import("./pages/ResetPassword"));
-const RoleSelection = lazy(() => import("./pages/RoleSelection"));
-const ProfileSetup = lazy(() => import("./pages/ProfileSetup"));
-const Home = lazy(() => import("./pages/Home"));
-const Calendar = lazy(() => import("./pages/Calendar"));
-const Plans = lazy(() => import("./pages/Plans"));
-const Progress = lazy(() => import("./pages/Progress"));
-const Refer = lazy(() => import("./pages/Refer"));
-const Profile = lazy(() => import("./pages/Profile"));
-const Terms = lazy(() => import("./pages/Terms"));
-const MyTrainer = lazy(() => import("./pages/MyTrainer"));
-const ResetApp = lazy(() => import("./pages/ResetApp"));
-const Pitch = lazy(() => import("./pages/Pitch"));
-const NotFound = lazy(() => import("./pages/NotFound"));
-const IconReview = lazy(() => import("./pages/IconReview"));
-const FlywheelReview = lazy(() => import("./pages/FlywheelReview"));
+// TW-036 — lazyWithReload auto-recovers from "Failed to fetch dynamically
+// imported module" after a new deploy renames chunk hashes.
+const ResetPassword = lazyWithReload(() => import("./pages/ResetPassword"));
+const RoleSelection = lazyWithReload(() => import("./pages/RoleSelection"));
+const ProfileSetup = lazyWithReload(() => import("./pages/ProfileSetup"));
+const Home = lazyWithReload(() => import("./pages/Home"));
+const Calendar = lazyWithReload(() => import("./pages/Calendar"));
+const Plans = lazyWithReload(() => import("./pages/Plans"));
+const Progress = lazyWithReload(() => import("./pages/Progress"));
+const Refer = lazyWithReload(() => import("./pages/Refer"));
+const Profile = lazyWithReload(() => import("./pages/Profile"));
+const Terms = lazyWithReload(() => import("./pages/Terms"));
+const MyTrainer = lazyWithReload(() => import("./pages/MyTrainer"));
+const ResetApp = lazyWithReload(() => import("./pages/ResetApp"));
+const Pitch = lazyWithReload(() => import("./pages/Pitch"));
+const NotFound = lazyWithReload(() => import("./pages/NotFound"));
+const IconReview = lazyWithReload(() => import("./pages/IconReview"));
+const FlywheelReview = lazyWithReload(() => import("./pages/FlywheelReview"));
 
 const queryClient = new QueryClient();
 
