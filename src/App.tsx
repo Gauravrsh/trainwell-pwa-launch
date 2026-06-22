@@ -71,50 +71,84 @@ const RoleSelectionRoute = ({ children }: { children: React.ReactNode }) => {
   const { user, loading: authLoading } = useAuth();
   const { profile, loading: profileLoading, refetchProfile } = useProfile();
   const inviteCode = typeof window !== "undefined" ? localStorage.getItem("inviteTrainerCode") : null;
+  const referralCode = typeof window !== "undefined" ? localStorage.getItem("referralTrainerCode") : null;
   const autoLinkAttempted = useRef(false);
   const [autoLinkError, setAutoLinkError] = useState<string | null>(null);
 
-  // TW-020: invited clients must NEVER see the role tiles. As soon as we
-  // know there's an authenticated user with no profile and a stored invite
-  // code, do the role assignment server-side and redirect to /profile-setup.
-  // The full RPC chain (generate id, lookup trainer, upsert profile) lives
-  // here so the route never renders <RoleSelection /> for invited clients.
+  // TW-020 / TW-038: invited clients AND referred trainers must NEVER see
+  // the role tiles. As soon as we know there's an authenticated user with
+  // no profile and either a stored invite code (client) or referral code
+  // (trainer), do the role assignment server-side and redirect to
+  // /profile-setup. The full RPC chain lives here so the route never
+  // renders <RoleSelection /> for these flows.
   useEffect(() => {
     if (authLoading || profileLoading) return;
-    if (!user || profile || !inviteCode) return;
+    if (!user || profile) return;
+    if (!inviteCode && !referralCode) return;
     if (autoLinkAttempted.current) return;
     autoLinkAttempted.current = true;
 
     (async () => {
       try {
+        const role: "client" | "trainer" = inviteCode ? "client" : "trainer";
+        const lookupCode = (inviteCode ?? referralCode) as string;
+
         const { data: newId, error: idError } = await supabase
-          .rpc("generate_unique_id", { p_role: "client" });
+          .rpc("generate_unique_id", { p_role: role });
         if (idError) throw idError;
 
         const { data: trainerData, error: lookupErr } = await supabase
-          .rpc("lookup_trainer_by_unique_id", { p_unique_id: inviteCode });
+          .rpc("lookup_trainer_by_unique_id", { p_unique_id: lookupCode });
         if (lookupErr) throw lookupErr;
-        const trainerId = trainerData && trainerData.length > 0 ? trainerData[0].id : null;
+        const matchedTrainerId = trainerData && trainerData.length > 0 ? trainerData[0].id : null;
 
-        const profilePayload = {
+        const profilePayload: Record<string, unknown> = {
           user_id: user.id,
-          role: "client" as const,
+          role,
           unique_id: newId as string,
-          ...(trainerId ? { trainer_id: trainerId as string } : {}),
         };
+        if (role === "client" && matchedTrainerId) {
+          profilePayload.trainer_id = matchedTrainerId as string;
+        }
+        if (role === "trainer" && matchedTrainerId) {
+          profilePayload.referred_by_trainer_id = matchedTrainerId as string;
+        }
 
         const { error: upsertError } = await supabase
           .from("profiles")
           .upsert(profilePayload, { onConflict: "user_id" });
         if (upsertError) throw upsertError;
 
-        localStorage.setItem("selectedRole", "client");
+        // For referred trainers, also create the pending referral record
+        // so the referrer's stats reflect the new signup.
+        if (role === "trainer" && matchedTrainerId) {
+          const { data: newProfile } = await supabase
+            .from("profiles")
+            .select("id")
+            .eq("user_id", user.id)
+            .single();
+          if (newProfile) {
+            await supabase
+              .from("trainer_referrals")
+              .insert({
+                referrer_id: matchedTrainerId as string,
+                referee_id: newProfile.id,
+                status: "pending",
+              });
+          }
+        }
+
+        localStorage.setItem("selectedRole", role);
         await refetchProfile();
       } catch (err) {
         logError("RoleSelectionRoute.autoLinkInvitedClient", err);
         autoLinkAttempted.current = false; // allow Retry
         setAutoLinkError("link_failed");
-        toast.error("Couldn't link to your trainer right now.", {
+        toast.error(
+          inviteCode
+            ? "Couldn't link to your trainer right now."
+            : "Couldn't apply your referral right now.",
+          {
           action: {
             label: "Retry",
             onClick: () => {
@@ -126,10 +160,11 @@ const RoleSelectionRoute = ({ children }: { children: React.ReactNode }) => {
             },
           },
           duration: 8000,
-        });
+          }
+        );
       }
     })();
-  }, [authLoading, profileLoading, user, profile, inviteCode, refetchProfile]);
+  }, [authLoading, profileLoading, user, profile, inviteCode, referralCode, refetchProfile]);
 
   if (authLoading || profileLoading) {
     return null;
@@ -143,10 +178,11 @@ const RoleSelectionRoute = ({ children }: { children: React.ReactNode }) => {
     return <Navigate to="/dashboard" replace />;
   }
 
-  // TW-020: invited clients never see the role tiles. While the auto-link
-  // RPC is in flight (or after a transient failure waiting for Retry),
-  // render a minimal status surface — NEVER the role-selection UI.
-  if (inviteCode) {
+  // TW-020 / TW-038: invited clients and referred trainers never see the
+  // role tiles. While the auto-link RPC is in flight (or after a transient
+  // failure waiting for Retry), render a minimal status surface — NEVER
+  // the role-selection UI.
+  if (inviteCode || referralCode) {
     return (
       <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-background p-6 text-center">
         <h1 className="text-3xl font-bold text-foreground mb-3">
@@ -154,8 +190,12 @@ const RoleSelectionRoute = ({ children }: { children: React.ReactNode }) => {
         </h1>
         <p className="text-sm text-muted-foreground">
           {autoLinkError
-            ? "Couldn't link to your trainer. Tap Retry in the toast."
-            : "Linking you to your trainer\u2026"}
+            ? (inviteCode
+                ? "Couldn't link to your trainer. Tap Retry in the toast."
+                : "Couldn't apply your referral. Tap Retry in the toast.")
+            : (inviteCode
+                ? "Linking you to your trainer\u2026"
+                : "Setting up your trainer account\u2026")}
         </p>
       </div>
     );
