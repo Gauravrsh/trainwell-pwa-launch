@@ -102,17 +102,17 @@ const RoleSelectionRoute = ({ children }: { children: React.ReactNode }) => {
         if (lookupErr) throw lookupErr;
         const matchedTrainerId = trainerData && trainerData.length > 0 ? trainerData[0].id : null;
 
-        const profilePayload: Record<string, unknown> = {
+        const profilePayload = {
           user_id: user.id,
           role,
           unique_id: newId as string,
+          ...(role === "client" && matchedTrainerId
+            ? { trainer_id: matchedTrainerId as string }
+            : {}),
+          ...(role === "trainer" && matchedTrainerId
+            ? { referred_by_trainer_id: matchedTrainerId as string }
+            : {}),
         };
-        if (role === "client" && matchedTrainerId) {
-          profilePayload.trainer_id = matchedTrainerId as string;
-        }
-        if (role === "trainer" && matchedTrainerId) {
-          profilePayload.referred_by_trainer_id = matchedTrainerId as string;
-        }
 
         const { error: upsertError } = await supabase
           .from("profiles")
