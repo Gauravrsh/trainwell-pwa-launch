@@ -42,15 +42,18 @@ export function useSubscriptionAccess() {
 
   if (isTrainer) {
     if (!status.hasSubscription) {
+      // Defensive fallback: every trainer is auto-provisioned a free Smart plan
+      // via DB trigger on profile insert. If a row is momentarily missing
+      // (e.g. mid-signup race), do not block the UI — treat as full access.
       return {
         loading,
-        hasAccess: false,
-        isReadOnly: true,
+        hasAccess: true,
+        isReadOnly: false,
         canInviteClients: false,
         isFree: false,
         activeClientCount: 0,
-        freeClientsRemaining: 0,
-        reason: 'no_subscription',
+        freeClientsRemaining: 3,
+        reason: null,
       };
     }
 
