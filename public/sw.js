@@ -70,17 +70,24 @@ self.addEventListener('notificationclick', (event) => {
     return;
   }
 
+  // Internal route mapping: Calendar page is mounted at /dashboard.
+  // Preserve query string (e.g. ?date=YYYY-MM-DD) from the push payload.
+  let targetPath = urlPath;
+  if (urlPath === '/calendar' || urlPath.startsWith('/calendar?') || urlPath.startsWith('/calendar/')) {
+    targetPath = urlPath.replace(/^\/calendar/, '/dashboard');
+  }
+
   // Internal app paths → focus existing window or open new one
   event.waitUntil(
     clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
       for (const client of clientList) {
         if (client.url.includes(self.location.origin) && 'focus' in client) {
           client.focus();
-          client.navigate(urlPath);
+          client.navigate(targetPath);
           return;
         }
       }
-      return clients.openWindow(urlPath);
+      return clients.openWindow(targetPath);
     })
   );
 });
