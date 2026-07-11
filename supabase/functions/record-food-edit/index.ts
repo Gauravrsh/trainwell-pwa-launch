@@ -6,7 +6,9 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-const EMBEDDING_MODEL = 'google/text-embedding-004';
+// Column is vector(768); use OpenAI text-embedding-3-small with dimensions=768
+// to preserve compatibility with existing cached embeddings.
+const EMBEDDING_MODEL = 'openai/text-embedding-3-small';
 const EMBEDDING_DIMS = 768;
 
 async function getEmbedding(text: string, apiKey: string): Promise<number[] | null> {
@@ -14,7 +16,7 @@ async function getEmbedding(text: string, apiKey: string): Promise<number[] | nu
     const r = await fetch('https://ai.gateway.lovable.dev/v1/embeddings', {
       method: 'POST',
       headers: { 'Authorization': `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ model: EMBEDDING_MODEL, input: text }),
+      body: JSON.stringify({ model: EMBEDDING_MODEL, input: text, dimensions: EMBEDDING_DIMS }),
     });
     if (!r.ok) return null;
     const data = await r.json();
