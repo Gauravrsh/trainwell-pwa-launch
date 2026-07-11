@@ -900,6 +900,63 @@ export type Database = {
           },
         ]
       }
+      trainer_leads: {
+        Row: {
+          admin_notes: string | null
+          city: string | null
+          client_count_bucket: string | null
+          created_at: string
+          full_name: string
+          id: string
+          instagram_handle: string | null
+          message: string | null
+          referrer_url: string | null
+          status: Database["public"]["Enums"]["lead_status"]
+          updated_at: string
+          utm_campaign: string | null
+          utm_content: string | null
+          utm_medium: string | null
+          utm_source: string | null
+          whatsapp_no: string
+        }
+        Insert: {
+          admin_notes?: string | null
+          city?: string | null
+          client_count_bucket?: string | null
+          created_at?: string
+          full_name: string
+          id?: string
+          instagram_handle?: string | null
+          message?: string | null
+          referrer_url?: string | null
+          status?: Database["public"]["Enums"]["lead_status"]
+          updated_at?: string
+          utm_campaign?: string | null
+          utm_content?: string | null
+          utm_medium?: string | null
+          utm_source?: string | null
+          whatsapp_no: string
+        }
+        Update: {
+          admin_notes?: string | null
+          city?: string | null
+          client_count_bucket?: string | null
+          created_at?: string
+          full_name?: string
+          id?: string
+          instagram_handle?: string | null
+          message?: string | null
+          referrer_url?: string | null
+          status?: Database["public"]["Enums"]["lead_status"]
+          updated_at?: string
+          utm_campaign?: string | null
+          utm_content?: string | null
+          utm_medium?: string | null
+          utm_source?: string | null
+          whatsapp_no?: string
+        }
+        Relationships: []
+      }
       trainer_notifications: {
         Row: {
           body: string
@@ -1129,6 +1186,27 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      user_roles: {
+        Row: {
+          created_at: string
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
       }
       weight_logs: {
         Row: {
@@ -1387,6 +1465,13 @@ export type Database = {
         Args: { _trainer_profile_id: string }
         Returns: boolean
       }
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
       is_profile_owner: { Args: { _profile_id: string }; Returns: boolean }
       is_trainer_of_client: {
         Args: { _client_profile_id: string; _trainer_user_id: string }
@@ -1529,7 +1614,9 @@ export type Database = {
       }
     }
     Enums: {
+      app_role: "admin"
       billing_model: "prepaid" | "postpaid"
+      lead_status: "new" | "dm_sent" | "call_booked" | "activated" | "dead"
       meal_type: "breakfast" | "lunch" | "dinner" | "snack"
       payment_status: "pending" | "completed" | "failed" | "refunded"
       platform_plan_type: "trial" | "monthly" | "annual" | "free"
@@ -1684,7 +1771,9 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
+      app_role: ["admin"],
       billing_model: ["prepaid", "postpaid"],
+      lead_status: ["new", "dm_sent", "call_booked", "activated", "dead"],
       meal_type: ["breakfast", "lunch", "dinner", "snack"],
       payment_status: ["pending", "completed", "failed", "refunded"],
       platform_plan_type: ["trial", "monthly", "annual", "free"],
