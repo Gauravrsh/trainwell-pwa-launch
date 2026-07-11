@@ -411,7 +411,8 @@ const AppContent = () => {
     location.pathname.startsWith("/auth") ||
     location.pathname.startsWith("/reset-password") ||
     location.pathname === "/terms" ||
-    location.pathname === "/pitch";
+    location.pathname === "/pitch" ||
+    location.pathname === "/for-trainers";
 
   useEffect(() => {
     const timer = setTimeout(() => setMaxTimeReached(true), SPLASH_MAX_MS);
