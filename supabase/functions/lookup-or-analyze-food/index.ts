@@ -8,7 +8,9 @@ const corsHeaders = {
 
 // Phase A: text-only cache. Distance threshold is empirical — start at 0.20.
 const MATCH_THRESHOLD = 0.20;
-const EMBEDDING_MODEL = 'google/text-embedding-004';
+// Column is vector(768); use OpenAI text-embedding-3-small with dimensions=768
+// to preserve compatibility with existing cached embeddings.
+const EMBEDDING_MODEL = 'openai/text-embedding-3-small';
 const EMBEDDING_DIMS = 768;
 const ANALYSIS_MODEL = 'google/gemini-2.5-flash';
 
@@ -80,7 +82,7 @@ async function getEmbedding(text: string, apiKey: string): Promise<number[] | nu
         'Authorization': `Bearer ${apiKey}`,
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ model: EMBEDDING_MODEL, input: text }),
+      body: JSON.stringify({ model: EMBEDDING_MODEL, input: text, dimensions: EMBEDDING_DIMS }),
     });
     if (!r.ok) {
       console.error('Embedding error:', r.status, await r.text());
