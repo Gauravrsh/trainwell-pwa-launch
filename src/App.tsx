@@ -41,8 +41,6 @@ const Pitch = lazyWithReload(() => import("./pages/Pitch"));
 const NotFound = lazyWithReload(() => import("./pages/NotFound"));
 const IconReview = lazyWithReload(() => import("./pages/IconReview"));
 const FlywheelReview = lazyWithReload(() => import("./pages/FlywheelReview"));
-const ForTrainers = lazyWithReload(() => import("./pages/ForTrainers"));
-const AdminLeads = lazyWithReload(() => import("./pages/AdminLeads"));
 
 const queryClient = new QueryClient();
 
@@ -380,8 +378,6 @@ const AppRoutes = () => (
       <Route path="/pitch" element={<Pitch />} />
       <Route path="/icon-review" element={<IconReview />} />
       <Route path="/flywheel-review" element={<FlywheelReview />} />
-      <Route path="/for-trainers" element={<ForTrainers />} />
-      <Route path="/admin/leads" element={<AdminLeads />} />
       <Route path="*" element={<NotFound />} />
     </Routes>
   </Suspense>
@@ -411,8 +407,7 @@ const AppContent = () => {
     location.pathname.startsWith("/auth") ||
     location.pathname.startsWith("/reset-password") ||
     location.pathname === "/terms" ||
-    location.pathname === "/pitch" ||
-    location.pathname === "/for-trainers";
+    location.pathname === "/pitch";
 
   useEffect(() => {
     const timer = setTimeout(() => setMaxTimeReached(true), SPLASH_MAX_MS);
