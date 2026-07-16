@@ -41,6 +41,7 @@ const Pitch = lazyWithReload(() => import("./pages/Pitch"));
 const NotFound = lazyWithReload(() => import("./pages/NotFound"));
 const IconReview = lazyWithReload(() => import("./pages/IconReview"));
 const FlywheelReview = lazyWithReload(() => import("./pages/FlywheelReview"));
+const VectoVsTrainerize = lazyWithReload(() => import("./pages/VectoVsTrainerize"));
 
 const queryClient = new QueryClient();
 
@@ -378,6 +379,7 @@ const AppRoutes = () => (
       <Route path="/pitch" element={<Pitch />} />
       <Route path="/icon-review" element={<IconReview />} />
       <Route path="/flywheel-review" element={<FlywheelReview />} />
+      <Route path="/vecto-vs-trainerize" element={<VectoVsTrainerize />} />
       <Route path="*" element={<NotFound />} />
     </Routes>
   </Suspense>
