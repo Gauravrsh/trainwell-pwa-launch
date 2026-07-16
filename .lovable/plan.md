@@ -1,30 +1,45 @@
 ## Goal
-New trainers automatically get the free "Smart" plan (3 clients) on signup, so they never see the "No Active Subscription" dead-end banner.
+Split the single-tap "Analyse with AI & Save Meal" into an explicit two-step flow so users can review/edit the AI-detected item breakdown before the meal is persisted.
 
-## Changes
+## Behavior
 
-### 1. Auto-provision free plan on trainer creation (DB trigger)
-Add an `AFTER INSERT` trigger on `public.profiles`:
-- When a row is inserted with `role = 'trainer'`, insert a matching row into `trainer_platform_subscriptions` using the same logic as `start_trainer_free` (plan_type=`free`, status=`active`, 100-year end_date, max_trial_clients=3, payment_status=`not_required`).
-- `SECURITY DEFINER` so it runs regardless of the inserting session.
-- Guard with `ON CONFLICT DO NOTHING` / existence check so it never double-creates if a row already exists for that trainer.
+**Step 1 — Analyse**
+- CTA label: **"Analyse with AI"**
+- Tapping calls `analyzeFood()` (photo or text) exactly as today.
+- On completion, the "Detected (N)" editable breakdown card remains rendered (items, per-item macros, add/remove/edit controls — all already built).
+- No save is triggered. The auto-save-on-analyze effect is removed for this path.
 
-This guarantees every future trainer — whether they sign up via referral link, direct invite, or any other path — lands on the dashboard with an active free subscription.
+**Step 2 — Save**
+- Once `items.length > 0` (AI returned results OR cache hit populated items), the CTA swaps to **"Save Meal"**.
+- Tapping calls `performSave(false)` → success toast → `finalizeAfterSave()` (same as today).
+- User can freely edit the Detected list between step 1 and step 2.
 
-### 2. Backfill existing trainers without a subscription
-One-time `INSERT ... SELECT` to create a free subscription row for any current trainer who has no row in `trainer_platform_subscriptions`. This immediately unblocks Ramakant (kirveramakant@gmail.com) and any other stranded trainer.
+**Cache-hit path**
+- Vector cache hit still populates `items` directly (no AI call). CTA immediately shows "Save Meal" — user gets the same review-then-save affordance for consistency. (Confirming this in the plan; if you'd rather keep cache hits as single-tap auto-save, say so and I'll flip it.)
 
-### 3. Remove the "No Active Subscription" banner from the dashboard
-Since no trainer should ever be in the `!hasSubscription` state again, the `no_subscription` banner becomes dead UI. Plan:
-- In `useSubscriptionAccess`, the `no_subscription` reason branch is unreachable in practice but I'll keep it as a defensive fallback that no longer surfaces a banner (returns `hasAccess: true` so the dashboard renders normally) — the trigger is the source of truth.
-- In `TrainerDashboard` (and any other place rendering `SubscriptionEnforcementBanner` with `reason="no_subscription"`), remove that banner instance. The `subscription_expired` banner stays — that's still a valid state for paid trainers whose plan lapsed.
-- The "Activate Free Plan" onboarding card in `TrainerPlatformSubscription.tsx` (Profile → Subscription) becomes unreachable too; I'll leave the code path intact as a safety net but it will not render under normal flow.
+**Reset / cancel**
+- Switching tabs, changing meal type, or clearing photo/text resets `items` → CTA reverts to "Analyse with AI".
 
-## Files touched
-- New migration: trigger + backfill on `trainer_platform_subscriptions`
-- `src/components/dashboard/TrainerDashboard.tsx` — remove `no_subscription` banner rendering
-- `src/hooks/useSubscriptionAccess.tsx` — soften `no_subscription` branch to non-blocking
+## Technical Details
 
-## Out of scope
-- Paid plan / expiry / grace-period banners — untouched
-- Free-tier 3-client cap enforcement — untouched (still gates `canInviteClients`)
+File: `src/components/modals/FoodLogModal.tsx`
+
+1. **Remove** the auto-save `useEffect` at lines ~449–462 (`autoSaveAfterAnalyzeRef` block). Also remove the ref declaration and any places it's set to `true` before `analyzeFood()`.
+2. **CTA label logic** — replace the current merged label with:
+   ```
+   items.length > 0 ? "Save Meal" : "Analyse with AI"
+   ```
+   Loading states unchanged (`"Analysing…"` / `"Saving…"`).
+3. **CTA onClick** — branch on `items.length`:
+   - `0` → `analyzeFood()`
+   - `>0` → `performSave(false)` then toast + `finalizeAfterSave()`
+4. Leave the Detected breakdown block (`FoodLogModal.tsx:762+`) as-is — it already renders whenever `items.length > 0`.
+5. Ensure `resetForm()` / tab change / meal type change still clear `items` so CTA returns to step 1.
+
+No changes to `FoodDiaryPanel`, `FoodSessionSummary`, edge functions, or DB.
+
+## Verification
+- Snap tab: upload photo → tap "Analyse with AI" → Detected list appears → CTA now says "Save Meal" → edit an item → tap "Save Meal" → toast + diary updates.
+- Describe tab: same flow with text input.
+- Cache hit: text describes a known meal → items populate without AI call → CTA shows "Save Meal" immediately.
+- Cancel path: after step 1, clear text/photo → items reset → CTA returns to "Analyse with AI".
