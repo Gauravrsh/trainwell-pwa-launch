@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { useProfile } from '@/hooks/useProfile';
 import { ReferralTermsAccordion } from '@/components/referral/ReferralTermsAccordion';
 import { ClientPlanAgreement } from '@/components/terms/ClientPlanAgreement';
+import Seo from '@/components/Seo';
 import {
   Accordion,
   AccordionContent,
@@ -17,6 +18,11 @@ export default function Terms() {
 
   return (
     <div className="min-h-screen px-4 pt-12 pb-24">
+      <Seo
+        title="Terms & referral rules — Vecto"
+        description="Vecto terms of service, client plan agreement, and trainer referral programme rules."
+        path="/terms"
+      />
       {/* Header */}
       <motion.div
         initial={{ opacity: 0, y: -20 }}

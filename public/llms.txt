@@ -1,0 +1,11 @@
+# Vecto
+
+> Vecto is the accountability operating system for independent fitness trainers. Binary calendar tracking of workouts, meals and steps enforces client consistency so trainers keep clients longer and win referrals.
+
+Vecto positions itself as a high-performance coaching platform built on three archetypes — the Sage (objective data), the Ruler (non-negotiable rules) and the Jester (dry authority). No backdating, locked logs and a red/green calendar make client compliance visible.
+
+## Pages
+
+- [Home](/): Product overview, how it works, pricing, and the flywheel that grows a trainer's business.
+- [Sign in / Sign up](/auth): Create a trainer or client account, or sign back in.
+- [Terms](/terms): Terms of service, referral rules, and client plan agreement.

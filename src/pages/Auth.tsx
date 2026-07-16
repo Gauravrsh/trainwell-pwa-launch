@@ -8,6 +8,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
 import { sanitizeErrorMessage } from '@/lib/errorUtils';
 import { z } from 'zod';
+import Seo from '@/components/Seo';
 
 
 type AuthMode = 'signin' | 'signup' | 'forgot';
@@ -156,7 +157,12 @@ export default function Auth() {
   const content = getModeContent();
 
   return (
-    <div className="min-h-screen bg-background flex flex-col items-center justify-center p-6">
+    <main className="min-h-screen bg-background flex flex-col items-center justify-center p-6">
+      <Seo
+        title="Sign in to Vecto — Trainer & client login"
+        description="Sign in or create your Vecto account. The high-performance coaching platform for independent fitness trainers and their clients."
+        path="/auth"
+      />
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -171,6 +177,7 @@ export default function Auth() {
             className="text-4xl font-bold text-foreground mb-2"
           >
             <span className="text-primary">V</span>ECTO
+            <span className="sr-only"> — High-performance coaching platform</span>
           </motion.h1>
           <p className="text-muted-foreground">Effort | Direction | Discipline</p>
         </div>
@@ -245,6 +252,8 @@ export default function Auth() {
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
+                    aria-label={showPassword ? 'Hide password' : 'Show password'}
+                    aria-pressed={showPassword}
                     className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
                   >
                     {showPassword ? (
@@ -309,6 +318,6 @@ export default function Auth() {
           </motion.form>
         </AnimatePresence>
       </motion.div>
-    </div>
+    </main>
   );
 }

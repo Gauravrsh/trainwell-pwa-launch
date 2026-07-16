@@ -15,3 +15,5 @@ Allow: /
 Disallow: /icon-review
 Disallow: /flywheel-review
 Disallow: /pitch
+
+Sitemap: https://vecto.fit/sitemap.xml
