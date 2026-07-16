@@ -9,3 +9,7 @@ Vecto positions itself as a high-performance coaching platform built on three ar
 - [Home](/): Product overview, how it works, pricing, and the flywheel that grows a trainer's business.
 - [Sign in / Sign up](/auth): Create a trainer or client account, or sign back in.
 - [Terms](/terms): Terms of service, referral rules, and client plan agreement.
+
+## Comparisons
+
+- [Vecto vs Trainerize](/vecto-vs-trainerize): Why independent 1:1 trainers choose Vecto's binary calendar and no-backdating rules over Trainerize's engagement-first coaching app.
