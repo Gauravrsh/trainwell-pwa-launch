@@ -30,7 +30,7 @@ export default function HeroSection() {
 
             <motion.h1
               className="text-3xl font-extrabold tracking-tight sm:text-4xl lg:text-5xl leading-[1.1]"
-              initial="hidden" animate="visible" variants={fadeUp} custom={0.5}
+              initial={{ opacity: 1, y: 0 }}
             >
               Whatever Gets Tracked,{' '}
               <span className="text-gradient">Gets Done.</span>
