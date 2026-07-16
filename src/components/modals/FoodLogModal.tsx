@@ -438,32 +438,10 @@ export const FoodLogModal = ({ open, onOpenChange, onSave, clientId = null, logg
     setDiaryRefresh((n) => n + 1);
   };
 
-  // (Legacy single-tap "Analyse & Save" handler removed — use handlePrimaryCTA below.)
-
-  // Auto-save once items appear from a "Analyse & Save" click (single-tap UX)
-  const autoSaveAfterAnalyzeRef = useRef(false);
-  const triggerAnalyzeAndSaveFlag = () => {
-    autoSaveAfterAnalyzeRef.current = true;
-  };
-
-  useEffect(() => {
-    if (autoSaveAfterAnalyzeRef.current && hasItems && !isAnalyzing) {
-      autoSaveAfterAnalyzeRef.current = false;
-      void (async () => {
-        const ok = await performSave(false);
-        if (ok) {
-          const name = mealType.charAt(0).toUpperCase() + mealType.slice(1);
-          toast.success(`${name} logged!`);
-          finalizeAfterSave();
-        }
-      })();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [hasItems, isAnalyzing]);
-
+  // Two-step flow: Step 1 analyses; Step 2 saves after user reviews the
+  // editable Detected breakdown. No auto-save on analyze completion.
   const handlePrimaryCTA = async () => {
     if (hasItems) {
-      // Already analyzed — just save
       setIsSaving(true);
       try {
         const ok = await performSave(false);
@@ -477,8 +455,7 @@ export const FoodLogModal = ({ open, onOpenChange, onSave, clientId = null, logg
       }
       return;
     }
-    // Not yet analyzed — analyze, then auto-save when items arrive
-    triggerAnalyzeAndSaveFlag();
+    // Not yet analyzed — analyze and stop; user reviews then taps Save Meal.
     await analyzeFood();
   };
 
@@ -497,7 +474,6 @@ export const FoodLogModal = ({ open, onOpenChange, onSave, clientId = null, logg
 
   const handleRetryAi = async () => {
     setAiError(null);
-    autoSaveAfterAnalyzeRef.current = false;
     await analyzeFood();
   };
 
@@ -506,7 +482,6 @@ export const FoodLogModal = ({ open, onOpenChange, onSave, clientId = null, logg
       resetForm();
       setDiaryRows([]);
       setRecentMeals([]);
-      autoSaveAfterAnalyzeRef.current = false;
     }
     onOpenChange(o);
   };
@@ -895,7 +870,7 @@ export const FoodLogModal = ({ open, onOpenChange, onSave, clientId = null, logg
             ) : (
               <>
                 <Sparkles className="w-4 h-4 mr-2" />
-                Analyse with AI & Save Meal
+                Analyse with AI
               </>
             )}
           </Button>
